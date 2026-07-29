@@ -1,56 +1,95 @@
-# Welcome to your Expo app 👋
+# Incline
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A minimal workout tracker built with React Native and Expo. Log sets, track progress, and build consistency — no account required.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Workout logging** — Pick exercises, log weight/reps per set, complete sets with a tap
+- **Rest timer** — Countdown timer with preset durations and manual +/- controls
+- **Workout templates** — Save and reuse workout structures (exercises, sets, reps, rest)
+- **Programs** — Multi-week training programs with day-by-day scheduling
+- **Progress tracking** — Volume over time, streaks, personal bests, exercise history
+- **Exercise catalog** — 100+ exercises with muscle groups, equipment, and step-by-step instructions
+- **Offline-first** — Everything stored locally in SQLite, works without internet
+- **Dark mode** — System-aware light/dark theme with green accent
+- **Haptic feedback** — Tactile responses on set completion and key actions
 
-   ```bash
-   npm install
-   ```
+## Tech Stack
 
-2. Start the app
+| Layer | Technology |
+|---|---|
+| Framework | Expo SDK 57, React Native 0.86 |
+| Navigation | Expo Router v57 (file-based) |
+| Styling | NativeWind v4 (TailwindCSS) |
+| Database | expo-sqlite (SQLite) |
+| State | Zustand |
+| Icons | Lucide React Native |
+| Animations | React Native Reanimated |
+| Fonts | Inter (via @expo-google-fonts) |
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Getting Started
 
 ```bash
-npm run reset-project
+# Install dependencies
+npm install
+
+# Start the dev server
+npx expo start
+
+# Run on Android
+npx expo start --android
+
+# Run on iOS
+npx expo start --ios
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Project Structure
 
-### Other setup steps
+```
+src/
+├── app/                    # Expo Router file-based routes
+│   ├── (app)/              # Main tabbed layout
+│   │   ├── (tabs)/         # Home, Workouts, Progress, Profile
+│   │   ├── template/[id]   # Template editor
+│   │   └── program/[id]    # Program detail
+│   ├── (onboarding)/       # First-run setup
+│   ├── session/[id]        # Active workout session
+│   ├── summary/[id]        # Post-workout summary
+│   ├── workout/[id]        # Workout preview
+│   └── exercise/           # Exercise browser
+├── components/
+│   ├── common/             # Shared components (Avatar, Text, TabBar)
+│   ├── ui/                 # Primitives (Button, Card, Dialog, Input)
+│   ├── workout/            # Session-specific (SetRow, RestTimer, NumberStepper)
+│   ├── progress/           # Charts and progress rings
+│   └── exercise/           # Exercise detail cards
+├── db/                     # SQLite schema, queries, types, helpers
+├── hooks/                  # Custom hooks (rest timer, haptics, data fetching)
+├── store/                  # Zustand stores (settings, active workout)
+├── constants/              # Rest presets, exercise seed data
+└── lib/                    # Utilities (cn, icon-color resolver)
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Database
 
-## Learn more
+Local SQLite database with the following tables:
 
-To learn more about developing your project with Expo, look at the following resources:
+- **exercises** — Exercise catalog with muscles, equipment, instructions
+- **workout_templates** — User-created workout templates
+- **template_exercises** — Exercises within a template (sets, reps, rest)
+- **programs** — Multi-week training programs
+- **workout_logs** — Completed workout sessions
+- **set_entries** — Individual sets (weight, reps, completed)
+- **user_profile** — Name, goal, bodyweight, unit preference
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Scripts
 
-## Join the community
+```bash
+npm run typecheck    # TypeScript type checking
+npm run lint         # ESLint
+npm run lint:fix     # ESLint with auto-fix
+```
 
-Join our community of developers creating universal apps.
+## License
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Private — not for distribution.
