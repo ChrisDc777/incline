@@ -1,0 +1,30 @@
+import type { ReactNode } from 'react';
+import { View } from 'react-native';
+
+import { cn } from '@/lib/cn';
+import { Text } from '@/components/ui/text';
+import { Caption } from '@/components/common/text';
+
+/** Labeled metric used in the workout summary. */
+export function SummaryStat({
+  label,
+  value,
+  sublabel,
+  icon,
+  className,
+}: {
+  label: string;
+  value: ReactNode;
+  sublabel?: string;
+  icon?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <View className={cn('flex-1 items-center rounded-2xl bg-muted/50 p-4', className)}>
+      <View className="mb-2">{icon}</View>
+      <Text className="text-xl font-bold tracking-tight text-foreground">{value}</Text>
+      <Caption className="mt-0.5 text-center">{label}</Caption>
+      {sublabel ? <Caption className="mt-0.5">{sublabel}</Caption> : null}
+    </View>
+  );
+}

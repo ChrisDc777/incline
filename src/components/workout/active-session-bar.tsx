@@ -1,0 +1,42 @@
+import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Dumbbell, ChevronRight } from 'lucide-react-native';
+
+import { cn } from '@/lib/cn';
+import { Text } from '@/components/ui/text';
+import { formatClock } from '@/db/calc';
+
+/**
+ * Cross-tab mini bar shown above the tab bar whenever a workout is in progress.
+ * Tapping resumes the active session. Elapsed time is derived from startedAt so
+ * it's correct even after a restart.
+ */
+export function ActiveSessionBar({
+  logId,
+  name,
+  startedAt,
+  className,
+}: {
+  logId: number;
+  name: string;
+  startedAt: number;
+  className?: string;
+}) {
+  const router = useRouter();
+  const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+  return (
+    <Pressable
+      className={cn('mx-4 mb-2 flex-row items-center gap-3 rounded-2xl bg-primary p-3.5', className)}
+      onPress={() => router.push(`/session/${logId}`)}
+      android_ripple={{ color: 'rgba(255,255,255,0.15)' }}>
+      <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary-foreground/20">
+        <Dumbbell size={18} className="text-primary-foreground" />
+      </View>
+      <View className="flex-1">
+        <Text className="text-sm font-semibold text-primary-foreground">{name}</Text>
+        <Text className="text-xs text-primary-foreground/80">In progress · {formatClock(elapsed)}</Text>
+      </View>
+      <ChevronRight size={20} className="text-primary-foreground" />
+    </Pressable>
+  );
+}

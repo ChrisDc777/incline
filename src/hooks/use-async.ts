@@ -1,0 +1,38 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+interface AsyncState<T> {
+  data: T | null;
+  loading: boolean;
+  error: Error | null;
+}
+
+/**
+ * Generic async data hook with loading/error/refetch. The backbone of every
+ * data-bound screen so loading/empty/error states stay consistent.
+ */
+export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
+  const [state, setState] = useState<AsyncState<T>>({ data: null, loading: true, error: null });
+  const fnRef = useRef(fn);
+  fnRef.current = fn;
+  const [nonce, setNonce] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setState((s) => ({ ...s, loading: true, error: null }));
+    fnRef
+      .current()
+      .then((data) => {
+        if (active) setState({ data, loading: false, error: null });
+      })
+      .catch((error) => {
+        if (active) setState((s) => ({ ...s, loading: false, error }));
+      });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps, nonce]);
+
+  const refetch = useCallback(() => setNonce((n) => n + 1), []);
+  return { ...state, refetch };
+}

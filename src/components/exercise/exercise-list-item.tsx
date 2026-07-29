@@ -1,0 +1,31 @@
+import { Dumbbell } from 'lucide-react-native';
+import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
+
+import { cn } from '@/lib/cn';
+import { Text } from '@/components/ui/text';
+import { EQUIPMENT_LABELS, MOVEMENT_LABELS } from '@/lib/labels';
+import type { Exercise } from '@/db/types';
+import { MuscleBadge } from './muscle-badge';
+
+/** Exercise row used in the library list and search results. */
+export function ExerciseListItem({ exercise, className }: { exercise: Exercise; className?: string }) {
+  const router = useRouter();
+  return (
+    <Pressable
+      className={cn('flex-row items-center gap-3 rounded-2xl bg-card p-4', className)}
+      onPress={() => router.push(`/exercise/${exercise.id}`)}
+      android_ripple={{ color: 'rgba(0,0,0,0.06)' }}>
+      <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/15">
+        <Dumbbell size={20} className="text-primary" />
+      </View>
+      <View className="flex-1">
+        <Text className="text-base font-semibold text-foreground">{exercise.name}</Text>
+        <Text className="mt-0.5 text-xs text-muted-foreground">
+          {EQUIPMENT_LABELS[exercise.equipment]} · {MOVEMENT_LABELS[exercise.movementPattern]}
+        </Text>
+      </View>
+      <MuscleBadge muscle={exercise.primaryMuscle} />
+    </Pressable>
+  );
+}

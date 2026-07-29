@@ -1,0 +1,163 @@
+/**
+ * Database schema. All statements are idempotent (IF NOT EXISTS) so they are
+ * safe to re-run. Searchable fields (aliases, secondary muscles, instructions)
+ * are normalized into child tables so they can be indexed and queried directly
+ * rather than parsing JSON at query time.
+ *
+ * Migrations: for the MVP we bump SCHEMA_VERSION and (in client.ts) could run
+ * incremental migrations. A formal migration runner is deferred — see ROADMAP.md.
+ */
+export const SCHEMA_VERSION = 1;
+
+export const SCHEMA_STATEMENTS: string[] = [
+  // ---- exercises (catalog) ----
+  `CREATE TABLE IF NOT EXISTS exercises (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    primary_muscle TEXT NOT NULL,
+    movement_pattern TEXT NOT NULL,
+    equipment TEXT NOT NULL,
+    category TEXT NOT NULL,
+    is_compound INTEGER NOT NULL DEFAULT 0,
+    tips TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS exercise_aliases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    exercise_id INTEGER NOT NULL,
+    alias TEXT NOT NULL,
+    FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS exercise_secondary_muscles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    exercise_id INTEGER NOT NULL,
+    muscle TEXT NOT NULL,
+    FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS exercise_instructions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    exercise_id INTEGER NOT NULL,
+    step INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
+  )`,
+
+  // ---- templates ----
+  `CREATE TABLE IF NOT EXISTS workout_templates (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    category TEXT NOT NULL DEFAULT 'strength',
+    difficulty TEXT NOT NULL DEFAULT 'intermediate',
+    estimated_minutes INTEGER NOT NULL DEFAULT 45,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS template_exercises (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    template_id INTEGER NOT NULL,
+    exercise_id INTEGER NOT NULL,
+    sort_order INTEGER NOT NULL,
+    target_sets INTEGER NOT NULL,
+    target_reps_min INTEGER NOT NULL,
+    target_reps_max INTEGER NOT NULL,
+    rest_seconds INTEGER NOT NULL DEFAULT 90,
+    notes TEXT NOT NULL DEFAULT '',
+    FOREIGN KEY (template_id) REFERENCES workout_templates(id) ON DELETE CASCADE,
+    FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
+  )`,
+
+  // ---- programs ----
+  `CREATE TABLE IF NOT EXISTS programs (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    weeks INTEGER NOT NULL DEFAULT 4,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS program_workouts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    program_id INTEGER NOT NULL,
+    template_id INTEGER NOT NULL,
+    week INTEGER NOT NULL,
+    day INTEGER NOT NULL,
+    sort_order INTEGER NOT NULL,
+    FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE,
+    FOREIGN KEY (template_id) REFERENCES workout_templates(id) ON DELETE CASCADE
+  )`,
+
+  // ---- workout logs (user data) ----
+  `CREATE TABLE IF NOT EXISTS workout_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    template_id INTEGER,
+    name TEXT NOT NULL,
+    started_at INTEGER NOT NULL,
+    ended_at INTEGER,
+    duration_seconds INTEGER NOT NULL DEFAULT 0,
+    total_volume REAL NOT NULL DEFAULT 0,
+    unit TEXT NOT NULL DEFAULT 'metric',
+    notes TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS set_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workout_log_id INTEGER NOT NULL,
+    exercise_id INTEGER NOT NULL,
+    set_index INTEGER NOT NULL,
+    weight REAL NOT NULL DEFAULT 0,
+    reps INTEGER NOT NULL DEFAULT 0,
+    completed INTEGER NOT NULL DEFAULT 0,
+    rest_seconds INTEGER,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (workout_log_id) REFERENCES workout_logs(id) ON DELETE CASCADE,
+    FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
+  )`,
+
+  // ---- profile ----
+  `CREATE TABLE IF NOT EXISTS user_profile (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL DEFAULT '',
+    goal TEXT NOT NULL DEFAULT 'build_muscle',
+    bodyweight REAL,
+    unit TEXT NOT NULL DEFAULT 'metric',
+    onboarding_completed INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+  )`,
+
+  // ---- key/value (Zustand persist + flags) ----
+  `CREATE TABLE IF NOT EXISTS kv (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS schema_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )`,
+
+  // ---- indexes (hot query paths) ----
+  `CREATE INDEX IF NOT EXISTS idx_exercises_name ON exercises(name)`,
+  `CREATE INDEX IF NOT EXISTS idx_exercises_primary_muscle ON exercises(primary_muscle)`,
+  `CREATE INDEX IF NOT EXISTS idx_exercises_movement ON exercises(movement_pattern)`,
+  `CREATE INDEX IF NOT EXISTS idx_exercises_equipment ON exercises(equipment)`,
+  `CREATE INDEX IF NOT EXISTS idx_aliases_alias ON exercise_aliases(alias)`,
+  `CREATE INDEX IF NOT EXISTS idx_aliases_exercise ON exercise_aliases(exercise_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_secondary_exercise ON exercise_secondary_muscles(exercise_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_instructions_exercise ON exercise_instructions(exercise_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_template_exercises_template ON template_exercises(template_id, sort_order)`,
+  `CREATE INDEX IF NOT EXISTS idx_program_workouts_program ON program_workouts(program_id, week, day, sort_order)`,
+  `CREATE INDEX IF NOT EXISTS idx_workout_logs_started ON workout_logs(started_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_workout_logs_template ON workout_logs(template_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_set_entries_log ON set_entries(workout_log_id, set_index)`,
+  `CREATE INDEX IF NOT EXISTS idx_set_entries_exercise ON set_entries(exercise_id, created_at DESC)`,
+];
+

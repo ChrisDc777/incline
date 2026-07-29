@@ -1,0 +1,37 @@
+import { Pressable, View } from 'react-native';
+import { Dumbbell, Clock, Weight } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+
+import { cn } from '@/lib/cn';
+import { Text } from '@/components/ui/text';
+import { formatDuration, formatFullDate, formatVolume } from '@/db/calc';
+import type { Unit, WorkoutLog } from '@/db/types';
+
+/** A completed workout row in the history list. */
+export function HistoryRow({ log, unit, className }: { log: WorkoutLog; unit: Unit; className?: string }) {
+  const router = useRouter();
+  return (
+    <Pressable
+      className={cn('flex-row items-center gap-3 rounded-2xl bg-card p-4', className)}
+      onPress={() => router.push(`/summary/${log.id}`)}
+      android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+      <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/15">
+        <Dumbbell size={18} className="text-primary" />
+      </View>
+      <View className="flex-1">
+        <Text className="text-base font-semibold text-foreground">{log.name}</Text>
+        <Text className="mt-0.5 text-xs text-muted-foreground">{formatFullDate(log.startedAt)}</Text>
+      </View>
+      <View className="items-end gap-1">
+        <View className="flex-row items-center gap-1">
+          <Weight size={12} className="text-muted-foreground" />
+          <Text className="text-xs font-medium text-foreground">{formatVolume(log.totalVolume, unit)}</Text>
+        </View>
+        <View className="flex-row items-center gap-1">
+          <Clock size={12} className="text-muted-foreground" />
+          <Text className="text-xs text-muted-foreground">{formatDuration(log.durationSeconds)}</Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
