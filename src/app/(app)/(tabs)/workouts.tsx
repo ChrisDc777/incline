@@ -1,10 +1,12 @@
 ﻿import { useState } from 'react';
 import { View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Dumbbell, Search as SearchIcon } from 'lucide-react-native';
+import { Dumbbell, Search as SearchIcon, Plus } from 'lucide-react-native';
 
 import { Heading, Caption } from '@/components/common/text';
+import { Button } from '@/components/ui/button';
 import { SegmentedControl } from '@/components/common/segmented-control';
 import { SearchBar } from '@/components/common/search-bar';
 import { FilterChips, type FilterOption } from '@/components/common/chip';
@@ -27,6 +29,7 @@ export default function WorkoutsScreen() {
   const [tab, setTab] = useState<Tab>('templates');
   const [query, setQuery] = useState('');
   const [muscle, setMuscle] = useState<MuscleGroup | null>(null);
+  const router = useRouter();
 
   const templates = useTemplateSummaries();
   const exercises = useSearchExercises(query, muscle ? { muscle } : undefined);
@@ -65,13 +68,18 @@ export default function WorkoutsScreen() {
           keyExtractor={(item) => String(item.template.id)}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
           ItemSeparatorComponent={() => <View className="h-3" />}
+          ListHeaderComponent={
+            <Button variant="outline" className="mb-3" leftIcon={<Plus size={16} className="text-primary" />} onPress={() => router.push({ pathname: '/(app)/template/[id]' as any, params: { id: 'new' } })}>
+              Create template
+            </Button>
+          }
           ListEmptyComponent={
             templates.loading ? (
               <ListSkeleton count={3} />
             ) : templates.error ? (
               <ErrorState onRetry={templates.refetch} />
             ) : (
-              <EmptyState icon={<Dumbbell size={28} className="text-muted-foreground" />} title="No templates yet" description="Workout templates will appear here." />
+              <EmptyState icon={<Dumbbell size={28} className="text-muted-foreground" />} title="No templates yet" description="Create your first workout template." actionLabel="Create" onAction={() => router.push({ pathname: '/(app)/template/[id]' as any, params: { id: 'new' } })} />
             )
           }
         />

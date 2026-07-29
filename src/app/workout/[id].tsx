@@ -99,6 +99,9 @@ export default function WorkoutPreviewScreen() {
         <Button size="lg" leftIcon={<Play size={18} className="text-primary-foreground" />} onPress={start} disabled={starting}>
           {starting ? 'Starting…' : 'Start workout'}
         </Button>
+        <Button variant="outline" className="mt-2" onPress={() => router.push({ pathname: '/(app)/template/[id]' as any, params: { id: String(templateId) } })}>
+          Edit template
+        </Button>
       </View>
     </ScrollView>
   );

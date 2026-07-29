@@ -332,6 +332,86 @@ export async function getSuggestedTemplate(): Promise<WorkoutTemplate | null> {
   return getTemplate(next);
 }
 
+/* ------------------------------- template CRUD ------------------------------- */
+
+export async function createTemplate(name: string, description: string, difficulty: Difficulty): Promise<number> {
+  const db = await openDatabase();
+  const now = Date.now();
+  const res = await db.runAsync(
+    `INSERT INTO workout_templates (name, description, category, difficulty, estimated_minutes, created_at, updated_at) VALUES (?, ?, 'strength', ?, 45, ?, ?)`,
+    name, description, difficulty, now, now,
+  );
+  return res.lastInsertRowId;
+}
+
+export async function updateTemplate(id: number, patch: Partial<Pick<WorkoutTemplate, 'name' | 'description' | 'difficulty'>>): Promise<void> {
+  const db = await openDatabase();
+  const sets: string[] = [];
+  const args: (string | number)[] = [];
+  if (patch.name !== undefined) { sets.push('name = ?'); args.push(patch.name); }
+  if (patch.description !== undefined) { sets.push('description = ?'); args.push(patch.description); }
+  if (patch.difficulty !== undefined) { sets.push('difficulty = ?'); args.push(patch.difficulty); }
+  if (sets.length === 0) return;
+  sets.push('updated_at = ?');
+  args.push(Date.now());
+  args.push(id);
+  await db.runAsync(`UPDATE workout_templates SET ${sets.join(', ')} WHERE id = ?`, ...args);
+}
+
+export async function deleteTemplate(id: number): Promise<void> {
+  const db = await openDatabase();
+  await db.runAsync('DELETE FROM template_exercises WHERE template_id = ?', id);
+  await db.runAsync('DELETE FROM workout_templates WHERE id = ?', id);
+}
+
+export async function addExerciseToTemplate(
+  templateId: number,
+  exerciseId: number,
+  targetSets: number,
+  targetRepsMin: number,
+  targetRepsMax: number,
+  restSeconds: number,
+): Promise<number> {
+  const db = await openDatabase();
+  const maxOrder = await db.getFirstAsync<{ m: number }>('SELECT COALESCE(MAX(sort_order), -1) as m FROM template_exercises WHERE template_id = ?', templateId);
+  const nextOrder = (maxOrder?.m ?? -1) + 1;
+  const res = await db.runAsync(
+    `INSERT INTO template_exercises (template_id, exercise_id, sort_order, target_sets, target_reps_min, target_reps_max, rest_seconds, notes) VALUES (?, ?, ?, ?, ?, ?, ?, '')`,
+    templateId, exerciseId, nextOrder, targetSets, targetRepsMin, targetRepsMax, restSeconds,
+  );
+  return res.lastInsertRowId;
+}
+
+export async function updateTemplateExercise(
+  id: number,
+  patch: Partial<Pick<TemplateExercise, 'targetSets' | 'targetRepsMin' | 'targetRepsMax' | 'restSeconds'>>,
+): Promise<void> {
+  const db = await openDatabase();
+  const sets: string[] = [];
+  const args: (string | number)[] = [];
+  if (patch.targetSets !== undefined) { sets.push('target_sets = ?'); args.push(patch.targetSets); }
+  if (patch.targetRepsMin !== undefined) { sets.push('target_reps_min = ?'); args.push(patch.targetRepsMin); }
+  if (patch.targetRepsMax !== undefined) { sets.push('target_reps_max = ?'); args.push(patch.targetRepsMax); }
+  if (patch.restSeconds !== undefined) { sets.push('rest_seconds = ?'); args.push(patch.restSeconds); }
+  if (sets.length === 0) return;
+  args.push(id);
+  await db.runAsync(`UPDATE template_exercises SET ${sets.join(', ')} WHERE id = ?`, ...args);
+}
+
+export async function removeTemplateExercise(id: number): Promise<void> {
+  const db = await openDatabase();
+  await db.runAsync('DELETE FROM template_exercises WHERE id = ?', id);
+}
+
+export async function reorderTemplateExercises(templateId: number, exerciseIds: number[]): Promise<void> {
+  const db = await openDatabase();
+  await db.withTransactionAsync(async () => {
+    for (let i = 0; i < exerciseIds.length; i++) {
+      await db.runAsync('UPDATE template_exercises SET sort_order = ? WHERE id = ? AND template_id = ?', i, exerciseIds[i], templateId);
+    }
+  });
+}
+
 /* ------------------------------- programs ------------------------------- */
 export async function listPrograms(): Promise<Program[]> {
   const db = await openDatabase();
