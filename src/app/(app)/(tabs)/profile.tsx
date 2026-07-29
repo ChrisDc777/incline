@@ -3,6 +3,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Settings as SettingsIcon, Pencil, ChevronRight, Trash2, Info, Dumbbell, Flame, Layers } from 'lucide-react-native';
+import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Card } from '@/components/ui/card';
@@ -73,32 +74,32 @@ export default function ProfileScreen() {
               {GOAL_LABELS[profile.goal]}
             </Badge>
           ) : null}
-          <Button variant="outline" size="sm" className="mt-4" leftIcon={<Pencil size={14} className="text-primary" />} onPress={openEdit}>
+          <Button variant="outline" size="sm" className="mt-4" leftIcon={<Icon icon={Pencil} size={14} color="primary" />} onPress={openEdit}>
             Edit profile
           </Button>
         </Card>
 
         <View className="mt-6 flex-row gap-3">
-          <StatCard label="Sessions" value={stats?.totalSessions ?? 0} icon={<Dumbbell size={16} className="text-primary" />} />
-          <StatCard label="Volume" value={formatVolume(stats?.totalVolume ?? 0, unit)} icon={<Layers size={16} className="text-info" />} />
-          <StatCard label="Streak" value={`${stats?.streak ?? 0}w`} icon={<Flame size={16} className="text-warning" />} />
+          <StatCard label="Sessions" value={stats?.totalSessions ?? 0} icon={<Icon icon={Dumbbell} size={16} color="primary" />} />
+          <StatCard label="Volume" value={formatVolume(stats?.totalVolume ?? 0, unit)} icon={<Icon icon={Layers} size={16} color="info" />} />
+          <StatCard label="Streak" value={`${stats?.streak ?? 0}w`} icon={<Icon icon={Flame} size={16} color="warning" />} />
         </View>
 
         <View className="mt-6 gap-2">
           <Pressable onPress={() => router.push('/(app)/settings')} className="flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-            <SettingsIcon size={20} className="text-primary" />
+            <Icon icon={SettingsIcon} size={20} color="primary" />
             <Body className="flex-1 font-medium text-foreground">Settings</Body>
-            <ChevronRight size={18} className="text-muted-foreground" />
+            <Icon icon={ChevronRight} size={18} color="muted-foreground" />
           </Pressable>
 
           <Pressable onPress={() => setClearOpen(true)} className="flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-            <Trash2 size={20} className="text-destructive" />
+            <Icon icon={Trash2} size={20} color="destructive" />
             <Body className="flex-1 font-medium text-foreground">Clear workout history</Body>
-            <ChevronRight size={18} className="text-muted-foreground" />
+            <Icon icon={ChevronRight} size={18} color="muted-foreground" />
           </Pressable>
 
           <View className="flex-row items-center gap-3 rounded-2xl bg-card p-4">
-            <Info size={20} className="text-muted-foreground" />
+            <Icon icon={Info} size={20} color="muted-foreground" />
             <View className="flex-1">
               <Body className="font-medium text-foreground">About Incline</Body>
               <Caption>Version 1.0.0 · MVP</Caption>

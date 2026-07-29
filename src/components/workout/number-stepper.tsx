@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
-import { Minus, Plus } from 'lucide-react-native';
 
 import { cn } from '@/lib/cn';
 import { Text } from '@/components/ui/text';
 import { clamp } from '@/db/calc';
 
 /**
- * Stepper for weight/reps with tap-to-edit direct entry. Controlled; commits on
- * blur/submit so the value is always a clean number.
+ * Clean inline-editable number field. Tap the value to type a new number;
+ * commits on blur/submit. No +/- buttons.
  */
 export function NumberStepper({
   value,
@@ -44,18 +43,10 @@ export function NumberStepper({
     setEditing(false);
   };
 
-  const display = value <= 0 ? '—' : decimals > 0 ? String(value) : String(value);
+  const display = value <= 0 ? '—' : String(value);
 
   return (
     <View className={cn('flex-row items-center', className)}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Decrease"
-        className="h-9 w-9 items-center justify-center rounded-full bg-muted"
-        onPress={() => onChange(clamp(value - step, min, max))}>
-        <Minus size={16} className="text-foreground" />
-      </Pressable>
-
       {editing ? (
         <TextInput
           ref={inputRef}
@@ -66,12 +57,13 @@ export function NumberStepper({
           onSubmitEditing={commit}
           keyboardType="decimal-pad"
           returnKeyType="done"
-          className="h-9 w-16 text-center text-base font-semibold text-foreground"
+          className="h-9 min-w-[60px] rounded-lg bg-muted/60 px-2 text-center text-base font-semibold text-foreground"
         />
       ) : (
         <Pressable
           accessibilityRole="button"
-          className="h-9 w-16 items-center justify-center"
+          accessibilityLabel={`Edit value: ${display}${suffix ? ` ${suffix}` : ''}`}
+          className="h-9 min-w-[60px] items-center justify-center rounded-lg bg-muted/60 px-2"
           onPress={() => {
             setDraft(value > 0 ? String(value) : '');
             setEditing(true);
@@ -82,14 +74,6 @@ export function NumberStepper({
           </Text>
         </Pressable>
       )}
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Increase"
-        className="h-9 w-9 items-center justify-center rounded-full bg-muted"
-        onPress={() => onChange(clamp(value + step, min, max))}>
-        <Plus size={16} className="text-foreground" />
-      </Pressable>
     </View>
   );
 }

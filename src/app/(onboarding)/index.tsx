@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Dumbbell } from 'lucide-react-native';
+import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Input } from '@/components/ui/input';
@@ -49,7 +50,7 @@ export default function OnboardingScreen() {
           <View className="flex-1 justify-center py-8">
             <View className="mb-6 items-center">
               <View className="h-16 w-16 items-center justify-center rounded-3xl bg-primary">
-                <Dumbbell size={30} className="text-primary-foreground" />
+                <Icon icon={Dumbbell} size={30} color="primary-foreground" />
               </View>
             </View>
             <Heading>Welcome to Incline</Heading>

@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check, Clock, Layers, Dumbbell, Trophy } from 'lucide-react-native';
+import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -82,16 +83,16 @@ export default function SummaryScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <View className="items-center pt-6">
           <View className="h-16 w-16 items-center justify-center rounded-3xl bg-success">
-            <Check size={32} className="text-success-foreground" />
+            <Icon icon={Check} size={32} color="success-foreground" />
           </View>
           <Heading className="mt-4">Workout complete</Heading>
           <Caption className="mt-1">{formatFullDate(log.startedAt)}</Caption>
         </View>
 
         <View className="mt-6 flex-row gap-3">
-          <SummaryStat label="Duration" value={formatDuration(log.durationSeconds)} icon={<Clock size={20} className="text-primary" />} />
-          <SummaryStat label="Volume" value={formatVolume(log.totalVolume, unit)} icon={<Layers size={20} className="text-info" />} />
-          <SummaryStat label="Sets" value={`${completedSets}`} icon={<Dumbbell size={20} className="text-warning" />} />
+          <SummaryStat label="Duration" value={formatDuration(log.durationSeconds)} icon={<Icon icon={Clock} size={20} color="primary" />} />
+          <SummaryStat label="Volume" value={formatVolume(log.totalVolume, unit)} icon={<Icon icon={Layers} size={20} color="info" />} />
+          <SummaryStat label="Sets" value={`${completedSets}`} icon={<Icon icon={Dumbbell} size={20} color="warning" />} />
         </View>
 
         <Card className="mt-5">
@@ -117,7 +118,7 @@ export default function SummaryScreen() {
         </Card>
 
         <View className="mt-5 flex-row items-center gap-3 rounded-2xl bg-primary/10 p-4">
-          <Trophy size={20} className="text-primary" />
+          <Icon icon={Trophy} size={20} color="primary" />
           <Body className="flex-1 text-sm text-foreground">Keep showing up — consistency builds strength.</Body>
         </View>
 

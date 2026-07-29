@@ -2,6 +2,7 @@ import { useMemo, useLayoutEffect } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { Dumbbell, Target, ListChecks, Lightbulb, History } from 'lucide-react-native';
+import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,7 +56,7 @@ export default function ExerciseDetailScreen() {
     <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
       <View className="flex-row items-center gap-3">
         <View className="h-12 w-12 items-center justify-center rounded-2xl bg-primary/15">
-          <Dumbbell size={22} className="text-primary" />
+          <Icon icon={Dumbbell} size={22} color="primary" />
         </View>
         <View className="flex-1">
           <Heading>{exercise.name}</Heading>
@@ -73,7 +74,7 @@ export default function ExerciseDetailScreen() {
       <Card className="mt-4">
         <CardHeader>
           <CardTitle>Muscles worked</CardTitle>
-          <Target size={18} className="text-muted-foreground" />
+          <Icon icon={Target} size={18} color="muted-foreground" />
         </CardHeader>
         <View className="flex-row flex-wrap gap-2">
           <MuscleBadge muscle={exercise.primaryMuscle} />
@@ -89,7 +90,7 @@ export default function ExerciseDetailScreen() {
         <Card className="mt-3">
           <CardHeader>
             <CardTitle>How to perform</CardTitle>
-            <ListChecks size={18} className="text-muted-foreground" />
+            <Icon icon={ListChecks} size={18} color="muted-foreground" />
           </CardHeader>
           <View className="gap-2.5">
             {exercise.instructions.map((step, i) => (
@@ -106,7 +107,7 @@ export default function ExerciseDetailScreen() {
 
       {exercise.tips ? (
         <Card className="mt-3 flex-row gap-3">
-          <Lightbulb size={20} className="text-warning" />
+          <Icon icon={Lightbulb} size={20} color="warning" />
           <Body className="flex-1 text-sm text-foreground">{exercise.tips}</Body>
         </Card>
       ) : null}
@@ -114,7 +115,7 @@ export default function ExerciseDetailScreen() {
       <View className="mt-6">
         <CardHeader className="mb-3">
           <CardTitle>Recent history</CardTitle>
-          <History size={18} className="text-muted-foreground" />
+          <Icon icon={History} size={18} color="muted-foreground" />
         </CardHeader>
         {sessions.length > 0 ? (
           <View className="gap-2.5">

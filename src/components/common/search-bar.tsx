@@ -2,6 +2,7 @@ import { Pressable, View } from 'react-native';
 import { Search, X } from 'lucide-react-native';
 
 import { cn } from '@/lib/cn';
+import { Icon } from '@/components/common/icon';
 import { Input } from '@/components/ui/input';
 
 export function SearchBar({
@@ -18,7 +19,7 @@ export function SearchBar({
   return (
     <View className={cn('relative', className)}>
       <View className="absolute left-3.5 top-0 h-full items-center justify-center">
-        <Search size={18} className="text-muted-foreground" />
+        <Icon icon={Search} size={18} color="muted-foreground" />
       </View>
       <Input
         value={value}
@@ -34,7 +35,7 @@ export function SearchBar({
           accessibilityLabel="Clear search"
           className="absolute right-3 top-0 h-full items-center justify-center"
           onPress={() => onChangeText('')}>
-          <X size={18} className="text-muted-foreground" />
+          <Icon icon={X} size={18} color="muted-foreground" />
         </Pressable>
       ) : null}
     </View>

@@ -3,6 +3,7 @@ import { ActivityIndicator } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Flame, Dumbbell, Layers, TrendingUp } from 'lucide-react-native';
+import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -56,9 +57,9 @@ export default function ProgressScreen() {
             ) : stats ? (
               <>
                 <View className="flex-row gap-3">
-                  <StatCard label="Sessions" value={stats.totalSessions} icon={<Dumbbell size={16} className="text-primary" />} accent />
-                  <StatCard label="Total volume" value={formatVolume(stats.totalVolume, unit)} icon={<Layers size={16} className="text-info" />} />
-                  <StatCard label="Streak" value={`${stats.streak}w`} icon={<Flame size={16} className="text-warning" />} />
+                  <StatCard label="Sessions" value={stats.totalSessions} icon={<Icon icon={Dumbbell} size={16} color="primary" />} accent />
+                  <StatCard label="Total volume" value={formatVolume(stats.totalVolume, unit)} icon={<Icon icon={Layers} size={16} color="info" />} />
+                  <StatCard label="Streak" value={`${stats.streak}w`} icon={<Icon icon={Flame} size={16} color="warning" />} />
                 </View>
 
                 <Card>
@@ -67,7 +68,7 @@ export default function ProgressScreen() {
                       <CardTitle>Weekly volume</CardTitle>
                       <CardDescription>Last 8 weeks</CardDescription>
                     </View>
-                    <TrendingUp size={18} className="text-muted-foreground" />
+                    <Icon icon={TrendingUp} size={18} color="muted-foreground" />
                   </CardHeader>
                   <View className="items-center">
                     <BarChart data={volumeData} formatValue={(v) => formatVolume(v, unit)} />
@@ -103,7 +104,7 @@ export default function ProgressScreen() {
         ListEmptyComponent={
           history.items.length === 0 && !history.loading ? (
             <EmptyState
-              icon={<Dumbbell size={28} className="text-muted-foreground" />}
+              icon={<Icon icon={Dumbbell} size={28} color="muted-foreground" />}
               title="No workouts logged"
               description="Complete a workout to start building your history."
             />

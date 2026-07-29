@@ -3,6 +3,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Play, Plus, Flame, TrendingUp, ChevronRight, Dumbbell, Clock } from 'lucide-react-native';
+import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Card } from '@/components/ui/card';
@@ -83,13 +84,13 @@ export default function HomeScreen() {
               className="flex-row items-center gap-4 rounded-3xl bg-primary p-5"
               android_ripple={{ color: 'rgba(255,255,255,0.15)' }}>
               <View className="h-12 w-12 items-center justify-center rounded-2xl bg-primary-foreground/20">
-                <Play size={22} className="text-primary-foreground" />
+                <Icon icon={Play} size={22} color="primary-foreground" />
               </View>
               <View className="flex-1">
                 <Body className="font-semibold text-primary-foreground">Continue workout</Body>
                 <Caption className="text-primary-foreground/80">{session.name} · in progress</Caption>
               </View>
-              <ChevronRight size={20} className="text-primary-foreground" />
+              <Icon icon={ChevronRight} size={20} color="primary-foreground" />
             </Pressable>
           ) : null}
 
@@ -108,7 +109,7 @@ export default function HomeScreen() {
                 </Body>
                 <Button
                   className="mt-4"
-                  leftIcon={<Play size={16} className="text-primary-foreground" />}
+                  leftIcon={<Icon icon={Play} size={16} color="primary-foreground" />}
                   onPress={() => beginTemplate(suggested.id, suggested.name)}
                   disabled={starting}>
                   Start workout
@@ -120,7 +121,7 @@ export default function HomeScreen() {
           <Button
             variant="outline"
             size="lg"
-            leftIcon={<Plus size={18} className="text-primary" />}
+            leftIcon={<Icon icon={Plus} size={18} color="primary" />}
             onPress={quickStart}
             disabled={starting}>
             Quick start
@@ -130,12 +131,12 @@ export default function HomeScreen() {
         {hasData ? (
           <>
             <View className="mt-8 flex-row gap-3">
-              <StatCard label="Streak" value={`${stats?.streak ?? 0}w`} icon={<Flame size={16} className="text-warning" />} />
-              <StatCard label="Sessions" value={stats?.totalSessions ?? 0} icon={<Dumbbell size={16} className="text-primary" />} />
+              <StatCard label="Streak" value={`${stats?.streak ?? 0}w`} icon={<Icon icon={Flame} size={16} color="warning" />} />
+              <StatCard label="Sessions" value={stats?.totalSessions ?? 0} icon={<Icon icon={Dumbbell} size={16} color="primary" />} />
               <StatCard
                 label="Volume"
                 value={formatVolume(stats?.totalVolume ?? 0, unit)}
-                icon={<TrendingUp size={16} className="text-info" />}
+                icon={<Icon icon={TrendingUp} size={16} color="info" />}
               />
             </View>
 
@@ -160,7 +161,7 @@ export default function HomeScreen() {
                 <SectionHeader title="Last session" className="mb-3" />
                 <Card className="flex-row items-center gap-3">
                   <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/15">
-                    <Clock size={18} className="text-primary" />
+                    <Icon icon={Clock} size={18} color="primary" />
                   </View>
                   <View className="flex-1">
                     <Body className="font-semibold text-foreground">Trained {relativeTime(stats.lastSessionAt)}</Body>
@@ -176,7 +177,7 @@ export default function HomeScreen() {
           <View className="mt-10">
             <Card className="items-center p-6">
               <View className="h-14 w-14 items-center justify-center rounded-3xl bg-primary/15">
-                <Dumbbell size={26} className="text-primary" />
+                <Icon icon={Dumbbell} size={26} color="primary" />
               </View>
               <Body className="mt-4 text-center font-semibold text-foreground">Log your first workout</Body>
               <Caption className="mt-1 text-center">

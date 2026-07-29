@@ -3,6 +3,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, GripVertical, Trash2 } from 'lucide-react-native';
+import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Card } from '@/components/ui/card';
@@ -188,7 +189,7 @@ export default function TemplateEditorScreen() {
 
         <View className="flex-row items-center justify-between">
           <Heading className="text-base">Exercises ({exercises.length})</Heading>
-          <Button size="sm" variant="outline" leftIcon={<Plus size={14} className="text-primary" />} onPress={() => setPickerOpen(true)}>
+          <Button size="sm" variant="outline" leftIcon={<Icon icon={Plus} size={14} color="primary" />} onPress={() => setPickerOpen(true)}>
             Add
           </Button>
         </View>
@@ -197,7 +198,7 @@ export default function TemplateEditorScreen() {
           {exercises.map((te, i) => (
             <Pressable key={`${te.id}-${i}`} onPress={() => openEdit(te)}>
               <Card className="flex-row items-center gap-3 p-3">
-                <GripVertical size={16} className="text-muted-foreground" />
+                <Icon icon={GripVertical} size={16} color="muted-foreground" />
                 <View className="flex-1">
                   <Body className="font-medium text-foreground">{te.exercise?.name ?? 'Exercise'}</Body>
                   <Caption>
@@ -208,7 +209,7 @@ export default function TemplateEditorScreen() {
                   onPress={(e) => { e.stopPropagation(); removeExercise(te); }}
                   hitSlop={8}
                   className="p-1">
-                  <Trash2 size={16} className="text-destructive" />
+                  <Icon icon={Trash2} size={16} color="destructive" />
                 </Pressable>
               </Card>
             </Pressable>

@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check, Plus, X } from 'lucide-react-native';
+import { Icon } from '@/components/common/icon';
 
 import { Body, Caption } from '@/components/common/text';
 import { Button } from '@/components/ui/button';
@@ -141,7 +142,7 @@ export default function SessionScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
       <View className="flex-row items-center justify-between px-5 pb-2 pt-3">
         <Pressable accessibilityRole="button" accessibilityLabel="Discard workout" onPress={() => setDiscardOpen(true)} className="p-1">
-          <X size={24} className="text-muted-foreground" />
+          <Icon icon={X} size={24} color="muted-foreground" />
         </Pressable>
         <View className="items-center">
           <Body className="font-semibold text-foreground">{session.name}</Body>
@@ -149,13 +150,13 @@ export default function SessionScreen() {
             {formatClock(elapsed)} · {completedSets}/{totalSets} sets
           </Caption>
         </View>
-        <Button size="sm" variant="success" leftIcon={<Check size={16} className="text-success-foreground" />} onPress={() => setFinishOpen(true)}>
+        <Button size="sm" variant="success" leftIcon={<Icon icon={Check} size={16} color="success-foreground" />} onPress={() => setFinishOpen(true)}>
           Finish
         </Button>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 160 }} showsVerticalScrollIndicator={false}>
-        <Button variant="outline" className="mb-4" leftIcon={<Plus size={16} className="text-primary" />} onPress={() => setPickerOpen(true)}>
+        <Button variant="outline" className="mb-4" leftIcon={<Icon icon={Plus} size={16} color="primary" />} onPress={() => setPickerOpen(true)}>
           Add exercise
         </Button>
 

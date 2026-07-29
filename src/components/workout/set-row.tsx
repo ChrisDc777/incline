@@ -1,8 +1,9 @@
 import { Pressable, View } from 'react-native';
-import { Check, X } from 'lucide-react-native';
 
 import { cn } from '@/lib/cn';
 import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/common/icon';
+import { Check, X } from 'lucide-react-native';
 import { NumberStepper } from './number-stepper';
 import type { Unit } from '@/db/types';
 
@@ -31,7 +32,7 @@ export function SetRow({
   return (
     <View
       className={cn(
-        'flex-row items-center gap-2 rounded-2xl px-3 py-2.5',
+        'flex-row items-center gap-2 rounded-2xl px-3 py-2',
         completed ? 'bg-success/10' : 'bg-muted/40',
       )}>
       <View className="h-7 w-7 items-center justify-center rounded-full bg-muted">
@@ -39,7 +40,7 @@ export function SetRow({
       </View>
 
       <NumberStepper value={weight} onChange={onChangeWeight} step={2.5} suffix={unit === 'metric' ? 'kg' : 'lb'} decimals={1} />
-      <Text className="text-muted-foreground">×</Text>
+      <Text className="text-sm text-muted-foreground">×</Text>
       <NumberStepper value={reps} onChange={onChangeReps} step={1} suffix="reps" />
 
       <View className="flex-1" />
@@ -53,7 +54,7 @@ export function SetRow({
           'h-9 w-9 items-center justify-center rounded-full',
           completed ? 'bg-success' : 'border-2 border-border',
         )}>
-        {completed ? <Check size={18} className="text-success-foreground" /> : null}
+        {completed ? <Icon icon={Check} size={18} color="success-foreground" /> : null}
       </Pressable>
 
       {onRemove ? (
@@ -62,7 +63,7 @@ export function SetRow({
           accessibilityLabel="Remove set"
           onPress={onRemove}
           className="h-8 w-8 items-center justify-center">
-          <X size={16} className="text-muted-foreground" />
+          <Icon icon={X} size={16} color="muted-foreground" />
         </Pressable>
       ) : null}
     </View>

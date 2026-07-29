@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import { CalendarDays, Layers } from 'lucide-react-native';
 
+import { Icon } from '@/components/common/icon';
 import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { Body, Caption } from '@/components/common/text';
@@ -21,12 +22,12 @@ export function ProgramCard({ program }: { program: Program }) {
           </Body>
         </View>
         <View className="h-10 w-10 items-center justify-center rounded-2xl bg-primary/15">
-          <Layers size={18} className="text-primary" />
+          <Icon icon={Layers} size={18} color="primary" />
         </View>
       </View>
       <View className="mt-3 flex-row items-center gap-4">
         <View className="flex-row items-center gap-1.5">
-          <CalendarDays size={14} className="text-muted-foreground" />
+          <Icon icon={CalendarDays} size={14} color="muted-foreground" />
           <Caption>{program.weeks} weeks</Caption>
         </View>
         <Caption>· {daysPerWeek} days / week</Caption>

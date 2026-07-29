@@ -2,6 +2,7 @@ import { History } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { cn } from '@/lib/cn';
+import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
 import { formatWeight } from '@/db/calc';
 import type { Unit } from '@/db/types';
@@ -21,7 +22,7 @@ export function PreviousBestBadge({
   const top = lastSets.reduce((best, s) => (s.weight > best.weight ? s : best), lastSets[0]);
   return (
     <View className={cn('flex-row items-center gap-1.5', className)}>
-      <History size={13} className="text-muted-foreground" />
+      <Icon icon={History} size={13} color="muted-foreground" />
       <Text className="text-xs text-muted-foreground">
         Last: {formatWeight(top.weight, unit)} × {top.reps}
       </Text>

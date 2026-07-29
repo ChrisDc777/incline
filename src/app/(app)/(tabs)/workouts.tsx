@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Dumbbell, Search as SearchIcon, Plus } from 'lucide-react-native';
+import { Icon } from '@/components/common/icon';
 
 import { Heading, Caption } from '@/components/common/text';
 import { Button } from '@/components/ui/button';
@@ -69,7 +70,7 @@ export default function WorkoutsScreen() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
           ItemSeparatorComponent={() => <View className="h-3" />}
           ListHeaderComponent={
-            <Button variant="outline" className="mb-3" leftIcon={<Plus size={16} className="text-primary" />} onPress={() => router.push({ pathname: '/(app)/template/[id]' as any, params: { id: 'new' } })}>
+            <Button variant="outline" className="mb-3" leftIcon={<Icon icon={Plus} size={16} color="primary" />} onPress={() => router.push({ pathname: '/(app)/template/[id]' as any, params: { id: 'new' } })}>
               Create template
             </Button>
           }
@@ -79,7 +80,7 @@ export default function WorkoutsScreen() {
             ) : templates.error ? (
               <ErrorState onRetry={templates.refetch} />
             ) : (
-              <EmptyState icon={<Dumbbell size={28} className="text-muted-foreground" />} title="No templates yet" description="Create your first workout template." actionLabel="Create" onAction={() => router.push({ pathname: '/(app)/template/[id]' as any, params: { id: 'new' } })} />
+              <EmptyState icon={<Icon icon={Dumbbell} size={28} color="muted-foreground" />} title="No templates yet" description="Create your first workout template." actionLabel="Create" onAction={() => router.push({ pathname: '/(app)/template/[id]' as any, params: { id: 'new' } })} />
             )
           }
         />
@@ -103,7 +104,7 @@ export default function WorkoutsScreen() {
             exercises.loading ? (
               <ListSkeleton count={4} />
             ) : (
-              <EmptyState icon={<SearchIcon size={28} className="text-muted-foreground" />} title="No exercises found" description="Try a different search or filter." actionLabel="Clear" onAction={() => { setQuery(''); setMuscle(null); }} />
+              <EmptyState icon={<Icon icon={SearchIcon} size={28} color="muted-foreground" />} title="No exercises found" description="Try a different search or filter." actionLabel="Clear" onAction={() => { setQuery(''); setMuscle(null); }} />
             )
           }
         />

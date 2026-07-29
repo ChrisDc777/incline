@@ -3,6 +3,7 @@ import { Dumbbell, Clock, Weight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 import { cn } from '@/lib/cn';
+import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
 import { formatDuration, formatFullDate, formatVolume } from '@/db/calc';
 import type { Unit, WorkoutLog } from '@/db/types';
@@ -16,7 +17,7 @@ export function HistoryRow({ log, unit, className }: { log: WorkoutLog; unit: Un
       onPress={() => router.push(`/summary/${log.id}`)}
       android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
       <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/15">
-        <Dumbbell size={18} className="text-primary" />
+        <Icon icon={Dumbbell} size={18} color="primary" />
       </View>
       <View className="flex-1">
         <Text className="text-base font-semibold text-foreground">{log.name}</Text>
@@ -24,11 +25,11 @@ export function HistoryRow({ log, unit, className }: { log: WorkoutLog; unit: Un
       </View>
       <View className="items-end gap-1">
         <View className="flex-row items-center gap-1">
-          <Weight size={12} className="text-muted-foreground" />
+          <Icon icon={Weight} size={12} color="muted-foreground" />
           <Text className="text-xs font-medium text-foreground">{formatVolume(log.totalVolume, unit)}</Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <Clock size={12} className="text-muted-foreground" />
+          <Icon icon={Clock} size={12} color="muted-foreground" />
           <Text className="text-xs text-muted-foreground">{formatDuration(log.durationSeconds)}</Text>
         </View>
       </View>

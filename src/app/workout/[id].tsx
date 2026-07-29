@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Clock, Dumbbell, Play } from 'lucide-react-native';
+import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Card } from '@/components/ui/card';
@@ -83,11 +84,11 @@ export default function WorkoutPreviewScreen() {
             </View>
             <View className="mt-2 flex-row items-center gap-4">
               <View className="flex-row items-center gap-1.5">
-                <Dumbbell size={13} className="text-muted-foreground" />
+                <Icon icon={Dumbbell} size={13} color="muted-foreground" />
                 <Caption>{te.exercise?.equipment ? EQUIPMENT_LABELS[te.exercise.equipment] : ''}</Caption>
               </View>
               <View className="flex-row items-center gap-1.5">
-                <Clock size={13} className="text-muted-foreground" />
+                <Icon icon={Clock} size={13} color="muted-foreground" />
                 <Caption>{te.restSeconds}s rest</Caption>
               </View>
             </View>
@@ -96,7 +97,7 @@ export default function WorkoutPreviewScreen() {
       </View>
 
       <View className="absolute inset-x-0 bottom-0 border-t border-border bg-background p-5 pb-8">
-        <Button size="lg" leftIcon={<Play size={18} className="text-primary-foreground" />} onPress={start} disabled={starting}>
+        <Button size="lg" leftIcon={<Icon icon={Play} size={18} color="primary-foreground" />} onPress={start} disabled={starting}>
           {starting ? 'Starting…' : 'Start workout'}
         </Button>
         <Button variant="outline" className="mt-2" onPress={() => router.push({ pathname: '/(app)/template/[id]' as any, params: { id: String(templateId) } })}>

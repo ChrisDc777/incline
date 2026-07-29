@@ -2,6 +2,7 @@ import { Pressable, View } from 'react-native';
 import { Plus } from 'lucide-react-native';
 
 import { cn } from '@/lib/cn';
+import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
 import { SetRow } from './set-row';
 import { PreviousBestBadge } from './previous-best-badge';
@@ -73,7 +74,7 @@ export function ExerciseBlock({
         className="mt-3 flex-row items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-2.5"
         accessibilityRole="button"
         accessibilityLabel="Add set">
-        <Plus size={16} className="text-primary" />
+        <Icon icon={Plus} size={16} color="primary" />
         <Text className="text-sm font-medium text-primary">Add set</Text>
       </Pressable>
     </View>

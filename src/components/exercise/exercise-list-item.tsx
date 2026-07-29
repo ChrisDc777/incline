@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { cn } from '@/lib/cn';
+import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
 import { EQUIPMENT_LABELS, MOVEMENT_LABELS } from '@/lib/labels';
 import type { Exercise } from '@/db/types';
@@ -17,7 +18,7 @@ export function ExerciseListItem({ exercise, className }: { exercise: Exercise; 
       onPress={() => router.push(`/exercise/${exercise.id}`)}
       android_ripple={{ color: 'rgba(0,0,0,0.06)' }}>
       <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/15">
-        <Dumbbell size={20} className="text-primary" />
+        <Icon icon={Dumbbell} size={20} color="primary" />
       </View>
       <View className="flex-1">
         <Text className="text-base font-semibold text-foreground">{exercise.name}</Text>

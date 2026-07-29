@@ -5,6 +5,7 @@ import type { LucideIcon } from 'lucide-react-native';
 
 import { cn } from '@/lib/cn';
 import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/common/icon';
 import { useActiveSession } from '@/hooks/use-active-session';
 import { ActiveSessionBar } from '@/components/workout/active-session-bar';
 
@@ -37,17 +38,17 @@ interface TabBarProps {
  */
 export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
-  const { session } = useActiveSession();
+  const { session, refetch } = useActiveSession();
 
   return (
     <View className="border-t border-border bg-background">
       {session ? (
-        <ActiveSessionBar logId={session.id} name={session.name} startedAt={session.startedAt} />
+        <ActiveSessionBar logId={session.id} name={session.name} startedAt={session.startedAt} refetch={refetch} />
       ) : null}
       <View className="flex-row" style={{ paddingBottom: insets.bottom, paddingTop: 6, height: 52 + insets.bottom }}>
         {state.routes.map((route, i) => {
           const focused = state.index === i;
-          const Icon = ICONS[route.name] ?? Home;
+          const TabIcon = ICONS[route.name] ?? Home;
           const label = LABELS[route.name] ?? route.name;
           const { options } = descriptors[route.key];
           const onPress = () => {
@@ -62,7 +63,7 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
               accessibilityState={{ selected: focused }}
               accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
               className="flex-1 items-center py-1.5">
-              <Icon size={22} className={cn(focused ? 'text-primary' : 'text-muted-foreground')} />
+              <Icon icon={TabIcon} size={22} color={focused ? 'primary' : 'muted-foreground'} />
               <Text className={cn('mt-1 text-[10px]', focused ? 'font-semibold text-primary' : 'text-muted-foreground')}>
                 {label}
               </Text>

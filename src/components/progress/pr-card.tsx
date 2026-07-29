@@ -3,6 +3,7 @@ import { TrendingUp } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 import { cn } from '@/lib/cn';
+import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
 import { Card } from '@/components/ui/card';
 import { formatWeight, relativeTime } from '@/db/calc';
@@ -15,7 +16,7 @@ export function PRCard({ pr, unit, className }: { pr: PR; unit: Unit; className?
     <Pressable onPress={() => router.push(`/exercise/${pr.exerciseId}`)}>
       <Card className={cn('flex-row items-center gap-3', className)}>
         <View className="h-10 w-10 items-center justify-center rounded-2xl bg-primary/15">
-          <TrendingUp size={18} className="text-primary" />
+          <Icon icon={TrendingUp} size={18} color="primary" />
         </View>
         <View className="flex-1">
           <Text className="text-sm font-semibold text-foreground">{pr.exerciseName}</Text>

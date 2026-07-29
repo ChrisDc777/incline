@@ -1,6 +1,7 @@
 ﻿import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Moon, Sun, Smartphone, Vibrate, Ruler } from 'lucide-react-native';
+import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Card } from '@/components/ui/card';
@@ -37,7 +38,7 @@ export default function SettingsScreen() {
 
         <Card className="mt-4">
           <Caption className="mb-1">Units</Caption>
-          <Row icon={<Ruler size={18} className="text-primary" />} title="Measurement">
+          <Row icon={<Icon icon={Ruler} size={18} color="primary" />} title="Measurement">
             <View className="flex-row gap-2">
               <Chip label="Metric" selected={unit === 'metric'} onPress={() => changeUnit('metric')} />
               <Chip label="Imperial" selected={unit === 'imperial'} onPress={() => changeUnit('imperial')} />
@@ -47,7 +48,7 @@ export default function SettingsScreen() {
 
         <Card className="mt-3">
           <Caption className="mb-1">Appearance</Caption>
-          <Row icon={themeMode === 'dark' ? <Moon size={18} className="text-primary" /> : themeMode === 'light' ? <Sun size={18} className="text-primary" /> : <Smartphone size={18} className="text-primary" />} title="Theme">
+          <Row icon={themeMode === 'dark' ? <Icon icon={Moon} size={18} color="primary" /> : themeMode === 'light' ? <Icon icon={Sun} size={18} color="primary" /> : <Icon icon={Smartphone} size={18} color="primary" />} title="Theme">
             <View className="flex-row gap-2">
               <Chip label="System" selected={themeMode === 'system'} onPress={() => setThemeMode('system')} />
               <Chip label="Light" selected={themeMode === 'light'} onPress={() => setThemeMode('light')} />
@@ -58,7 +59,7 @@ export default function SettingsScreen() {
 
         <Card className="mt-3">
           <Caption className="mb-1">Feedback</Caption>
-          <Row icon={<Vibrate size={18} className="text-primary" />} title="Haptics">
+          <Row icon={<Icon icon={Vibrate} size={18} color="primary" />} title="Haptics">
             <Switch value={hapticsEnabled} onValueChange={setHaptics} accessibilityLabel="Haptics" />
           </Row>
         </Card>

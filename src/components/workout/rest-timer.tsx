@@ -1,6 +1,7 @@
 import { Pressable, View } from 'react-native';
 import { X, Plus, Minus } from 'lucide-react-native';
 
+import { Icon } from '@/components/common/icon';
 import { formatClock } from '@/db/calc';
 import { ProgressRing } from '@/components/progress/progress-ring';
 import { Text } from '@/components/ui/text';
@@ -32,7 +33,7 @@ export function RestTimer({
           {done ? 'Rest complete' : 'Rest'}
         </Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Skip rest" onPress={onSkip} className="p-1">
-          <X size={20} className="text-muted-foreground" />
+          <Icon icon={X} size={20} color="muted-foreground" />
         </Pressable>
       </View>
 
@@ -51,14 +52,14 @@ export function RestTimer({
           className="h-10 w-10 items-center justify-center rounded-full bg-muted"
           accessibilityRole="button"
           accessibilityLabel="Subtract 15 seconds">
-          <Minus size={18} className="text-foreground" />
+          <Icon icon={Minus} size={18} color="foreground" />
         </Pressable>
         <Pressable
           onPress={() => onAdd(15)}
           className="h-10 w-10 items-center justify-center rounded-full bg-muted"
           accessibilityRole="button"
           accessibilityLabel="Add 15 seconds">
-          <Plus size={18} className="text-foreground" />
+          <Icon icon={Plus} size={18} color="foreground" />
         </Pressable>
       </View>
 
