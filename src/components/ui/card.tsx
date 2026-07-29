@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn';
 import { Text } from './text';
 
 export function Card({ className, ...props }: ViewProps) {
-  return <View className={cn('rounded-3xl border border-border/60 bg-card p-5', className)} {...props} />;
+  return <View className={cn('rounded-2xl border border-border/40 bg-card p-4', className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }: ViewProps) {

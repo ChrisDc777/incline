@@ -23,7 +23,7 @@ export function StatCard({
   accent?: boolean;
 }) {
   return (
-    <Card className={cn('flex-1 p-4', accent && 'border-primary/40', className)}>
+    <Card className={cn('flex-1 p-3', accent && 'border-primary/40', className)}>
       <View className="flex-row items-center justify-between">
         <Caption>{label}</Caption>
         {icon}

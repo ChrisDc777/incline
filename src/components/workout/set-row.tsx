@@ -32,11 +32,11 @@ export function SetRow({
   return (
     <View
       className={cn(
-        'flex-row items-center gap-2 rounded-2xl px-3 py-2',
-        completed ? 'bg-success/10' : 'bg-muted/40',
+        'flex-row items-center gap-2 rounded-xl px-2 py-1.5',
+        completed && 'bg-success/8',
       )}>
-      <View className="h-7 w-7 items-center justify-center rounded-full bg-muted">
-        <Text className="text-xs font-bold text-muted-foreground">{index + 1}</Text>
+      <View className="h-6 w-6 items-center justify-center rounded-full bg-muted/60">
+        <Text className="text-[11px] font-bold text-muted-foreground">{index + 1}</Text>
       </View>
 
       <NumberStepper value={weight} onChange={onChangeWeight} step={2.5} suffix={unit === 'metric' ? 'kg' : 'lb'} decimals={1} />
@@ -51,10 +51,10 @@ export function SetRow({
         accessibilityState={{ checked: completed }}
         onPress={onToggleComplete}
         className={cn(
-          'h-9 w-9 items-center justify-center rounded-full',
+          'h-8 w-8 items-center justify-center rounded-full',
           completed ? 'bg-success' : 'border-2 border-border',
         )}>
-        {completed ? <Icon icon={Check} size={18} color="success-foreground" /> : null}
+        {completed ? <Icon icon={Check} size={16} color="success-foreground" /> : null}
       </Pressable>
 
       {onRemove ? (
@@ -62,8 +62,8 @@ export function SetRow({
           accessibilityRole="button"
           accessibilityLabel="Remove set"
           onPress={onRemove}
-          className="h-8 w-8 items-center justify-center">
-          <Icon icon={X} size={16} color="muted-foreground" />
+          className="h-7 w-7 items-center justify-center">
+          <Icon icon={X} size={14} color="muted-foreground" />
         </Pressable>
       ) : null}
     </View>

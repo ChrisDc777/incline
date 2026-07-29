@@ -2,13 +2,12 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Dumbbell } from 'lucide-react-native';
-import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/common/chip';
+import { InitialsAvatar } from '@/components/common/initials-avatar';
 import { useToast } from '@/components/ui/toast';
 import { completeOnboarding } from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
@@ -46,16 +45,20 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
-        <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20 }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 16 }} keyboardShouldPersistTaps="handled">
           <View className="flex-1 justify-center py-8">
             <View className="mb-6 items-center">
-              <View className="h-16 w-16 items-center justify-center rounded-3xl bg-primary">
-                <Icon icon={Dumbbell} size={30} color="primary-foreground" />
-              </View>
+              {name.trim() ? (
+                <InitialsAvatar name={name} size={80} />
+              ) : (
+                <View className="h-20 w-20 items-center justify-center rounded-full bg-muted/40">
+                  <Caption className="text-2xl">?</Caption>
+                </View>
+              )}
             </View>
             <Heading>Welcome to Incline</Heading>
             <Body className="mt-2 text-muted-foreground">
-              Let’s set up your profile to personalize your training.
+              Let's set up your profile to personalize your training.
             </Body>
 
             <View className="mt-8 gap-2">

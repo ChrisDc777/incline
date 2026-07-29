@@ -55,7 +55,7 @@ export default function WorkoutPreviewScreen() {
     .filter((m, i, arr): m is MuscleGroup => !!m && arr.indexOf(m) === i);
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 20, paddingBottom: 180 }}>
+    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 16, paddingBottom: 180 }}>
       <Caption>Workout template</Caption>
       <Heading className="mt-1">{template.name}</Heading>
       <Body className="mt-2 text-muted-foreground">{template.description}</Body>

@@ -37,7 +37,7 @@ export default function ProgressScreen() {
         data={history.items}
         renderItem={({ item }) => <HistoryRow log={item} unit={unit} />}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
         ItemSeparatorComponent={() => <View className="h-2" />}
         onEndReached={history.loadMore}
         onEndReachedThreshold={0.3}

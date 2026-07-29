@@ -155,7 +155,7 @@ export default function SessionScreen() {
         </Button>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 160 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 160 }} showsVerticalScrollIndicator={false}>
         <Button variant="outline" className="mb-4" leftIcon={<Icon icon={Plus} size={16} color="primary" />} onPress={() => setPickerOpen(true)}>
           Add exercise
         </Button>
@@ -166,20 +166,22 @@ export default function SessionScreen() {
             <Caption className="mt-1 text-center">Add an exercise to start logging sets.</Caption>
           </View>
         ) : (
-          <View className="gap-3">
-            {groups.map((g) => (
-              <ExerciseBlock
-                key={g.exerciseId}
-                name={g.exerciseName}
-                sets={g.sets}
-                unit={session.unit}
-                lastSets={lastSetsMap[g.exerciseId] ?? []}
-                onChangeWeight={onChangeWeight}
-                onChangeReps={onChangeReps}
-                onToggleComplete={onToggleComplete}
-                onRemoveSet={onRemoveSet}
-                onAddSet={() => onAddSet(g.exerciseId)}
-              />
+          <View className="gap-5">
+            {groups.map((g, i) => (
+              <View key={g.exerciseId}>
+                {i > 0 && <View className="mb-5 h-px bg-border/40" />}
+                <ExerciseBlock
+                  name={g.exerciseName}
+                  sets={g.sets}
+                  unit={session.unit}
+                  lastSets={lastSetsMap[g.exerciseId] ?? []}
+                  onChangeWeight={onChangeWeight}
+                  onChangeReps={onChangeReps}
+                  onToggleComplete={onToggleComplete}
+                  onRemoveSet={onRemoveSet}
+                  onAddSet={() => onAddSet(g.exerciseId)}
+                />
+              </View>
             ))}
           </View>
         )}

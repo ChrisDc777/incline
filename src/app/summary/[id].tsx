@@ -1,19 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Clock, Layers, Dumbbell, Trophy } from 'lucide-react-native';
+import { Check, Clock, Layers, Dumbbell, Trophy, Pencil } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Dialog } from '@/components/ui/dialog';
 import { SummaryStat } from '@/components/workout/summary-stat';
-import { getWorkoutLog, type SessionWorkout } from '@/db/queries';
+import { NumberStepper } from '@/components/workout/number-stepper';
+import { useToast } from '@/components/ui/toast';
+import { useHaptics } from '@/hooks/use-haptics';
+import { getWorkoutLog, updateSet, createTemplate, addExerciseToTemplate, type SessionWorkout, type SessionSet } from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
-import { formatClock, formatDuration, formatFullDate, formatVolume, formatWeight, setVolume } from '@/db/calc';
-import type { SetEntry } from '@/db/types';
+import { useProfile } from '@/hooks/use-data';
+import { formatDuration, formatFullDate, formatVolume, formatWeight, setVolume } from '@/db/calc';
 
 interface Breakdown {
   exerciseId: number;
@@ -21,7 +25,7 @@ interface Breakdown {
   completedSets: number;
   totalSets: number;
   volume: number;
-  best: SetEntry;
+  best: SessionSet;
 }
 
 export default function SummaryScreen() {
@@ -29,15 +33,25 @@ export default function SummaryScreen() {
   const logId = Number(id);
   const router = useRouter();
   const { unit } = useSettings();
+  const { data: profile } = useProfile();
+  const { toast } = useToast();
+  const { impact } = useHaptics();
   const [log, setLog] = useState<SessionWorkout | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editingSet, setEditingSet] = useState<SessionSet | null>(null);
+  const [editWeight, setEditWeight] = useState(0);
+  const [editReps, setEditReps] = useState(0);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  const reload = useCallback(async () => {
+    const s = await getWorkoutLog(logId);
+    setLog(s);
+    setLoading(false);
+  }, [logId]);
 
   useEffect(() => {
-    getWorkoutLog(logId).then((s) => {
-      setLog(s);
-      setLoading(false);
-    });
-  }, [logId]);
+    reload();
+  }, [reload]);
 
   useEffect(() => {
     if (log && !log.isComplete) router.replace(`/session/${log.id}`);
@@ -68,6 +82,45 @@ export default function SummaryScreen() {
     return [...map.values()];
   }, [log]);
 
+  const openEditSet = (set: SessionSet) => {
+    setEditingSet(set);
+    setEditWeight(set.weight);
+    setEditReps(set.reps);
+  };
+
+  const saveSetEdit = async () => {
+    if (!editingSet) return;
+    await updateSet(editingSet.id, { weight: editWeight, reps: editReps });
+    impact();
+    setEditingSet(null);
+    reload();
+  };
+
+  const saveAsTemplate = async () => {
+    if (!log) return;
+    setSavingTemplate(true);
+    try {
+      const exerciseIds = [...new Set(log.sets.map((s) => s.exerciseId))];
+      const templateId = await createTemplate(
+        log.name,
+        `Saved from workout on ${formatFullDate(log.startedAt)}`,
+        profile?.goal === 'gain_strength' ? 'intermediate' : 'intermediate',
+      );
+      for (const exId of exerciseIds) {
+        const exSets = log.sets.filter((s) => s.exerciseId === exId);
+        const best = exSets.reduce((a, b) => (a.weight > b.weight ? a : b), exSets[0]);
+        await addExerciseToTemplate(templateId, exId, exSets.length, best.reps, best.reps, 90);
+      }
+      impact();
+      toast({ title: 'Template saved', description: 'Find it in your templates.', variant: 'success' });
+      router.replace(`/workout/${templateId}`);
+    } catch {
+      toast({ title: 'Could not save template', variant: 'destructive' });
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
   if (loading)
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background" edges={['bottom']}>
@@ -80,7 +133,7 @@ export default function SummaryScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <View className="items-center pt-6">
           <View className="h-16 w-16 items-center justify-center rounded-3xl bg-success">
             <Icon icon={Check} size={32} color="success-foreground" />
@@ -98,11 +151,17 @@ export default function SummaryScreen() {
         <Card className="mt-5">
           <CardHeader>
             <CardTitle>Exercise breakdown</CardTitle>
-            <CardDescription>Your top set per exercise</CardDescription>
+            <Pressable onPress={() => {
+              const first = log.sets.find((s) => s.completed);
+              if (first) openEditSet(first);
+            }} className="flex-row items-center gap-1">
+              <Icon icon={Pencil} size={14} color="primary" />
+              <Caption className="text-primary">Edit sets</Caption>
+            </Pressable>
           </CardHeader>
-          <View className="gap-3">
+          <View className="gap-2">
             {breakdown.map((b) => (
-              <View key={b.exerciseId} className="flex-row items-center justify-between">
+              <Pressable key={b.exerciseId} onPress={() => openEditSet(b.best)} className="flex-row items-center justify-between rounded-lg py-1">
                 <View className="flex-1">
                   <Body className="font-medium text-foreground">{b.exerciseName}</Body>
                   <Caption>
@@ -112,20 +171,52 @@ export default function SummaryScreen() {
                 <Badge variant="default">
                   {formatWeight(b.best.weight, unit)} × {b.best.reps}
                 </Badge>
-              </View>
+              </Pressable>
             ))}
           </View>
         </Card>
 
-        <View className="mt-5 flex-row items-center gap-3 rounded-2xl bg-primary/10 p-4">
+        <View className="mt-5 flex-row items-center gap-3 rounded-xl bg-primary/10 p-3">
           <Icon icon={Trophy} size={20} color="primary" />
           <Body className="flex-1 text-sm text-foreground">Keep showing up — consistency builds strength.</Body>
         </View>
 
-        <Button size="lg" className="mt-6" onPress={() => router.replace('/(app)/(tabs)')}>
+        <Button
+          variant="outline"
+          className="mt-5"
+          onPress={saveAsTemplate}
+          disabled={savingTemplate}>
+          {savingTemplate ? 'Saving...' : 'Save as template'}
+        </Button>
+
+        <Button size="lg" className="mt-3" onPress={() => router.replace('/(app)/(tabs)')}>
           Done
         </Button>
       </ScrollView>
+
+      <Dialog
+        open={!!editingSet}
+        onOpenChange={(open) => { if (!open) setEditingSet(null); }}
+        title={editingSet?.exerciseName ?? 'Edit set'}
+        footer={
+          <>
+            <Button variant="outline" onPress={() => setEditingSet(null)}>Cancel</Button>
+            <Button onPress={saveSetEdit}>Save</Button>
+          </>
+        }>
+        {editingSet && (
+          <View className="gap-4 py-2">
+            <View className="flex-row items-center justify-between">
+              <Body>Weight</Body>
+              <NumberStepper value={editWeight} onChange={setEditWeight} step={2.5} suffix={unit === 'metric' ? 'kg' : 'lb'} decimals={1} />
+            </View>
+            <View className="flex-row items-center justify-between">
+              <Body>Reps</Body>
+              <NumberStepper value={editReps} onChange={setEditReps} step={1} suffix="reps" />
+            </View>
+          </View>
+        )}
+      </Dialog>
     </SafeAreaView>
   );
 }

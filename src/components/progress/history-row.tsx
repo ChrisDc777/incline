@@ -13,7 +13,7 @@ export function HistoryRow({ log, unit, className }: { log: WorkoutLog; unit: Un
   const router = useRouter();
   return (
     <Pressable
-      className={cn('flex-row items-center gap-3 rounded-2xl bg-card p-4', className)}
+      className={cn('flex-row items-center gap-3 rounded-xl bg-card/50 px-3 py-2.5', className)}
       onPress={() => router.push(`/summary/${log.id}`)}
       android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
       <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/15">

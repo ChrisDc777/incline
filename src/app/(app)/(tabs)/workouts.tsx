@@ -67,7 +67,7 @@ export default function WorkoutsScreen() {
             />
           )}
           keyExtractor={(item) => String(item.template.id)}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
           ItemSeparatorComponent={() => <View className="h-3" />}
           ListHeaderComponent={
             <Button variant="outline" className="mb-3" leftIcon={<Icon icon={Plus} size={16} color="primary" />} onPress={() => router.push({ pathname: '/(app)/template/[id]' as any, params: { id: 'new' } })}>
@@ -91,7 +91,7 @@ export default function WorkoutsScreen() {
           data={exercises.data ?? []}
           renderItem={({ item }) => <ExerciseListItem exercise={item.exercise} />}
           keyExtractor={(item) => String(item.exercise.id)}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
           ItemSeparatorComponent={() => <View className="h-2" />}
           ListHeaderComponent={
             <View className="mb-3 gap-3">
@@ -119,7 +119,7 @@ export default function WorkoutsScreen() {
             </Pressable>
           )}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
           ItemSeparatorComponent={() => <View className="h-3" />}
           ListEmptyComponent={
             programs.loading ? <ListSkeleton count={2} /> : <EmptyState title="No programs yet" description="Training programs will appear here." />

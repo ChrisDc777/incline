@@ -61,10 +61,10 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
         <Heading>Profile</Heading>
 
-        <Card className="mt-4 items-center">
+        <Card className="mt-4 items-center p-4">
           <InitialsAvatar name={profile?.name ?? ''} size={72} />
           <Body className="mt-3 text-center font-semibold text-foreground">
             {profile?.name?.trim() || 'Athlete'}

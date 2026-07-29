@@ -1,5 +1,4 @@
 import { Pressable, View } from 'react-native';
-import { Plus } from 'lucide-react-native';
 
 import { cn } from '@/lib/cn';
 import { Icon } from '@/components/common/icon';
@@ -7,12 +6,7 @@ import { Text } from '@/components/ui/text';
 import { SetRow } from './set-row';
 import { PreviousBestBadge } from './previous-best-badge';
 import type { SetEntry, Unit } from '@/db/types';
-
-export interface BlockSet {
-  set: SetEntry;
-  lastWeight: number;
-  lastReps: number;
-}
+import { Plus } from 'lucide-react-native';
 
 /**
  * One exercise within an active session: header (name + carry-over hint) and
@@ -43,16 +37,16 @@ export function ExerciseBlock({
 }) {
   const completedCount = sets.filter((s) => s.completed).length;
   return (
-    <View className={cn('rounded-3xl border border-border/60 bg-card p-4', className)}>
-      <View className="flex-row items-center justify-between">
+    <View className={cn('gap-2', className)}>
+      <View className="flex-row items-center justify-between px-1">
         <Text className="text-base font-semibold text-foreground">{name}</Text>
         <Text className="text-xs text-muted-foreground">
           {completedCount}/{sets.length}
         </Text>
       </View>
-      <PreviousBestBadge lastSets={lastSets} unit={unit} className="mt-1" />
+      <PreviousBestBadge lastSets={lastSets} unit={unit} className="px-1" />
 
-      <View className="mt-3 gap-2">
+      <View className="gap-1.5">
         {sets.map((s, i) => (
           <SetRow
             key={s.id}
@@ -71,10 +65,10 @@ export function ExerciseBlock({
 
       <Pressable
         onPress={onAddSet}
-        className="mt-3 flex-row items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-2.5"
+        className="mt-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-border/60 py-2"
         accessibilityRole="button"
         accessibilityLabel="Add set">
-        <Icon icon={Plus} size={16} color="primary" />
+        <Icon icon={Plus} size={15} color="primary" />
         <Text className="text-sm font-medium text-primary">Add set</Text>
       </Pressable>
     </View>

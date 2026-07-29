@@ -20,7 +20,7 @@ export function SummaryStat({
   className?: string;
 }) {
   return (
-    <View className={cn('flex-1 items-center rounded-2xl bg-muted/50 p-4', className)}>
+    <View className={cn('flex-1 items-center rounded-xl bg-muted/40 p-3', className)}>
       <View className="mb-2">{icon}</View>
       <Text className="text-xl font-bold tracking-tight text-foreground">{value}</Text>
       <Caption className="mt-0.5 text-center">{label}</Caption>

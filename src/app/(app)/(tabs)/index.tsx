@@ -74,7 +74,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
         <Caption>{greeting()}</Caption>
         <Heading className="mt-0.5">Let’s train, {name.split(' ')[0]}</Heading>
         <Body className="mt-1 text-muted-foreground">{formatFullDate(Date.now())}</Body>
