@@ -2,7 +2,7 @@
 import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Plus, Flame, TrendingUp, ChevronRight, Dumbbell, Clock } from 'lucide-react-native';
+import { Play, Plus, Flame, TrendingUp, ChevronRight, Dumbbell } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
@@ -11,8 +11,9 @@ import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/common/stat-card';
 import { SectionHeader } from '@/components/common/section-header';
 import { PRCard } from '@/components/progress/pr-card';
+import { HistoryRow } from '@/components/progress/history-row';
 import { CardSkeleton } from '@/components/common/skeleton';
-import { useProfile, useSuggestedTemplate, useProgressStats } from '@/hooks/use-data';
+import { useProfile, useSuggestedTemplate, useProgressStats, useWorkoutLogs } from '@/hooks/use-data';
 import { useActiveSession } from '@/hooks/use-active-session';
 import { useSettings } from '@/store/settings-store';
 import { useToast } from '@/components/ui/toast';
@@ -36,6 +37,7 @@ export default function HomeScreen() {
   const { data: suggested, loading: sugLoading } = useSuggestedTemplate();
   const { data: stats, loading: statsLoading } = useProgressStats();
   const { session, refetch: refetchActive } = useActiveSession();
+  const recentLogs = useWorkoutLogs();
   const [starting, setStarting] = useState(false);
 
   const beginTemplate = async (id: number, name: string) => {
@@ -156,18 +158,19 @@ export default function HomeScreen() {
               </View>
             ) : null}
 
-            {stats?.lastSessionAt ? (
+            {recentLogs.items.length > 0 ? (
               <View className="mt-8">
-                <SectionHeader title="Last session" className="mb-3" />
-                <Card className="flex-row items-center gap-3">
-                  <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/15">
-                    <Icon icon={Clock} size={18} color="primary" />
-                  </View>
-                  <View className="flex-1">
-                    <Body className="font-semibold text-foreground">Trained {relativeTime(stats.lastSessionAt)}</Body>
-                    <Caption>Keep the momentum going.</Caption>
-                  </View>
-                </Card>
+                <SectionHeader
+                  title="Recent history"
+                  action="See all"
+                  onAction={() => router.push('/(app)/(tabs)/progress')}
+                  className="mb-3"
+                />
+                <View className="gap-2">
+                  {recentLogs.items.slice(0, 3).map((log) => (
+                    <HistoryRow key={log.id} log={log} unit={unit} />
+                  ))}
+                </View>
               </View>
             ) : null}
           </>

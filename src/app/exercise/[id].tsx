@@ -113,10 +113,10 @@ export default function ExerciseDetailScreen() {
       ) : null}
 
       <View className="mt-6">
-        <CardHeader className="mb-3">
+        <View className="mb-3 flex-row items-center justify-between">
           <CardTitle>Recent history</CardTitle>
           <Icon icon={History} size={18} color="muted-foreground" />
-        </CardHeader>
+        </View>
         {sessions.length > 0 ? (
           <View className="gap-2.5">
             {sessions.map((s) => (

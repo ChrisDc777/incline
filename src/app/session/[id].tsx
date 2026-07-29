@@ -99,8 +99,8 @@ export default function SessionScreen() {
     const next = !target?.completed;
     await updateSet(setId, { completed: next, restSeconds: next ? DEFAULT_REST_SECONDS : null });
     reload();
+    impact();
     if (next) {
-      notify();
       rest.start(target?.restSeconds ?? DEFAULT_REST_SECONDS);
     }
   };

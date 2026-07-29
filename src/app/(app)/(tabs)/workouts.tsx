@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -113,7 +113,11 @@ export default function WorkoutsScreen() {
       {tab === 'programs' ? (
         <FlashList
           data={programs.data ?? []}
-          renderItem={({ item }) => <ProgramCard program={item} />}
+          renderItem={({ item }) => (
+            <Pressable onPress={() => router.push({ pathname: '/(app)/program/[id]' as any, params: { id: String(item.id) } })}>
+              <ProgramCard program={item} />
+            </Pressable>
+          )}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
           ItemSeparatorComponent={() => <View className="h-3" />}
