@@ -9,6 +9,9 @@ import { cn } from '@/lib/cn';
  * utility classes; override anything via className. NativeWind utilities are
  * the primary styling method — these exist only for consistency of voice.
  */
+export function Hero({ className, children, ...props }: { className?: string; children: ReactNode } & TextProps) {
+  return <Text className={cn('text-3xl font-extrabold tracking-tight text-foreground', className)} {...props}>{children}</Text>;
+}
 export function Heading({ className, children, ...props }: { className?: string; children: ReactNode } & TextProps) {
   return <Text className={cn('text-2xl font-bold tracking-tight text-foreground', className)} {...props}>{children}</Text>;
 }
@@ -27,6 +30,7 @@ export function Caption({ className, children, ...props }: { className?: string;
 export function Label({ className, children, ...props }: { className?: string; children: ReactNode } & TextProps) {
   return <Text className={cn('text-xs font-medium uppercase tracking-wide text-muted-foreground', className)} {...props}>{children}</Text>;
 }
+/** @deprecated Use Caption instead */
 export function Muted({ className, children, ...props }: { className?: string; children: ReactNode } & TextProps) {
   return <Text className={cn('text-sm text-muted-foreground', className)} {...props}>{children}</Text>;
 }

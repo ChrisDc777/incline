@@ -2,10 +2,11 @@
 import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Play, Plus, Flame, TrendingUp, ChevronRight, Dumbbell } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
-import { Heading, Body, Caption } from '@/components/common/text';
+import { Hero, Body, Caption } from '@/components/common/text';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/common/stat-card';
@@ -76,23 +77,28 @@ export default function HomeScreen() {
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
         <Caption>{greeting()}</Caption>
-        <Heading className="mt-0.5">Let’s train, {name.split(' ')[0]}</Heading>
+        <Hero className="mt-0.5">Let’s train, {name.split(' ')[0]}</Hero>
         <Body className="mt-1 text-muted-foreground">{formatFullDate(Date.now())}</Body>
 
         <View className="mt-6 gap-3">
           {session ? (
             <Pressable
               onPress={() => router.push(`/session/${session.id}`)}
-              className="flex-row items-center gap-4 rounded-3xl bg-primary p-5"
               android_ripple={{ color: 'rgba(255,255,255,0.15)' }}>
-              <View className="h-12 w-12 items-center justify-center rounded-2xl bg-primary-foreground/20">
-                <Icon icon={Play} size={22} color="primary-foreground" />
-              </View>
-              <View className="flex-1">
-                <Body className="font-semibold text-primary-foreground">Continue workout</Body>
-                <Caption className="text-primary-foreground/80">{session.name} · in progress</Caption>
-              </View>
-              <Icon icon={ChevronRight} size={20} color="primary-foreground" />
+              <LinearGradient
+                colors={['#16a34a', '#22c55e']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                className="flex-row items-center gap-4 rounded-2xl p-4 shadow-lg">
+                <View className="h-11 w-11 items-center justify-center rounded-xl bg-white/20">
+                  <Icon icon={Play} size={20} color="primary-foreground" />
+                </View>
+                <View className="flex-1">
+                  <Body className="font-semibold text-primary-foreground">Continue workout</Body>
+                  <Caption className="text-primary-foreground/80">{session.name} · in progress</Caption>
+                </View>
+                <Icon icon={ChevronRight} size={20} color="primary-foreground" />
+              </LinearGradient>
             </Pressable>
           ) : null}
 

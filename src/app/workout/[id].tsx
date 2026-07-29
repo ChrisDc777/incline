@@ -2,6 +2,7 @@ import { useLayoutEffect } from 'react';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
+import { BlurView } from 'expo-blur';
 import { Clock, Dumbbell, Play } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
@@ -96,14 +97,14 @@ export default function WorkoutPreviewScreen() {
         ))}
       </View>
 
-      <View className="absolute inset-x-0 bottom-0 border-t border-border bg-background p-5 pb-8">
+      <BlurView intensity={80} tint="systemChromeMaterial" className="absolute inset-x-0 bottom-0 border-t border-border/40 p-5 pb-8 shadow-xl">
         <Button size="lg" leftIcon={<Icon icon={Play} size={18} color="primary-foreground" />} onPress={start} disabled={starting}>
           {starting ? 'Starting…' : 'Start workout'}
         </Button>
         <Button variant="outline" className="mt-2" onPress={() => router.push({ pathname: '/(app)/template/[id]' as any, params: { id: String(templateId) } })}>
           Edit template
         </Button>
-      </View>
+      </BlurView>
     </ScrollView>
   );
 }

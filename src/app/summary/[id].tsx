@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Check, Clock, Layers, Dumbbell, Trophy, Pencil } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
-import { Heading, Body, Caption } from '@/components/common/text';
+import { Hero, Body, Caption } from '@/components/common/text';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -135,10 +136,10 @@ export default function SummaryScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <View className="items-center pt-6">
-          <View className="h-16 w-16 items-center justify-center rounded-3xl bg-success">
+          <LinearGradient colors={['#16a34a', '#22c55e']} className="h-16 w-16 items-center justify-center rounded-3xl shadow-lg">
             <Icon icon={Check} size={32} color="success-foreground" />
-          </View>
-          <Heading className="mt-4">Workout complete</Heading>
+          </LinearGradient>
+          <Hero className="mt-4">Workout complete</Hero>
           <Caption className="mt-1">{formatFullDate(log.startedAt)}</Caption>
         </View>
 
@@ -176,10 +177,10 @@ export default function SummaryScreen() {
           </View>
         </Card>
 
-        <View className="mt-5 flex-row items-center gap-3 rounded-xl bg-primary/10 p-3">
+        <LinearGradient colors={['#16a34a15', '#22c55e15']} className="mt-5 flex-row items-center gap-3 rounded-xl p-3">
           <Icon icon={Trophy} size={20} color="primary" />
           <Body className="flex-1 text-sm text-foreground">Keep showing up — consistency builds strength.</Body>
-        </View>
+        </LinearGradient>
 
         <Button
           variant="outline"

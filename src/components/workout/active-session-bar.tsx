@@ -46,7 +46,7 @@ export function ActiveSessionBar({
 
   return (
     <Pressable
-      className={cn('mx-4 mb-2 flex-row items-center gap-3 rounded-2xl bg-primary p-3.5', className)}
+      className={cn('mx-4 mb-2 flex-row items-center gap-3 rounded-2xl bg-primary p-3 shadow-lg', className)}
       onPress={() => router.push(`/session/${logId}`)}
       android_ripple={{ color: 'rgba(255,255,255,0.15)' }}>
       <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary-foreground/20">

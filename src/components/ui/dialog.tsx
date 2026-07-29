@@ -22,7 +22,7 @@ export function Dialog({
     <Modal transparent animationType="fade" visible={open} onRequestClose={() => onOpenChange(false)}>
       <Pressable className="flex-1 items-center justify-center bg-black/50 p-6" onPress={() => onOpenChange(false)}>
         <Pressable
-          className="w-full max-w-sm rounded-3xl bg-card p-5"
+          className="w-full max-w-sm rounded-3xl bg-card p-5 shadow-2xl"
           onPress={(e) => e.stopPropagation()}>
           {title ? <Text className="text-lg font-semibold text-foreground">{title}</Text> : null}
           {description ? <Text className="mt-1 text-sm text-muted-foreground">{description}</Text> : null}
