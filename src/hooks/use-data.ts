@@ -114,45 +114,6 @@ export function useWorkoutLog(id: number) {
   return useAsync<SessionWorkout | null>(() => getWorkoutLog(id), [id]);
 }
 
-/* ---- rest timer ---- */
-import { REST_PRESETS, DEFAULT_REST_SECONDS } from '@/constants/rest-presets';
-// import { useEffect, useState } from 'react';
-
-export function useRestTimer(workoutLogId: number | null) {
-  const [remaining, setRemaining] = useState(0);
-  const [isResting, setIsResting] = useState(false);
-  const [restSeconds, setRestSeconds] = useState(DEFAULT_REST_SECONDS);
-
-  useEffect(() => {
-    if (!isResting) return;
-    const id = setInterval(() => {
-      setRemaining((r) => {
-        if (r <= 1) {
-          clearInterval(id);
-          setIsResting(false);
-          return 0;
-        }
-        return r - 1;
-      });
-    }, 1000);
-    return () => clearInterval(id);
-  }, [isResting]);
-
-  const startRest = (seconds: number) => {
-    setRestSeconds(seconds);
-    setRemaining(seconds);
-    setIsResting(true);
-  };
-
-  const resetRest = () => {
-    setRemaining(0);
-    setIsResting(false);
-    setRestSeconds(DEFAULT_REST_SECONDS);
-  };
-
-  return { remaining, isResting, restSeconds, startRest, resetRest, REST_PRESETS };
-}
-
 /* ---- haptics ---- */
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 import { useSettings } from '@/store/settings-store';
