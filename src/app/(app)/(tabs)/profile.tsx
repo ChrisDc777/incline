@@ -64,16 +64,21 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
         <Heading>Profile</Heading>
 
-        <Card className="mt-4 items-center p-4">
-          <InitialsAvatar name={profile?.name ?? ''} size={72} />
-          <Body className="mt-3 text-center font-semibold text-foreground">
-            {profile?.name?.trim() || 'Athlete'}
-          </Body>
-          {profile?.goal ? (
-            <Badge variant="default" className="mt-2">
-              {GOAL_LABELS[profile.goal]}
-            </Badge>
-          ) : null}
+        <Card className="mt-4 p-4">
+          <View className="flex-row items-start gap-4">
+            <InitialsAvatar name={profile?.name ?? ''} size={80} />
+            <View className="flex-1 pt-1">
+              <Body className="text-lg font-bold text-foreground">
+                {profile?.name?.trim() || 'Athlete'}
+              </Body>
+              <Caption className="mt-0.5">
+                {profile?.goal ? GOAL_LABELS[profile.goal] : 'Set your goal'}
+              </Caption>
+              <Caption className="mt-2 leading-5 text-muted-foreground">
+                Fitness journey in progress. Building strength one workout at a time.
+              </Caption>
+            </View>
+          </View>
           <Button variant="outline" size="sm" className="mt-4" leftIcon={<Icon icon={Pencil} size={14} color="primary" />} onPress={openEdit}>
             Edit profile
           </Button>

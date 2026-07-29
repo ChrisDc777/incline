@@ -31,12 +31,15 @@ export function NumberStepper({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value));
   const inputRef = useRef<TextInput>(null);
+  const committedRef = useRef(false);
 
   useEffect(() => {
     if (!editing) setDraft(value === 0 && decimals === 0 ? '' : String(value));
   }, [value, editing, decimals]);
 
   const commit = () => {
+    if (committedRef.current) return;
+    committedRef.current = true;
     const parsed = parseFloat(draft.replace(',', '.'));
     const next = Number.isFinite(parsed) ? clamp(parsed, min, max) : min;
     onChange(decimals > 0 ? Math.round(next * 10) / 10 : Math.round(next));
@@ -52,7 +55,7 @@ export function NumberStepper({
           ref={inputRef}
           autoFocus
           value={draft}
-          onChangeText={setDraft}
+          onChangeText={(t) => { committedRef.current = false; setDraft(t); }}
           onBlur={commit}
           onSubmitEditing={commit}
           keyboardType="decimal-pad"
@@ -65,6 +68,7 @@ export function NumberStepper({
           accessibilityLabel={`Edit value: ${display}${suffix ? ` ${suffix}` : ''}`}
           className="h-9 min-w-[60px] items-center justify-center rounded-lg bg-muted/60 px-2"
           onPress={() => {
+            committedRef.current = false;
             setDraft(value > 0 ? String(value) : '');
             setEditing(true);
           }}>

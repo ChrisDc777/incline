@@ -1,5 +1,4 @@
 import { Pressable, View } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { X, Plus, Minus } from 'lucide-react-native';
 
 import { Icon } from '@/components/common/icon';
@@ -29,7 +28,7 @@ export function RestTimer({
   const done = remaining <= 0;
   return (
     <View className="absolute inset-x-0 bottom-0 z-30">
-      <BlurView intensity={60} tint="systemChromeMaterial" className="rounded-t-3xl border-t border-border/40 p-5 pb-8 shadow-xl">
+      <View className="rounded-t-3xl border-t border-border bg-background p-5 pb-8 shadow-xl">
         <View className="flex-row items-center justify-between">
           <Text className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             {done ? 'Rest complete' : 'Rest'}
@@ -66,7 +65,7 @@ export function RestTimer({
         </View>
 
         <RestPresetBar className="mt-4" onSelect={onPreset} />
-      </BlurView>
+      </View>
     </View>
   );
 }

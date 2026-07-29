@@ -1,6 +1,5 @@
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
 import { Home, Dumbbell, BarChart3, User } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
@@ -42,7 +41,7 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
   const { session, refetch } = useActiveSession();
 
   return (
-    <BlurView intensity={80} tint="systemChromeMaterial" className="border-t border-border/40">
+    <View className="border-t border-border bg-background">
       {session ? (
         <ActiveSessionBar logId={session.id} name={session.name} startedAt={session.startedAt} refetch={refetch} />
       ) : null}
@@ -72,6 +71,6 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
           );
         })}
       </View>
-    </BlurView>
+    </View>
   );
 }
