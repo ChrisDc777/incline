@@ -5,13 +5,16 @@ import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/common/icon';
 import { Check, X } from 'lucide-react-native';
 import { NumberStepper } from './number-stepper';
+import { formatWeight } from '@/db/calc';
 import type { Unit } from '@/db/types';
 
-/** A single set row: index, weight, reps, and a complete toggle. */
+/** A single set row: index, previous, weight, reps, and a complete toggle. */
 export function SetRow({
   index,
   weight,
   reps,
+  previousWeight,
+  previousReps,
   completed,
   unit,
   onChangeWeight,
@@ -22,6 +25,8 @@ export function SetRow({
   index: number;
   weight: number;
   reps: number;
+  previousWeight?: number;
+  previousReps?: number;
   completed: boolean;
   unit: Unit;
   onChangeWeight: (v: number) => void;
@@ -29,18 +34,28 @@ export function SetRow({
   onToggleComplete: () => void;
   onRemove?: () => void;
 }) {
+  const hasPrevious = previousWeight !== undefined && previousWeight > 0;
   return (
     <View
       className={cn(
-        'flex-row items-center gap-2 rounded-xl px-2 py-1.5',
+        'flex-row items-center gap-1 rounded-xl px-1 py-1.5',
         completed && 'bg-success/8',
       )}>
-      <View className="h-6 w-6 items-center justify-center rounded-full bg-muted/60">
-        <Text className="text-[11px] font-bold text-muted-foreground">{index + 1}</Text>
+      <View className="w-6 items-center">
+        <Text className="text-sm font-bold text-muted-foreground">{index + 1}</Text>
+      </View>
+
+      <View className="w-[72px] items-center">
+        {hasPrevious ? (
+          <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+            {formatWeight(previousWeight!, unit)} × {previousReps}
+          </Text>
+        ) : (
+          <Text className="text-xs text-muted-foreground">—</Text>
+        )}
       </View>
 
       <NumberStepper value={weight} onChange={onChangeWeight} step={2.5} suffix={unit === 'metric' ? 'kg' : 'lb'} decimals={1} />
-      <Text className="text-sm text-muted-foreground">×</Text>
       <NumberStepper value={reps} onChange={onChangeReps} step={1} suffix="reps" />
 
       <View className="flex-1" />

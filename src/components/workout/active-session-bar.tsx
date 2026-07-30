@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppState, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Dumbbell, ChevronRight } from 'lucide-react-native';
+import { Dumbbell, ChevronRight, Trash2 } from 'lucide-react-native';
 
 import { cn } from '@/lib/cn';
 import { Icon } from '@/components/common/icon';
@@ -10,20 +10,21 @@ import { formatClock } from '@/db/calc';
 
 /**
  * Cross-tab mini bar shown above the tab bar whenever a workout is in progress.
- * Tapping resumes the active session. Elapsed time ticks every second while the
- * app is in the foreground.
+ * Tapping the main area resumes the active session. Trash icon discards it.
  */
 export function ActiveSessionBar({
   logId,
   name,
   startedAt,
   refetch,
+  onDiscard,
   className,
 }: {
   logId: number;
   name: string;
   startedAt: number;
   refetch?: () => void;
+  onDiscard?: () => void;
   className?: string;
 }) {
   const router = useRouter();
@@ -45,18 +46,29 @@ export function ActiveSessionBar({
   }, [refetch]);
 
   return (
-    <Pressable
-      className={cn('mx-4 mb-2 flex-row items-center gap-3 rounded-2xl bg-primary p-3 shadow-lg', className)}
-      onPress={() => router.push(`/session/${logId}`)}
-      android_ripple={{ color: 'rgba(255,255,255,0.15)' }}>
-      <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary-foreground/20">
-        <Icon icon={Dumbbell} size={18} color="primary-foreground" />
-      </View>
-      <View className="flex-1">
-        <Text className="text-sm font-semibold text-primary-foreground">{name}</Text>
-        <Text className="text-xs text-primary-foreground/80">In progress · {formatClock(elapsed)}</Text>
-      </View>
-      <Icon icon={ChevronRight} size={20} color="primary-foreground" />
-    </Pressable>
+    <View className={cn('mx-4 mb-2 flex-row items-center rounded-2xl bg-primary shadow-lg', className)}>
+      <Pressable
+        className="flex-1 flex-row items-center gap-3 p-3"
+        onPress={() => router.push(`/session/${logId}`)}
+        android_ripple={{ color: 'rgba(255,255,255,0.15)' }}>
+        <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary-foreground/20">
+          <Icon icon={Dumbbell} size={18} color="primary-foreground" />
+        </View>
+        <View className="flex-1">
+          <Text className="text-sm font-semibold text-primary-foreground">{name}</Text>
+          <Text className="text-xs text-primary-foreground/80">In progress · {formatClock(elapsed)}</Text>
+        </View>
+        <Icon icon={ChevronRight} size={20} color="primary-foreground" />
+      </Pressable>
+      {onDiscard ? (
+        <Pressable
+          onPress={onDiscard}
+          accessibilityRole="button"
+          accessibilityLabel="Discard workout"
+          className="h-11 w-11 items-center justify-center rounded-xl bg-primary-foreground/10 mr-1.5">
+          <Icon icon={Trash2} size={18} color="primary-foreground" />
+        </Pressable>
+      ) : null}
+    </View>
   );
 }

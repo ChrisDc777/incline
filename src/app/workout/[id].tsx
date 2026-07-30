@@ -1,5 +1,4 @@
-import { useLayoutEffect } from 'react';
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Clock, Dumbbell, Play } from 'lucide-react-native';
@@ -9,13 +8,16 @@ import { Heading, Body, Caption } from '@/components/common/text';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Dialog } from '@/components/ui/dialog';
 import { ErrorState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
 import { MuscleBadge } from '@/components/exercise/muscle-badge';
 import { useTemplate } from '@/hooks/use-data';
+import { useActiveSession } from '@/hooks/use-active-session';
+import { useActiveWorkout } from '@/store/active-workout-store';
 import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
-import { startWorkout } from '@/db/queries';
+import { startWorkout, discardWorkout } from '@/db/queries';
 import { DIFFICULTY_LABELS, EQUIPMENT_LABELS } from '@/lib/labels';
 import type { MuscleGroup } from '@/db/types';
 
@@ -27,24 +29,49 @@ export default function WorkoutPreviewScreen() {
   const { toast } = useToast();
   const { impact } = useHaptics();
   const { data: template, loading, error, refetch } = useTemplate(templateId);
+  const { session } = useActiveSession();
+  const clear = useActiveWorkout((s) => s.clear);
   const [starting, setStarting] = useState(false);
+  const [conflictOpen, setConflictOpen] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: true, title: 'Workout' });
   }, [navigation]);
 
-  const start = async () => {
+  const doStart = async () => {
     if (!template) return;
     setStarting(true);
     impact();
     try {
       const logId = await startWorkout(template.id, template.name);
       router.replace(`/session/${logId}`);
-    } catch (e) {
+    } catch {
       toast({ title: 'Could not start workout', variant: 'destructive' });
     } finally {
       setStarting(false);
     }
+  };
+
+  const start = async () => {
+    if (session) {
+      setConflictOpen(true);
+      return;
+    }
+    await doStart();
+  };
+
+  const resumeActive = () => {
+    setConflictOpen(false);
+    if (session) router.push(`/session/${session.id}`);
+  };
+
+  const startNewAndDiscard = async () => {
+    setConflictOpen(false);
+    if (session) {
+      await discardWorkout(session.id);
+      clear();
+    }
+    await doStart();
   };
 
   if (loading) return <ListSkeleton count={2} />;
@@ -104,6 +131,20 @@ export default function WorkoutPreviewScreen() {
           Edit template
         </Button>
       </View>
+
+      <Dialog
+        open={conflictOpen}
+        onOpenChange={setConflictOpen}
+        title="You have a workout in progress"
+        description="If you start a new workout, your old workout will be permanently deleted."
+        footer={
+          <View className="w-full gap-2">
+            <Button onPress={resumeActive}>Resume workout in progress</Button>
+            <Button variant="destructive" onPress={startNewAndDiscard}>Start new workout</Button>
+            <Button variant="outline" onPress={() => setConflictOpen(false)}>Cancel</Button>
+          </View>
+        }
+      />
     </ScrollView>
   );
 }

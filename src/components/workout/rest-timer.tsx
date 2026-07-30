@@ -1,70 +1,76 @@
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { X, Plus, Minus } from 'lucide-react-native';
+import { Settings, Minus, Plus } from 'lucide-react-native';
 
 import { Icon } from '@/components/common/icon';
 import { formatClock } from '@/db/calc';
-import { ProgressRing } from '@/components/progress/progress-ring';
 import { Text } from '@/components/ui/text';
-import { RestPresetBar } from './rest-preset-bar';
 
 /**
- * Floating rest-timer overlay shown after completing a set. Uses the
- * useRestTimer hook for the countdown; the ring reflects remaining/total.
+ * Compact rest-timer bar shown at the bottom of the session screen.
+ * Displays: [Settings] [-15] [time] [+15] [Skip]
  */
 export function RestTimer({
   remaining,
   total,
   onAdd,
   onSkip,
-  onPreset,
+  onConfigure,
+  currentRestSeconds,
 }: {
   remaining: number;
   total: number;
   onAdd: (delta: number) => void;
   onSkip: () => void;
-  onPreset: (seconds: number) => void;
+  onConfigure: () => void;
+  currentRestSeconds: number;
 }) {
-  const progress = total > 0 ? remaining / total : 0;
-  const done = remaining <= 0;
+  const done = remaining <= 0 && total > 0;
+  const [flash, setFlash] = useState(false);
+
   return (
-    <View className="absolute inset-x-0 bottom-0 z-30">
-      <View className="rounded-t-3xl border-t border-border bg-background p-5 pb-8 shadow-xl">
-        <View className="flex-row items-center justify-between">
-          <Text className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            {done ? 'Rest complete' : 'Rest'}
+    <View className="absolute inset-x-0 bottom-0 z-30 border-t border-border bg-background px-4 py-3 pb-6">
+      <View className="flex-row items-center justify-between">
+        <Pressable
+          onPress={onConfigure}
+          accessibilityRole="button"
+          accessibilityLabel="Configure rest timer"
+          className="h-11 w-11 items-center justify-center rounded-xl bg-muted">
+          <Icon icon={Settings} size={20} color="muted-foreground" />
+        </Pressable>
+
+        <Pressable
+          onPress={() => onAdd(-15)}
+          accessibilityRole="button"
+          accessibilityLabel="Subtract 15 seconds"
+          className="h-11 w-14 items-center justify-center rounded-xl bg-muted">
+          <Text className="text-lg font-semibold text-foreground">-15</Text>
+        </Pressable>
+
+        <View className="items-center px-4">
+          <Text className="text-2xl font-bold tracking-tight text-foreground">
+            {formatClock(remaining)}
           </Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Skip rest" onPress={onSkip} className="p-1">
-            <Icon icon={X} size={20} color="muted-foreground" />
-          </Pressable>
+          <Text className="text-[10px] text-muted-foreground">
+            {done ? 'Done' : `${currentRestSeconds}s rest`}
+          </Text>
         </View>
 
-        <View className="mt-3 items-center">
-          <ProgressRing progress={progress} size={140} color={done ? '#25ca62' : '#25ca62'}>
-            <View className="items-center">
-              <Text className="text-3xl font-bold tracking-tight text-foreground">{formatClock(remaining)}</Text>
-              <Text className="text-xs text-muted-foreground">{done ? 'Go again' : 'remaining'}</Text>
-            </View>
-          </ProgressRing>
-        </View>
+        <Pressable
+          onPress={() => onAdd(15)}
+          accessibilityRole="button"
+          accessibilityLabel="Add 15 seconds"
+          className="h-11 w-14 items-center justify-center rounded-xl bg-muted">
+          <Text className="text-lg font-semibold text-foreground">+15</Text>
+        </Pressable>
 
-        <View className="mt-4 flex-row items-center justify-center gap-3">
-          <Pressable
-            onPress={() => onAdd(-15)}
-            className="h-10 w-10 items-center justify-center rounded-full bg-muted"
-            accessibilityRole="button"
-            accessibilityLabel="Subtract 15 seconds">
-            <Icon icon={Minus} size={18} color="foreground" />
-          </Pressable>
-          <Pressable
-            onPress={() => onAdd(15)}
-            className="h-10 w-10 items-center justify-center rounded-full bg-muted"
-            accessibilityRole="button"
-            accessibilityLabel="Add 15 seconds">
-            <Icon icon={Plus} size={18} color="foreground" />
-          </Pressable>
-        </View>
-
-        <RestPresetBar className="mt-4" onSelect={onPreset} />
+        <Pressable
+          onPress={onSkip}
+          accessibilityRole="button"
+          accessibilityLabel="Skip rest"
+          className="h-11 items-center justify-center rounded-xl bg-primary px-4">
+          <Text className="text-sm font-semibold text-primary-foreground">Skip</Text>
+        </Pressable>
       </View>
     </View>
   );

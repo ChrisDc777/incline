@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Plus, X } from 'lucide-react-native';
+import { Check, Plus, X, Clock, Layers, Dumbbell } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Body, Caption } from '@/components/common/text';
@@ -11,9 +11,11 @@ import { Dialog } from '@/components/ui/dialog';
 import { ExerciseBlock } from '@/components/workout/exercise-block';
 import { ExercisePickerSheet } from '@/components/workout/exercise-picker-sheet';
 import { RestTimer } from '@/components/workout/rest-timer';
+import { RestTimerPickerSheet } from '@/components/workout/rest-timer-picker-sheet';
 import { useRestTimer } from '@/hooks/use-rest-timer';
 import { useHaptics } from '@/hooks/use-haptics';
 import { useActiveWorkout } from '@/store/active-workout-store';
+import { useSettings } from '@/store/settings-store';
 import { useToast } from '@/components/ui/toast';
 import {
   addExerciseToWorkout,
@@ -26,7 +28,7 @@ import {
   updateSet,
   type SessionWorkout,
 } from '@/db/queries';
-import { formatClock } from '@/db/calc';
+import { formatClock, formatVolume } from '@/db/calc';
 import { DEFAULT_REST_SECONDS } from '@/constants/rest-presets';
 import type { Exercise, SetEntry } from '@/db/types';
 
@@ -43,6 +45,7 @@ export default function SessionScreen() {
   const { toast } = useToast();
   const { notify, impact } = useHaptics();
   const clear = useActiveWorkout((s) => s.clear);
+  const { unit } = useSettings();
   const rest = useRestTimer();
 
   const [session, setSession] = useState<SessionWorkout | null>(null);
@@ -52,6 +55,8 @@ export default function SessionScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [restPickerOpen, setRestPickerOpen] = useState(false);
+  const [currentRestSeconds, setCurrentRestSeconds] = useState(DEFAULT_REST_SECONDS);
 
   const load = useCallback(async () => {
     const s = await getWorkoutLog(logId);
@@ -97,11 +102,11 @@ export default function SessionScreen() {
   const onToggleComplete = async (setId: number) => {
     const target = session?.sets.find((x) => x.id === setId);
     const next = !target?.completed;
-    await updateSet(setId, { completed: next, restSeconds: next ? DEFAULT_REST_SECONDS : null });
+    await updateSet(setId, { completed: next, restSeconds: next ? currentRestSeconds : null });
     reload();
     impact();
     if (next) {
-      rest.start(target?.restSeconds ?? DEFAULT_REST_SECONDS);
+      rest.start(currentRestSeconds);
     }
   };
   const onRemoveSet = async (setId: number) => { await removeSet(setId); reload(); };
@@ -137,6 +142,7 @@ export default function SessionScreen() {
 
   const completedSets = session.sets.filter((s) => s.completed).length;
   const totalSets = session.sets.length;
+  const totalVolume = session.sets.reduce((acc, s) => acc + (s.completed ? s.weight * s.reps : 0), 0);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
@@ -146,16 +152,29 @@ export default function SessionScreen() {
         </Pressable>
         <View className="items-center">
           <Body className="font-semibold text-foreground">{session.name}</Body>
-          <Caption>
-            {formatClock(elapsed)} · {completedSets}/{totalSets} sets
-          </Caption>
+          <Caption>{formatClock(elapsed)}</Caption>
         </View>
         <Button size="sm" variant="success" leftIcon={<Icon icon={Check} size={16} color="success-foreground" />} onPress={() => setFinishOpen(true)}>
           Finish
         </Button>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 160 }} showsVerticalScrollIndicator={false}>
+      <View className="flex-row items-center justify-between px-5 py-3">
+        <View className="flex-1 items-center">
+          <Caption>Duration</Caption>
+          <Body className="mt-0.5 font-semibold text-primary">{formatClock(elapsed)}</Body>
+        </View>
+        <View className="flex-1 items-center">
+          <Caption>Volume</Caption>
+          <Body className="mt-0.5 font-semibold text-foreground">{formatVolume(totalVolume, unit)}</Body>
+        </View>
+        <View className="flex-1 items-center">
+          <Caption>Sets</Caption>
+          <Body className="mt-0.5 font-semibold text-foreground">{completedSets}/{totalSets}</Body>
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 160 }} showsVerticalScrollIndicator={false}>
         <Button variant="outline" className="mb-4" leftIcon={<Icon icon={Plus} size={16} color="primary" />} onPress={() => setPickerOpen(true)}>
           Add exercise
         </Button>
@@ -188,8 +207,22 @@ export default function SessionScreen() {
       </ScrollView>
 
       {rest.running || rest.remaining > 0 ? (
-        <RestTimer remaining={rest.remaining} total={rest.total} onAdd={rest.add} onSkip={rest.stop} onPreset={rest.start} />
+        <RestTimer
+          remaining={rest.remaining}
+          total={rest.total}
+          onAdd={rest.add}
+          onSkip={rest.stop}
+          onConfigure={() => setRestPickerOpen(true)}
+          currentRestSeconds={currentRestSeconds}
+        />
       ) : null}
+
+      <RestTimerPickerSheet
+        open={restPickerOpen}
+        onOpenChange={setRestPickerOpen}
+        currentValue={currentRestSeconds}
+        onSelect={(s) => { setCurrentRestSeconds(s); if (rest.running) rest.start(s); }}
+      />
 
       <ExercisePickerSheet open={pickerOpen} onOpenChange={setPickerOpen} onPick={onPickExercise} />
 

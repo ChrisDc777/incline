@@ -4,7 +4,6 @@ import { cn } from '@/lib/cn';
 import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
 import { SetRow } from './set-row';
-import { PreviousBestBadge } from './previous-best-badge';
 import type { SetEntry, Unit } from '@/db/types';
 import { Plus } from 'lucide-react-native';
 
@@ -44,15 +43,16 @@ export function ExerciseBlock({
           {completedCount}/{sets.length}
         </Text>
       </View>
-      <PreviousBestBadge lastSets={lastSets} unit={unit} className="px-1" />
 
-      <View className="gap-1.5">
+      <View className="gap-1">
         {sets.map((s, i) => (
           <SetRow
             key={s.id}
             index={i}
             weight={s.weight}
             reps={s.reps}
+            previousWeight={lastSets[i]?.weight}
+            previousReps={lastSets[i]?.reps}
             completed={s.completed}
             unit={unit}
             onChangeWeight={(v) => onChangeWeight(s.id, v)}

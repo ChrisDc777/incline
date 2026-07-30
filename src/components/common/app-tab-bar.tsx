@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, Dumbbell, BarChart3, User } from 'lucide-react-native';
@@ -6,8 +7,12 @@ import type { LucideIcon } from 'lucide-react-native';
 import { cn } from '@/lib/cn';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/common/icon';
+import { Dialog } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { useActiveSession } from '@/hooks/use-active-session';
 import { ActiveSessionBar } from '@/components/workout/active-session-bar';
+import { discardWorkout } from '@/db/queries';
+import { useActiveWorkout } from '@/store/active-workout-store';
 
 const ICONS: Record<string, LucideIcon> = {
   index: Home,
@@ -39,11 +44,21 @@ interface TabBarProps {
 export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const { session, refetch } = useActiveSession();
+  const clear = useActiveWorkout((s) => s.clear);
+  const [discardOpen, setDiscardOpen] = useState(false);
+
+  const handleDiscard = async () => {
+    if (!session) return;
+    setDiscardOpen(false);
+    await discardWorkout(session.id);
+    clear();
+    refetch();
+  };
 
   return (
     <View className="border-t border-border bg-background">
       {session ? (
-        <ActiveSessionBar logId={session.id} name={session.name} startedAt={session.startedAt} refetch={refetch} />
+        <ActiveSessionBar logId={session.id} name={session.name} startedAt={session.startedAt} refetch={refetch} onDiscard={() => setDiscardOpen(true)} />
       ) : null}
       <View className="flex-row" style={{ paddingBottom: insets.bottom, paddingTop: 6, height: 52 + insets.bottom }}>
         {state.routes.map((route, i) => {
@@ -71,6 +86,19 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
           );
         })}
       </View>
+
+      <Dialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title="Discard workout?"
+        description="This session and all logged sets will be permanently deleted."
+        footer={
+          <>
+            <Button variant="outline" onPress={() => setDiscardOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onPress={handleDiscard}>Discard</Button>
+          </>
+        }
+      />
     </View>
   );
 }
