@@ -405,11 +405,9 @@ export async function removeTemplateExercise(id: number): Promise<void> {
 
 export async function reorderTemplateExercises(templateId: number, exerciseIds: number[]): Promise<void> {
   const db = await openDatabase();
-  await db.withTransactionAsync(async () => {
-    for (let i = 0; i < exerciseIds.length; i++) {
-      await db.runAsync('UPDATE template_exercises SET sort_order = ? WHERE id = ? AND template_id = ?', i, exerciseIds[i], templateId);
-    }
-  });
+  for (let i = 0; i < exerciseIds.length; i++) {
+    await db.runAsync('UPDATE template_exercises SET sort_order = ? WHERE id = ? AND template_id = ?', i, exerciseIds[i], templateId);
+  }
 }
 
 /* ------------------------------- programs ------------------------------- */

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
@@ -174,67 +174,69 @@ export default function TemplateEditorScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 160 }} showsVerticalScrollIndicator={false}>
-        <View className="gap-3">
-          <View className="gap-1">
-            <Label>Name</Label>
-            <Input value={name} onChangeText={setName} placeholder="e.g. Push Day" />
-          </View>
-          <View className="gap-1">
-            <Label>Description</Label>
-            <Input value={description} onChangeText={setDescription} placeholder="Optional description" />
-          </View>
-          <View className="gap-1">
-            <Label>Difficulty</Label>
-            <View className="flex-row gap-2">
-              {DIFFICULTIES.map((d) => (
-                <Chip key={d} label={DIFFICULTY_LABELS[d]} selected={difficulty === d} onPress={() => setDifficulty(d)} />
-              ))}
+      <DraggableFlatList
+        data={exercises}
+        keyExtractor={(item) => `${item.id}`}
+        onDragEnd={onDragEnd}
+        contentContainerStyle={{ padding: 16, paddingBottom: 160 }}
+        ListHeaderComponent={
+          <View>
+            <View className="gap-3">
+              <View className="gap-1">
+                <Label>Name</Label>
+                <Input value={name} onChangeText={setName} placeholder="e.g. Push Day" />
+              </View>
+              <View className="gap-1">
+                <Label>Description</Label>
+                <Input value={description} onChangeText={setDescription} placeholder="Optional description" />
+              </View>
+              <View className="gap-1">
+                <Label>Difficulty</Label>
+                <View className="flex-row gap-2">
+                  {DIFFICULTIES.map((d) => (
+                    <Chip key={d} label={DIFFICULTY_LABELS[d]} selected={difficulty === d} onPress={() => setDifficulty(d)} />
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            <Separator className="my-5" />
+
+            <View className="flex-row items-center justify-between">
+              <Heading className="text-base">Exercises ({exercises.length})</Heading>
+              <Button size="sm" variant="outline" leftIcon={<Icon icon={Plus} size={14} color="primary" />} onPress={() => setPickerOpen(true)}>
+                Add
+              </Button>
             </View>
           </View>
-        </View>
-
-        <Separator className="my-5" />
-
-        <View className="flex-row items-center justify-between">
-          <Heading className="text-base">Exercises ({exercises.length})</Heading>
-          <Button size="sm" variant="outline" leftIcon={<Icon icon={Plus} size={14} color="primary" />} onPress={() => setPickerOpen(true)}>
-            Add
-          </Button>
-        </View>
-
-        <DraggableFlatList
-          data={exercises}
-          keyExtractor={(item) => `${item.id}`}
-          onDragEnd={onDragEnd}
-          renderItem={({ item: te, drag, isActive }) => (
-            <ScaleDecorator>
-              <Pressable onPress={() => openEdit(te)} onLongPress={drag} disabled={isActive}>
-                <Card className={`mb-2 flex-row items-center gap-3 p-3 ${isActive ? 'opacity-80' : ''}`}>
-                  <Icon icon={GripVertical} size={16} color="muted-foreground" />
-                  <View className="flex-1">
-                    <Body className="font-medium text-foreground">{te.exercise?.name ?? 'Exercise'}</Body>
-                    <Caption>
-                      {te.targetSets} × {te.targetRepsMin}–{te.targetRepsMax} reps · {te.restSeconds}s rest
-                    </Caption>
-                  </View>
-                  <Pressable
-                    onPress={(e) => { e.stopPropagation(); removeExercise(te); }}
-                    hitSlop={8}
-                    className="p-1">
-                    <Icon icon={Trash2} size={16} color="destructive" />
-                  </Pressable>
-                </Card>
-              </Pressable>
-            </ScaleDecorator>
-          )}
-          ListEmptyComponent={
-            <View className="items-center py-10">
-              <Caption className="text-center">No exercises yet. Tap Add to build your template.</Caption>
-            </View>
-          }
-        />
-      </ScrollView>
+        }
+        renderItem={({ item: te, drag, isActive }) => (
+          <ScaleDecorator>
+            <Pressable onPress={() => openEdit(te)} onLongPress={drag} disabled={isActive}>
+              <Card className={`mb-2 flex-row items-center gap-3 p-3 ${isActive ? 'opacity-80' : ''}`}>
+                <Icon icon={GripVertical} size={16} color="muted-foreground" />
+                <View className="flex-1">
+                  <Body className="font-medium text-foreground">{te.exercise?.name ?? 'Exercise'}</Body>
+                  <Caption>
+                    {te.targetSets} × {te.targetRepsMin}–{te.targetRepsMax} reps · {te.restSeconds}s rest
+                  </Caption>
+                </View>
+                <Pressable
+                  onPress={(e) => { e.stopPropagation(); removeExercise(te); }}
+                  hitSlop={8}
+                  className="p-1">
+                  <Icon icon={Trash2} size={16} color="destructive" />
+                </Pressable>
+              </Card>
+            </Pressable>
+          </ScaleDecorator>
+        )}
+        ListEmptyComponent={
+          <View className="items-center py-10">
+            <Caption className="text-center">No exercises yet. Tap Add to build your template.</Caption>
+          </View>
+        }
+      />
 
       <View className="absolute inset-x-0 bottom-0 border-t border-border bg-background p-5 pb-8">
         <Button size="lg" onPress={save} disabled={saving}>

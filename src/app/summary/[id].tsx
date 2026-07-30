@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,7 +15,7 @@ import { SummaryStat } from '@/components/workout/summary-stat';
 import { NumberStepper } from '@/components/workout/number-stepper';
 import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
-import { getWorkoutLog, updateSet, createTemplate, addExerciseToTemplate, type SessionWorkout, type SessionSet } from '@/db/queries';
+import { getWorkoutLog, updateSet, updateWorkoutNotes, createTemplate, addExerciseToTemplate, type SessionWorkout, type SessionSet } from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
 import { useProfile } from '@/hooks/use-data';
 import { formatDuration, formatFullDate, formatVolume, formatWeight, setVolume } from '@/db/calc';
@@ -43,10 +43,12 @@ export default function SummaryScreen() {
   const [editWeight, setEditWeight] = useState(0);
   const [editReps, setEditReps] = useState(0);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [notes, setNotes] = useState('');
 
   const reload = useCallback(async () => {
     const s = await getWorkoutLog(logId);
     setLog(s);
+    if (s) setNotes(s.notes ?? '');
     setLoading(false);
   }, [logId]);
 
@@ -177,15 +179,23 @@ export default function SummaryScreen() {
           </View>
         </Card>
 
-        {log.notes ? (
-          <Card className="mt-5">
-            <CardHeader>
-              <CardTitle>Notes</CardTitle>
-              <Icon icon={MessageSquare} size={16} color="primary" />
-            </CardHeader>
-            <Body className="text-sm text-foreground">{log.notes}</Body>
-          </Card>
-        ) : null}
+        <Card className="mt-5">
+          <CardHeader>
+            <CardTitle>Notes</CardTitle>
+            <Icon icon={MessageSquare} size={16} color="primary" />
+          </CardHeader>
+          <TextInput
+            value={notes}
+            onChangeText={setNotes}
+            onBlur={() => updateWorkoutNotes(logId, notes.trim())}
+            placeholder="How did this session feel?"
+            placeholderTextColor="#6b7280"
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+            style={{ minHeight: 80, fontSize: 14, color: '#f5f5f5', lineHeight: 20 }}
+          />
+        </Card>
 
         <LinearGradient colors={['#16a34a15', '#22c55e15']} className="mt-5 flex-row items-center gap-3 rounded-xl p-3">
           <Icon icon={Trophy} size={20} color="primary" />
