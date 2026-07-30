@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 import { Plus, GripVertical, Trash2 } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
@@ -24,6 +25,7 @@ import {
   addExerciseToTemplate,
   updateTemplateExercise,
   removeTemplateExercise,
+  reorderTemplateExercises,
 } from '@/db/queries';
 import { DIFFICULTY_LABELS } from '@/lib/labels';
 import type { Difficulty, TemplateExercise } from '@/db/types';
@@ -155,6 +157,13 @@ export default function TemplateEditorScreen() {
     setEditingExercise(null);
   };
 
+  const onDragEnd = async ({ data }: { data: Exercise[] }) => {
+    setExercises(data);
+    if (templateId) {
+      await reorderTemplateExercises(templateId, data.map((e) => e.id));
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background">
@@ -194,33 +203,37 @@ export default function TemplateEditorScreen() {
           </Button>
         </View>
 
-        <View className="mt-3 gap-2">
-          {exercises.map((te, i) => (
-            <Pressable key={`${te.id}-${i}`} onPress={() => openEdit(te)}>
-              <Card className="flex-row items-center gap-3 p-3">
-                <Icon icon={GripVertical} size={16} color="muted-foreground" />
-                <View className="flex-1">
-                  <Body className="font-medium text-foreground">{te.exercise?.name ?? 'Exercise'}</Body>
-                  <Caption>
-                    {te.targetSets} × {te.targetRepsMin}–{te.targetRepsMax} reps · {te.restSeconds}s rest
-                  </Caption>
-                </View>
-                <Pressable
-                  onPress={(e) => { e.stopPropagation(); removeExercise(te); }}
-                  hitSlop={8}
-                  className="p-1">
-                  <Icon icon={Trash2} size={16} color="destructive" />
-                </Pressable>
-              </Card>
-            </Pressable>
-          ))}
-
-          {exercises.length === 0 && (
+        <DraggableFlatList
+          data={exercises}
+          keyExtractor={(item) => `${item.id}`}
+          onDragEnd={onDragEnd}
+          renderItem={({ item: te, drag, isActive }) => (
+            <ScaleDecorator>
+              <Pressable onPress={() => openEdit(te)} onLongPress={drag} disabled={isActive}>
+                <Card className={`mb-2 flex-row items-center gap-3 p-3 ${isActive ? 'opacity-80' : ''}`}>
+                  <Icon icon={GripVertical} size={16} color="muted-foreground" />
+                  <View className="flex-1">
+                    <Body className="font-medium text-foreground">{te.exercise?.name ?? 'Exercise'}</Body>
+                    <Caption>
+                      {te.targetSets} × {te.targetRepsMin}–{te.targetRepsMax} reps · {te.restSeconds}s rest
+                    </Caption>
+                  </View>
+                  <Pressable
+                    onPress={(e) => { e.stopPropagation(); removeExercise(te); }}
+                    hitSlop={8}
+                    className="p-1">
+                    <Icon icon={Trash2} size={16} color="destructive" />
+                  </Pressable>
+                </Card>
+              </Pressable>
+            </ScaleDecorator>
+          )}
+          ListEmptyComponent={
             <View className="items-center py-10">
               <Caption className="text-center">No exercises yet. Tap Add to build your template.</Caption>
             </View>
-          )}
-        </View>
+          }
+        />
       </ScrollView>
 
       <View className="absolute inset-x-0 bottom-0 border-t border-border bg-background p-5 pb-8">

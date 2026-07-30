@@ -101,11 +101,11 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
         <View className="mt-3 flex-row gap-3">
-          <Pressable className="flex-1 flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => router.push('/(app)/bodyweight' as any)} className="flex-1 flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Ruler} size={20} color="primary" />
             <Body className="font-medium text-foreground">Measures</Body>
           </Pressable>
-          <Pressable className="flex-1 flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => router.push('/(app)/calendar' as any)} className="flex-1 flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Calendar} size={20} color="primary" />
             <Body className="font-medium text-foreground">Calendar</Body>
           </Pressable>

@@ -133,6 +133,16 @@ export const SCHEMA_STATEMENTS: string[] = [
     updated_at INTEGER NOT NULL
   )`,
 
+  // ---- bodyweight tracking ----
+  `CREATE TABLE IF NOT EXISTS bodyweight_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    weight REAL NOT NULL,
+    unit TEXT NOT NULL DEFAULT 'kg',
+    recorded_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_bodyweight_recorded ON bodyweight_entries(recorded_at DESC)`,,
+
   // ---- key/value (Zustand persist + flags) ----
   `CREATE TABLE IF NOT EXISTS kv (
     key TEXT PRIMARY KEY,

@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Check, Clock, Layers, Dumbbell, Trophy, Pencil } from 'lucide-react-native';
+import { Check, Clock, Layers, Dumbbell, Trophy, Pencil, MessageSquare } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Hero, Body, Caption } from '@/components/common/text';
@@ -176,6 +176,16 @@ export default function SummaryScreen() {
             ))}
           </View>
         </Card>
+
+        {log.notes ? (
+          <Card className="mt-5">
+            <CardHeader>
+              <CardTitle>Notes</CardTitle>
+              <Icon icon={MessageSquare} size={16} color="primary" />
+            </CardHeader>
+            <Body className="text-sm text-foreground">{log.notes}</Body>
+          </Card>
+        ) : null}
 
         <LinearGradient colors={['#16a34a15', '#22c55e15']} className="mt-5 flex-row items-center gap-3 rounded-xl p-3">
           <Icon icon={Trophy} size={20} color="primary" />

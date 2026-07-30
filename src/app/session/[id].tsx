@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Plus, X } from 'lucide-react-native';
+import { Check, MessageSquarePlus, Plus, X } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Body, Caption } from '@/components/common/text';
@@ -12,6 +12,7 @@ import { ExerciseBlock } from '@/components/workout/exercise-block';
 import { ExercisePickerSheet } from '@/components/workout/exercise-picker-sheet';
 import { RestTimer } from '@/components/workout/rest-timer';
 import { useRestTimer } from '@/hooks/use-rest-timer';
+import { useRestTimerSound } from '@/hooks/use-rest-timer-sound';
 import { useHaptics } from '@/hooks/use-haptics';
 import { useActiveWorkout } from '@/store/active-workout-store';
 import { useSettings } from '@/store/settings-store';
@@ -25,6 +26,7 @@ import {
   getWorkoutLog,
   removeSet,
   updateSet,
+  updateWorkoutNotes,
   type SessionWorkout,
 } from '@/db/queries';
 import { formatClock, formatVolume } from '@/db/calc';
@@ -45,6 +47,12 @@ export default function SessionScreen() {
   const clear = useActiveWorkout((s) => s.clear);
   const { unit } = useSettings();
   const rest = useRestTimer();
+  const restSound = useRestTimerSound();
+
+  // Play sound when rest timer finishes
+  useEffect(() => {
+    if (rest.justFinished) restSound.play();
+  }, [rest.justFinished, restSound]);
 
   const [session, setSession] = useState<SessionWorkout | null>(null);
   const [lastSetsMap, setLastSetsMap] = useState<Record<number, SetEntry[]>>({});
@@ -54,6 +62,9 @@ export default function SessionScreen() {
   const [finishOpen, setFinishOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [restSecondsMap, setRestSecondsMap] = useState<Record<number, number>>({});
+  const [notes, setNotes] = useState('');
+  const [notesOpen, setNotesOpen] = useState(false);
+  const notesRef = useRef<TextInput>(null);
 
   const load = useCallback(async () => {
     const s = await getWorkoutLog(logId);
@@ -64,6 +75,7 @@ export default function SessionScreen() {
       setLastSetsMap(map);
     }
     setSession(s);
+    if (s) setNotes(s.notes ?? '');
     setLoading(false);
   }, [logId]);
 
@@ -121,6 +133,7 @@ export default function SessionScreen() {
 
   const finish = async () => {
     setFinishOpen(false);
+    if (notes.trim()) await updateWorkoutNotes(logId, notes.trim());
     await finishWorkout(logId);
     clear();
     toast({ title: 'Workout saved', description: 'Great session — check your progress.', variant: 'success' });
@@ -176,9 +189,34 @@ export default function SessionScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 160 }} showsVerticalScrollIndicator={false}>
-        <Button variant="outline" className="mb-4" leftIcon={<Icon icon={Plus} size={16} color="primary" />} onPress={() => setPickerOpen(true)}>
+        <Button variant="outline" className="mb-3" leftIcon={<Icon icon={Plus} size={16} color="primary" />} onPress={() => setPickerOpen(true)}>
           Add exercise
         </Button>
+
+        <Pressable
+          onPress={() => setNotesOpen(!notesOpen)}
+          className="mb-3 flex-row items-center gap-2 rounded-xl bg-card px-4 py-3">
+          <Icon icon={MessageSquarePlus} size={16} color="primary" />
+          <Body className="text-sm text-foreground">{notesOpen ? 'Hide notes' : notes ? 'Show notes' : 'Add notes'}</Body>
+        </Pressable>
+
+        {notesOpen && (
+          <View className="mb-4 rounded-xl bg-card p-4">
+            <Caption className="mb-2">Workout notes</Caption>
+            <TextInput
+              ref={notesRef}
+              value={notes}
+              onChangeText={setNotes}
+              onBlur={() => { if (session) updateWorkoutNotes(logId, notes); }}
+              placeholder="How did this session feel?"
+              placeholderTextColor="#6b7280"
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              style={{ minHeight: 80, fontSize: 14, color: '#f5f5f5', lineHeight: 20 }}
+            />
+          </View>
+        )}
 
         {groups.length === 0 ? (
           <View className="items-center py-16">
