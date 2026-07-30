@@ -22,6 +22,6 @@ function optionalEnv(key: string, fallback = ''): string {
 /* ---- Clerk ---- */
 export const CLERK_PUBLISHABLE_KEY = requireEnv('EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY');
 
-/* ---- ExerciseDB (RapidAPI) ---- */
+/* ---- ExerciseDB (RapidAPI, optional — free tier needs neither) ---- */
 export const EXERCISEDB_API_KEY = optionalEnv('EXPO_PUBLIC_EXERCISEDB_API_KEY');
-export const EXERCISEDB_API_HOST = optionalEnv('EXPO_PUBLIC_EXERCISEDB_API_HOST', 'exercisedb.p.rapidapi.com');
+export const EXERCISEDB_API_HOST = optionalEnv('EXPO_PUBLIC_EXERCISEDB_API_HOST');

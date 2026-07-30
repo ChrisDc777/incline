@@ -67,14 +67,15 @@ function mapFreeExercise(ex: FreeApiExercise): ExerciseDbExercise {
 /* ---- Paid tier API (RapidAPI) ---- */
 
 function hasPaidKey(): boolean {
-  return !!EXERCISEDB_API_KEY && !!EXERCISEDB_API_HOST;
+  return !!EXERCISEDB_API_KEY;
 }
 
 async function paidFetch<T>(path: string): Promise<T> {
-  if (!EXERCISEDB_API_KEY || !EXERCISEDB_API_HOST) {
+  if (!EXERCISEDB_API_KEY) {
     throw new Error('ExerciseDB API key not configured');
   }
-  const response = await fetch(`https://${EXERCISEDB_API_HOST}${path}`, {
+  const host = EXERCISEDB_API_HOST || 'exercisedb.p.rapidapi.com';
+  const response = await fetch(`https://${host}${path}`, {
     headers: {
       'X-RapidAPI-Key': EXERCISEDB_API_KEY,
       'X-RapidAPI-Host': EXERCISEDB_API_HOST,

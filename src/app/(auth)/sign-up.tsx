@@ -3,20 +3,51 @@ import { View, TextInput, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useSignUp } from '@clerk/clerk-expo';
+import { useSSO } from '@clerk/clerk-expo';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 
-import { Heading, Body, Caption } from '@/components/common/text';
+import { Heading, Caption } from '@/components/common/text';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function SignUpScreen() {
   const router = useRouter();
   const { signUp, setActive, isLoaded } = useSignUp();
+  const { startSSOFlow } = useSSO();
   const [emailAddress, setEmailAddress] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [pendingVerification, setPendingVerification] = React.useState(false);
   const [code, setCode] = React.useState('');
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const [googleLoading, setGoogleLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    void WebBrowser.warmUpAsync();
+    return () => { void WebBrowser.coolDownAsync(); };
+  }, []);
+
+  const onGooglePress = React.useCallback(async () => {
+    setGoogleLoading(true);
+    setError('');
+    try {
+      const result = await startSSOFlow({
+        strategy: 'oauth_google',
+        redirectUrl: Linking.createURL('/(onboarding)'),
+      });
+      if (result.createdSessionId) {
+        await result.setActive?.({ session: result.createdSessionId });
+        router.replace('/(onboarding)');
+      }
+    } catch (err: any) {
+      setError(err?.message ?? 'Google sign-up failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  }, [startSSOFlow, router]);
 
   const onSignUpPress = async () => {
     if (!isLoaded) return;
@@ -66,6 +97,20 @@ export default function SignUpScreen() {
 
         {!pendingVerification ? (
           <View className="gap-4">
+            <Button
+              size="lg"
+              variant="outline"
+              onPress={onGooglePress}
+              disabled={googleLoading}>
+              {googleLoading ? 'Opening Google…' : 'Continue with Google'}
+            </Button>
+
+            <View className="flex-row items-center gap-3">
+              <View className="h-px flex-1 bg-border" />
+              <Caption>or</Caption>
+              <View className="h-px flex-1 bg-border" />
+            </View>
+
             <View className="gap-1.5">
               <Caption>Email</Caption>
               <TextInput
