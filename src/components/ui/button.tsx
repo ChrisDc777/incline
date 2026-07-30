@@ -1,5 +1,7 @@
-import { cva, type VariantProps } from 'class-variance-authority';
+import { useCallback } from 'react';
 import { Pressable, type PressableProps } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { cva, type VariantProps } from 'class-variance-authority';
 import type { ReactNode } from 'react';
 
 import { cn } from '@/lib/cn';
@@ -59,20 +61,38 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const onPressIn = useCallback(() => {
+    scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+  }, []);
+
+  const onPressOut = useCallback(() => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+  }, []);
+
   return (
-    <Pressable
-      className={cn(buttonVariants({ variant, size }), disabled && 'opacity-50', className)}
-      disabled={disabled}
-      accessibilityRole="button"
-      {...props}>
-      {leftIcon}
-      {typeof children === 'string' ? (
-        <Text className={cn(buttonTextVariants({ variant, size }), textClass)}>{children}</Text>
-      ) : (
-        children
-      )}
-      {rightIcon}
-    </Pressable>
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        className={cn(buttonVariants({ variant, size }), disabled && 'opacity-50', className)}
+        disabled={disabled}
+        accessibilityRole="button"
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        {...props}>
+        {leftIcon}
+        {typeof children === 'string' ? (
+          <Text className={cn(buttonTextVariants({ variant, size }), textClass)}>{children}</Text>
+        ) : (
+          children
+        )}
+        {rightIcon}
+      </Pressable>
+    </Animated.View>
   );
 }
 

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "incline",
+    "name": "Incline",
     "slug": "incline",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,15 +8,15 @@
     "scheme": "incline",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/icon.png",
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#1a1a1a",
+        "foregroundImage": "./assets/images/icon.png"
       },
+      "package": "com.chrisdc777.incline",
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -28,9 +28,10 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0B0F0A",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#1a1a1a",
+          "image": "./assets/images/icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain"
         }
       ]
     ],

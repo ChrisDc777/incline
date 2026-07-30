@@ -91,7 +91,7 @@ export default function ProfileScreen() {
 
         <Caption className="mt-8 mb-3">Dashboard</Caption>
         <View className="flex-row gap-3">
-          <Pressable onPress={() => router.push('/(app)/(tabs)/workouts')} className="flex-1 flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => router.push('/(app)/(tabs)/progress')} className="flex-1 flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={BarChart3} size={20} color="primary" />
             <Body className="font-medium text-foreground">Statistics</Body>
           </Pressable>

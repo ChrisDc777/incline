@@ -17,9 +17,17 @@ export default function Gate() {
   const segments = useSegments();
 
   useEffect(() => {
-    if (!ready || loading || !profile) return;
+    if (!ready || loading) return;
+
     const inOnboarding = segments[0] === '(onboarding)';
     const inApp = segments[0] === '(app)';
+
+    // No profile row yet (fresh install) → onboarding
+    if (!profile) {
+      if (!inOnboarding) router.replace('/(onboarding)');
+      return;
+    }
+
     if (!profile.onboardingCompleted && !inOnboarding) {
       router.replace('/(onboarding)');
     } else if (profile.onboardingCompleted && !inApp) {

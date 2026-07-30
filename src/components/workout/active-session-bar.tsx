@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AppState, Pressable, View } from 'react-native';
+import { AppState, Pressable, useColorScheme, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronUp, Trash2 } from 'lucide-react-native';
 
@@ -10,7 +10,6 @@ import { formatClock } from '@/db/calc';
 
 /**
  * Floating session bar shown above the tab bar when a workout is in progress.
- * Dark charcoal background, green status dot, chevron left, trash right.
  * Matches reference app style.
  */
 export function ActiveSessionBar({
@@ -31,6 +30,8 @@ export function ActiveSessionBar({
   className?: string;
 }) {
   const router = useRouter();
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
   const [elapsed, setElapsed] = useState(() => (startedAt ? Math.floor((Date.now() - startedAt) / 1000) : 0));
 
   useEffect(() => {
@@ -50,29 +51,33 @@ export function ActiveSessionBar({
   }, [refetch]);
 
   const displayName = name ?? 'Workout';
+  const barBg = isDark ? 'bg-[#1c1c1e]' : 'bg-card';
+  const textColor = isDark ? 'text-white' : 'text-foreground';
+  const subTextColor = isDark ? 'text-gray-400' : 'text-muted-foreground';
+  const rippleColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
 
   return (
-    <View className={cn('mx-4 mb-2 flex-row items-center rounded-2xl bg-[#1c1c1e] px-2 py-2 shadow-lg', className)}>
+    <View className={cn('mx-4 mb-2 flex-row items-center rounded-2xl px-2 py-2 shadow-lg', barBg, className)}>
       <Pressable
         onPress={() => router.push(`/session/${logId}`)}
         accessibilityRole="button"
         accessibilityLabel="Open workout"
         className="h-10 w-10 items-center justify-center rounded-xl"
-        android_ripple={{ color: 'rgba(255,255,255,0.08)' }}>
-        <Icon icon={ChevronUp} size={22} color="white" />
+        android_ripple={{ color: rippleColor }}>
+        <Icon icon={ChevronUp} size={22} color={isDark ? 'white' : '#16a34a'} />
       </Pressable>
 
       <Pressable
         onPress={() => router.push(`/session/${logId}`)}
         className="flex-1 flex-row items-center gap-2.5 px-1"
-        android_ripple={{ color: 'rgba(255,255,255,0.08)' }}>
+        android_ripple={{ color: rippleColor }}>
         <View className="h-2.5 w-2.5 rounded-full bg-success" />
         <View className="flex-1">
-          <Text className="text-sm font-semibold text-white">
+          <Text className={cn('text-sm font-semibold', textColor)}>
             {displayName} {startedAt ? formatClock(elapsed) : ''}
           </Text>
           {nextExercise ? (
-            <Text className="text-xs text-gray-400" numberOfLines={1}>{nextExercise}</Text>
+            <Text className={cn('text-xs', subTextColor)} numberOfLines={1}>{nextExercise}</Text>
           ) : null}
         </View>
       </Pressable>
@@ -83,7 +88,7 @@ export function ActiveSessionBar({
           accessibilityRole="button"
           accessibilityLabel="Discard workout"
           className="h-10 w-10 items-center justify-center rounded-xl"
-          android_ripple={{ color: 'rgba(255,255,255,0.08)' }}>
+          android_ripple={{ color: rippleColor }}>
           <Icon icon={Trash2} size={20} color="#ff3b30" />
         </Pressable>
       ) : null}

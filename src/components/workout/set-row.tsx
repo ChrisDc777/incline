@@ -93,12 +93,13 @@ export function SetRow({
         accessibilityLabel={completed ? 'Mark incomplete' : 'Complete set'}
         accessibilityState={{ checked: completed }}
         onPress={onToggleComplete}
+        hitSlop={8}
         className={cn(
-          'h-8 w-8 items-center justify-center rounded-full',
+          'h-12 w-12 items-center justify-center rounded-full',
           completed ? 'bg-success' : 'border-2 border-border',
         )}>
         <Animated.View style={checkStyle}>
-          <Icon icon={Check} size={16} color="success-foreground" />
+          <Icon icon={Check} size={20} color="success-foreground" />
         </Animated.View>
       </Pressable>
 
@@ -107,8 +108,9 @@ export function SetRow({
           accessibilityRole="button"
           accessibilityLabel="Remove set"
           onPress={onRemove}
-          className="h-7 w-7 items-center justify-center">
-          <Icon icon={X} size={14} color="muted-foreground" />
+          hitSlop={8}
+          className="h-11 w-11 items-center justify-center">
+          <Icon icon={X} size={16} color="muted-foreground" />
         </Pressable>
       ) : null}
     </Animated.View>
