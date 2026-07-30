@@ -25,6 +25,10 @@ const MUSCLE_MAP: Record<string, MuscleGroup> = {
   forearms: 'forearms',
   adductors: 'core',
   abductors: 'glutes',
+  waist: 'core',
+  spine: 'core',
+  neck: 'traps',
+  hip: 'glutes',
 };
 
 const EQUIPMENT_MAP: Record<string, Equipment> = {
@@ -39,6 +43,7 @@ const EQUIPMENT_MAP: Record<string, Equipment> = {
   band: 'band',
   'resistance band': 'band',
   'exercise ball': 'other',
+  assisted: 'machine',
   foam_roll: 'other',
   other: 'other',
 };
@@ -66,7 +71,6 @@ function inferMovementPattern(ex: ExerciseDbExercise): MovementPattern {
   const name = ex.name.toLowerCase();
   const eq = ex.equipment.toLowerCase();
 
-  // Compound barbell/dumbbell movements
   if (eq === 'barbell' || eq === 'dumbbell') {
     if (muscle.includes('chest') || muscle.includes('shoulder')) {
       if (name.includes('press') || name.includes('push')) return 'horizontal_push';
@@ -81,7 +85,6 @@ function inferMovementPattern(ex: ExerciseDbExercise): MovementPattern {
     }
   }
 
-  // Bodyweight compounds
   if (eq === 'bodyweight' || eq === 'body weight') {
     if (name.includes('push-up') || name.includes('dip')) return 'horizontal_push';
     if (name.includes('pull-up') || name.includes('chin-up')) return 'vertical_pull';
@@ -89,7 +92,6 @@ function inferMovementPattern(ex: ExerciseDbExercise): MovementPattern {
     if (name.includes('plank') || name.includes('crunch') || name.includes('sit-up')) return 'core';
   }
 
-  // Default to isolation
   return 'isolation';
 }
 
@@ -113,21 +115,15 @@ export interface ImportProgress {
   phase: 'fetching' | 'importing' | 'done';
 }
 
-/**
- * Import exercises from ExerciseDB into SQLite.
- * Fetches in batches of 50 (rate-limit safe), maps fields, and upserts by external_id.
- * Returns progress updates via the onProgress callback.
- */
 export async function importExercisesFromDb(
   onProgress?: (progress: ImportProgress) => void,
 ): Promise<{ imported: number; errors: number }> {
   const db = await openDatabase();
   let imported = 0;
   let errors = 0;
-  const BATCH_SIZE = 50;
-  const MAX_EXERCISES = 500; // Safety limit
+  const BATCH_SIZE = 100;
+  const MAX_EXERCISES = 1500;
 
-  // Get total count from API (first fetch returns count in headers or we estimate)
   onProgress?.({ total: 0, imported: 0, errors: 0, phase: 'fetching' });
 
   let offset = 0;
@@ -158,7 +154,6 @@ export async function importExercisesFromDb(
           const compound = isCompound(ex);
           const now = Date.now();
 
-          // Upsert by external_id
           const existing = await db.getFirstAsync<{ id: number }>(
             'SELECT id FROM exercises WHERE external_id = ?',
             ex.id,
@@ -167,14 +162,12 @@ export async function importExercisesFromDb(
           let exerciseId: number;
 
           if (existing) {
-            // Update existing
             await db.runAsync(
               `UPDATE exercises SET name = ?, primary_muscle = ?, movement_pattern = ?, equipment = ?, category = ?, is_compound = ?, difficulty = ?, updated_at = ? WHERE external_id = ?`,
               ex.name, primaryMuscle, pattern, equipment, category, compound ? 1 : 0, 'beginner', now, ex.id,
             );
             exerciseId = existing.id;
           } else {
-            // Insert new
             const res = await db.runAsync(
               `INSERT INTO exercises (name, primary_muscle, movement_pattern, equipment, category, is_compound, is_custom, source, external_id, difficulty, default_rest_seconds, tips, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 0, 'exercisedb', ?, 'beginner', 90, '', ?, ?)`,
               ex.name, primaryMuscle, pattern, equipment, category, compound ? 1 : 0, ex.id, now, now,
@@ -182,7 +175,6 @@ export async function importExercisesFromDb(
             exerciseId = res.lastInsertRowId as number;
           }
 
-          // Upsert secondary muscles
           await db.runAsync('DELETE FROM exercise_secondary_muscles WHERE exercise_id = ?', exerciseId);
           for (const muscle of ex.secondaryMuscles) {
             const mapped = mapMuscle(muscle);
@@ -192,7 +184,6 @@ export async function importExercisesFromDb(
             );
           }
 
-          // Upsert instructions
           await db.runAsync('DELETE FROM exercise_instructions WHERE exercise_id = ?', exerciseId);
           for (let i = 0; i < ex.instructions.length; i++) {
             await db.runAsync(
@@ -201,14 +192,12 @@ export async function importExercisesFromDb(
             );
           }
 
-          // Upsert alias (lowercase name for search)
           await db.runAsync('DELETE FROM exercise_aliases WHERE exercise_id = ?', exerciseId);
           await db.runAsync(
             'INSERT INTO exercise_aliases (exercise_id, alias) VALUES (?, ?)',
             exerciseId, ex.name.toLowerCase(),
           );
 
-          // Upsert image
           if (ex.gifUrl) {
             await db.runAsync('DELETE FROM exercise_images WHERE exercise_id = ?', exerciseId);
             await db.runAsync(
@@ -224,11 +213,9 @@ export async function importExercisesFromDb(
       }
 
       offset += BATCH_SIZE;
-
-      // Small delay between batches to respect rate limits
-      await new Promise((r) => setTimeout(r, 200));
+      hasMore = batch.length === BATCH_SIZE;
+      await new Promise((r) => setTimeout(r, 100));
     } catch {
-      // API error — stop importing
       errors++;
       hasMore = false;
     }
@@ -238,9 +225,6 @@ export async function importExercisesFromDb(
   return { imported, errors };
 }
 
-/**
- * Get the image URL for an exercise (from exercise_images table).
- */
 export async function getExerciseImage(exerciseId: number): Promise<string | null> {
   const db = await openDatabase();
   const row = await db.getFirstAsync<{ url: string }>(

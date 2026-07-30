@@ -17,7 +17,7 @@ export function HistoryRow({ log, unit, className, onLongPress }: { log: Workout
       onPress={() => router.push(`/summary/${log.id}`)}
       onLongPress={onLongPress}
       android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-      <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/15">
+      <View className="h-11 w-11 items-center justify-center rounded-3xl bg-primary/15">
         <Icon icon={Dumbbell} size={18} color="primary" />
       </View>
       <View className="flex-1">

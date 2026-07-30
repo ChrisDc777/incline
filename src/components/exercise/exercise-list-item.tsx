@@ -14,10 +14,10 @@ export function ExerciseListItem({ exercise, className }: { exercise: Exercise; 
   const router = useRouter();
   return (
     <Pressable
-      className={cn('flex-row items-center gap-3 rounded-2xl bg-card p-4', className)}
+      className={cn('flex-row items-center gap-3 rounded-3xl bg-card p-4', className)}
       onPress={() => router.push(`/exercise/${exercise.id}`)}
       android_ripple={{ color: 'rgba(0,0,0,0.06)' }}>
-      <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/15">
+      <View className="h-11 w-11 items-center justify-center rounded-3xl bg-primary/15">
         <Icon icon={Dumbbell} size={20} color="primary" />
       </View>
       <View className="flex-1">

@@ -3,6 +3,7 @@ import * as SQLite from 'expo-sqlite';
 import { DB_NAME } from '@/constants/config';
 import { SCHEMA_STATEMENTS, SCHEMA_VERSION } from './schema';
 import { seedDatabase } from './seed';
+import { importExercisesFromDb } from './import-exercisedb';
 
 let _db: SQLite.SQLiteDatabase | null = null;
 let _ready: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -81,6 +82,21 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
       await database.runAsync(
         "INSERT INTO schema_meta (key, value) VALUES ('seeded', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value",
       );
+    }
+
+    // Background import from ExerciseDB free API (runs once)
+    const imported = await database.getFirstAsync<{ value: string }>(
+      "SELECT value FROM schema_meta WHERE key = 'exercise_imported'",
+    );
+    if (!imported) {
+      importExercisesFromDb().then(async () => {
+        try {
+          const db = await openDatabase();
+          await db.runAsync(
+            "INSERT INTO schema_meta (key, value) VALUES ('exercise_imported', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+          );
+        } catch { /* best effort */ }
+      }).catch(() => { /* background — ignore errors */ });
     }
 
     _db = database;

@@ -40,7 +40,7 @@ export function WorkoutCard({
               {description}
             </Text>
           </View>
-          <View className="h-10 w-10 items-center justify-center rounded-2xl bg-primary/15">
+          <View className="h-10 w-10 items-center justify-center rounded-3xl bg-primary/15">
             <Icon icon={Dumbbell} size={18} color="primary" />
           </View>
         </View>

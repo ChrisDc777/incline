@@ -15,7 +15,7 @@ export function PRCard({ pr, unit, className }: { pr: PR; unit: Unit; className?
   return (
     <Pressable onPress={() => router.push(`/exercise/${pr.exerciseId}`)}>
       <Card className={cn('flex-row items-center gap-3 p-3', className)}>
-        <View className="h-10 w-10 items-center justify-center rounded-2xl bg-primary/15">
+        <View className="h-10 w-10 items-center justify-center rounded-3xl bg-primary/15">
           <Icon icon={TrendingUp} size={18} color="primary" />
         </View>
         <View className="flex-1">

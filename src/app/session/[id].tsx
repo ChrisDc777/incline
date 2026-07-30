@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, MessageSquarePlus, Pause, Play, Plus, Undo2, X } from 'lucide-react-native';
+import { Check, MessageSquarePlus, Pause, Play, Plus, Undo2, X, Dumbbell } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Body, Caption } from '@/components/common/text';
@@ -13,6 +13,7 @@ import { Sheet } from '@/components/ui/sheet';
 import { ExerciseBlock } from '@/components/workout/exercise-block';
 import { ExercisePickerSheet } from '@/components/workout/exercise-picker-sheet';
 import { RestTimer } from '@/components/workout/rest-timer';
+import { PlateCalculator } from '@/components/workout/plate-calculator';
 import { useRestTimer } from '@/hooks/use-rest-timer';
 import { useRestTimerSound } from '@/hooks/use-rest-timer-sound';
 import { useHaptics } from '@/hooks/use-haptics';
@@ -73,6 +74,7 @@ export default function SessionScreen() {
   const [pausedAt, setPausedAt] = useState<number | null>(null);
   const [totalPausedMs, setTotalPausedMs] = useState(0);
   const [timerSheetOpen, setTimerSheetOpen] = useState(false);
+  const [plateCalcOpen, setPlateCalcOpen] = useState(false);
   const pausedAtRef = useRef<number | null>(null);
 
   const load = useCallback(async () => {
@@ -106,7 +108,7 @@ export default function SessionScreen() {
 
   useEffect(() => {
     if (session?.isComplete) router.replace(`/summary/${session.id}`);
-  }, [session?.isComplete, router]);
+  }, [session?.isComplete, session?.id, router]);
 
   // Cleanup undo timer on unmount
   useEffect(() => {
@@ -300,6 +302,25 @@ export default function SessionScreen() {
               textAlignVertical="top"
               style={{ minHeight: 80, fontSize: 14, lineHeight: 20 }}
             />
+          </View>
+        )}
+
+        {!plateCalcOpen ? (
+          <Pressable
+            onPress={() => setPlateCalcOpen(true)}
+            className="mb-3 flex-row items-center gap-2 rounded-xl bg-card px-4 py-3">
+            <Icon icon={Dumbbell} size={16} color="primary" />
+            <Body className="text-sm text-foreground">Plate calculator</Body>
+          </Pressable>
+        ) : (
+          <View className="mb-3">
+            <Pressable
+              onPress={() => setPlateCalcOpen(false)}
+              className="mb-2 flex-row items-center gap-2">
+              <Icon icon={Dumbbell} size={16} color="primary" />
+              <Body className="text-sm font-semibold text-foreground">Plate calculator</Body>
+            </Pressable>
+            <PlateCalculator />
           </View>
         )}
 

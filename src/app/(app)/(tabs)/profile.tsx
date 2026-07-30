@@ -1,12 +1,12 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Settings as SettingsIcon, Pencil, ChevronRight, Trash2, Info, Dumbbell, Flame, Layers, BarChart3, Ruler, Calendar, Target } from 'lucide-react-native';
+import { Settings as SettingsIcon, Pencil, ChevronRight, Trash2, Info, Dumbbell, Flame, Layers, BarChart3, Ruler, Calendar } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
@@ -63,25 +63,29 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
         <Heading>Profile</Heading>
 
-        <Card className="mt-4 p-4">
-          <View className="flex-row items-start gap-4">
-            <InitialsAvatar name={profile?.name ?? ''} size={80} />
-            <View className="flex-1 pt-1">
-              <Body className="text-lg font-bold text-foreground">
-                {profile?.name?.trim() || 'Athlete'}
-              </Body>
-              <Caption className="mt-0.5">
-                {profile?.goal ? GOAL_LABELS[profile.goal] : 'Set your goal'}
-              </Caption>
-              <Caption className="mt-2 leading-5 text-muted-foreground">
-                Fitness journey in progress. Building strength one workout at a time.
-              </Caption>
+        <LinearGradient
+          colors={['rgba(22,163,74,0.12)', 'rgba(22,163,74,0.02)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="mt-4 rounded-3xl"
+        >
+          <View className="p-4">
+            <View className="flex-row items-start gap-4">
+              <InitialsAvatar name={profile?.name ?? ''} size={80} />
+              <View className="flex-1 pt-1">
+                <Body className="text-lg font-bold text-foreground">
+                  {profile?.name?.trim() || 'Athlete'}
+                </Body>
+                <Caption className="mt-0.5">
+                  {profile?.goal ? GOAL_LABELS[profile.goal] : 'Set your goal'}
+                </Caption>
+              </View>
             </View>
+            <Button variant="outline" size="sm" className="mt-4" leftIcon={<Icon icon={Pencil} size={14} color="primary" />} onPress={openEdit}>
+              Edit profile
+            </Button>
           </View>
-          <Button variant="outline" size="sm" className="mt-4" leftIcon={<Icon icon={Pencil} size={14} color="primary" />} onPress={openEdit}>
-            Edit profile
-          </Button>
-        </Card>
+        </LinearGradient>
 
         <View className="mt-6 flex-row gap-3">
           <StatCard label="Sessions" value={stats?.totalSessions ?? 0} icon={<Icon icon={Dumbbell} size={16} color="primary" />} />
@@ -91,21 +95,21 @@ export default function ProfileScreen() {
 
         <Caption className="mt-8 mb-3">Dashboard</Caption>
         <View className="flex-row gap-3">
-          <Pressable onPress={() => router.push('/(app)/(tabs)/progress')} className="flex-1 flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => router.push('/(app)/(tabs)/progress')} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={BarChart3} size={20} color="primary" />
             <Body className="font-medium text-foreground">Statistics</Body>
           </Pressable>
-          <Pressable onPress={() => router.push('/(app)/(tabs)/workouts')} className="flex-1 flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => router.push('/(app)/(tabs)/workouts')} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Dumbbell} size={20} color="primary" />
             <Body className="font-medium text-foreground">Exercises</Body>
           </Pressable>
         </View>
         <View className="mt-3 flex-row gap-3">
-          <Pressable onPress={() => router.push('/(app)/bodyweight' as any)} className="flex-1 flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => router.push('/(app)/bodyweight' as any)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Ruler} size={20} color="primary" />
             <Body className="font-medium text-foreground">Measures</Body>
           </Pressable>
-          <Pressable onPress={() => router.push('/(app)/calendar' as any)} className="flex-1 flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => router.push('/(app)/calendar' as any)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Calendar} size={20} color="primary" />
             <Body className="font-medium text-foreground">Calendar</Body>
           </Pressable>
@@ -113,23 +117,23 @@ export default function ProfileScreen() {
 
         <Caption className="mt-8 mb-3">Settings</Caption>
         <View className="gap-2">
-          <Pressable onPress={() => router.push('/(app)/settings')} className="flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => router.push('/(app)/settings')} className="flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={SettingsIcon} size={20} color="primary" />
             <Body className="flex-1 font-medium text-foreground">Settings</Body>
             <Icon icon={ChevronRight} size={18} color="muted-foreground" />
           </Pressable>
 
-          <Pressable onPress={() => setClearOpen(true)} className="flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => setClearOpen(true)} className="flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Trash2} size={20} color="destructive" />
             <Body className="flex-1 font-medium text-foreground">Clear workout history</Body>
             <Icon icon={ChevronRight} size={18} color="muted-foreground" />
           </Pressable>
 
-          <View className="flex-row items-center gap-3 rounded-2xl bg-card p-4">
+          <View className="flex-row items-center gap-3 rounded-3xl bg-card p-4">
             <Icon icon={Info} size={20} color="muted-foreground" />
             <View className="flex-1">
               <Body className="font-medium text-foreground">About Incline</Body>
-              <Caption>Version 1.0.0 · MVP</Caption>
+              <Caption>Version 1.0.0</Caption>
             </View>
           </View>
         </View>

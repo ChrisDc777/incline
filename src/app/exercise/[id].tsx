@@ -55,7 +55,7 @@ export default function ExerciseDetailScreen() {
   return (
     <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <View className="flex-row items-center gap-3">
-        <View className="h-12 w-12 items-center justify-center rounded-2xl bg-primary/15">
+        <View className="h-12 w-12 items-center justify-center rounded-3xl bg-primary/15">
           <Icon icon={Dumbbell} size={22} color="primary" />
         </View>
         <View className="flex-1">
