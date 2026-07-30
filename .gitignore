@@ -45,3 +45,8 @@ example
 # logs & temp
 *.log
 export.err
+
+install.err
+tsc_baseline.txt
+tsc_err.txt
+tsc_out.txt
