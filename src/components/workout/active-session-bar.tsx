@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppState, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Dumbbell, Trash2 } from 'lucide-react-native';
+import { ChevronUp, Trash2 } from 'lucide-react-native';
 
 import { cn } from '@/lib/cn';
 import { Icon } from '@/components/common/icon';
@@ -9,9 +9,9 @@ import { Text } from '@/components/ui/text';
 import { formatClock } from '@/db/calc';
 
 /**
- * Cross-tab mini bar shown above the tab bar whenever a workout is in progress.
- * Left: dumbbell icon. Center: elapsed time + next exercise. Right: trash icon.
- * Always renders immediately when a session is known to exist (even if still loading full data).
+ * Floating session bar shown above the tab bar when a workout is in progress.
+ * Dark charcoal background, green status dot, chevron left, trash right.
+ * Matches reference app style.
  */
 export function ActiveSessionBar({
   logId,
@@ -31,7 +31,7 @@ export function ActiveSessionBar({
   className?: string;
 }) {
   const router = useRouter();
-  const [elapsed, setElapsed] = useState(() => startedAt ? Math.floor((Date.now() - startedAt) / 1000) : 0);
+  const [elapsed, setElapsed] = useState(() => (startedAt ? Math.floor((Date.now() - startedAt) / 1000) : 0));
 
   useEffect(() => {
     if (!startedAt) return;
@@ -52,30 +52,39 @@ export function ActiveSessionBar({
   const displayName = name ?? 'Workout';
 
   return (
-    <View className={cn('mx-4 mb-2 flex-row items-center rounded-2xl bg-primary shadow-lg', className)}>
+    <View className={cn('mx-4 mb-2 flex-row items-center rounded-2xl bg-[#1c1c1e] px-2 py-2 shadow-lg', className)}>
       <Pressable
-        className="flex-1 flex-row items-center gap-3 p-3"
         onPress={() => router.push(`/session/${logId}`)}
-        android_ripple={{ color: 'rgba(255,255,255,0.15)' }}>
-        <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary-foreground/20">
-          <Icon icon={Dumbbell} size={18} color="primary-foreground" />
-        </View>
+        accessibilityRole="button"
+        accessibilityLabel="Open workout"
+        className="h-10 w-10 items-center justify-center rounded-xl"
+        android_ripple={{ color: 'rgba(255,255,255,0.08)' }}>
+        <Icon icon={ChevronUp} size={22} color="white" />
+      </Pressable>
+
+      <Pressable
+        onPress={() => router.push(`/session/${logId}`)}
+        className="flex-1 flex-row items-center gap-2.5 px-1"
+        android_ripple={{ color: 'rgba(255,255,255,0.08)' }}>
+        <View className="h-2.5 w-2.5 rounded-full bg-success" />
         <View className="flex-1">
-          <Text className="text-sm font-semibold text-primary-foreground">
-            {startedAt ? formatClock(elapsed) : displayName}
+          <Text className="text-sm font-semibold text-white">
+            {displayName} {startedAt ? formatClock(elapsed) : ''}
           </Text>
           {nextExercise ? (
-            <Text className="text-xs text-primary-foreground/70" numberOfLines={1}>{nextExercise}</Text>
+            <Text className="text-xs text-gray-400" numberOfLines={1}>{nextExercise}</Text>
           ) : null}
         </View>
       </Pressable>
+
       {onDiscard ? (
         <Pressable
           onPress={onDiscard}
           accessibilityRole="button"
           accessibilityLabel="Discard workout"
-          className="h-11 w-11 items-center justify-center rounded-xl bg-primary-foreground/10 mr-1.5">
-          <Icon icon={Trash2} size={18} color="primary-foreground" />
+          className="h-10 w-10 items-center justify-center rounded-xl"
+          android_ripple={{ color: 'rgba(255,255,255,0.08)' }}>
+          <Icon icon={Trash2} size={20} color="#ff3b30" />
         </Pressable>
       ) : null}
     </View>

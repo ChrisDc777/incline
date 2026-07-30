@@ -56,7 +56,7 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
   };
 
   return (
-    <View className="border-t border-border bg-background">
+    <View className="border-t border-[#2c2c2e] bg-[#1c1c1e]">
       {session ? (
         <ActiveSessionBar logId={session.id} name={session.name} startedAt={session.startedAt} nextExercise={nextExercise} refetch={refetch} onDiscard={() => setDiscardOpen(true)} />
       ) : null}
@@ -78,8 +78,8 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
               accessibilityState={{ selected: focused }}
               accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
               className="flex-1 items-center py-1.5">
-              <Icon icon={TabIcon} size={22} color={focused ? 'primary' : 'muted-foreground'} />
-              <Text className={cn('mt-1 text-[10px]', focused ? 'font-semibold text-primary' : 'text-muted-foreground')}>
+              <Icon icon={TabIcon} size={22} color={focused ? '#0a84ff' : '#8e8e93'} />
+              <Text className={cn('mt-1 text-[10px]', focused ? 'font-semibold text-[#0a84ff]' : 'text-[#8e8e93]')}>
                 {label}
               </Text>
             </Pressable>

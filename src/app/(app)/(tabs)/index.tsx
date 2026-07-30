@@ -50,6 +50,7 @@ export default function HomeScreen() {
     impact();
     try {
       const logId = await startWorkout(templateId, name);
+      useActiveWorkout.getState().setActive(logId);
       router.push(`/session/${logId}`);
     } catch {
       toast({ title: 'Could not start workout', variant: 'destructive' });

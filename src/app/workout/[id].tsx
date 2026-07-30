@@ -44,6 +44,7 @@ export default function WorkoutPreviewScreen() {
     impact();
     try {
       const logId = await startWorkout(template.id, template.name);
+      useActiveWorkout.getState().setActive(logId);
       router.replace(`/session/${logId}`);
     } catch {
       toast({ title: 'Could not start workout', variant: 'destructive' });
