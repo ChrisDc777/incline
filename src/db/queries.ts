@@ -7,6 +7,7 @@ import type {
   Equipment,
   Exercise,
   ExerciseHistoryRow,
+  ExperienceLevel,
   Goal,
   MovementPattern,
   MuscleDistribution,
@@ -35,6 +36,8 @@ interface ExerciseRow {
   equipment: string;
   category: string;
   is_compound: number;
+  is_custom: number;
+  default_rest_seconds: number;
   tips: string;
   created_at: number;
   updated_at: number;
@@ -89,7 +92,7 @@ interface SetRow {
   rest_seconds: number | null;
   created_at: number;
 }
-interface ProfileRow { id: number; name: string; goal: string; bodyweight: number | null; unit: string; onboarding_completed: number; updated_at: number }
+interface ProfileRow { id: number; name: string; goal: string; bodyweight: number | null; unit: string; experience_level: string; onboarding_completed: number; updated_at: number }
 
 /* ------------------------------- session types ------------------------------- */
 export interface SessionSet extends SetEntry {
@@ -116,6 +119,8 @@ async function mapExercise(db: DB, row: ExerciseRow): Promise<Exercise> {
     equipment: row.equipment as Equipment,
     category: row.category as Category,
     isCompound: !!row.is_compound,
+    isCustom: !!row.is_custom,
+    defaultRestSeconds: row.default_rest_seconds,
     instructions,
     tips: row.tips,
     createdAt: row.created_at,
@@ -161,6 +166,7 @@ function mapProfile(r: ProfileRow): UserProfile {
     goal: r.goal as Goal,
     bodyweight: r.bodyweight,
     unit: r.unit as Unit,
+    experienceLevel: (r.experience_level as ExperienceLevel) ?? 'intermediate',
     onboardingCompleted: !!r.onboarding_completed,
     updatedAt: r.updated_at,
   };
@@ -268,6 +274,50 @@ export async function searchExercises(query: string, filters?: ExerciseFilters):
   }
   hits.sort((a, b) => b.score - a.score || a.exercise.name.localeCompare(b.exercise.name));
   return hits;
+}
+
+/* ------------------------------- custom exercises ------------------------------- */
+export interface CreateCustomExerciseInput {
+  name: string;
+  primaryMuscle: MuscleGroup;
+  secondaryMuscles?: MuscleGroup[];
+  movementPattern: MovementPattern;
+  equipment: Equipment;
+  category: Category;
+  isCompound?: boolean;
+  instructions?: string[];
+  tips?: string;
+  aliases?: string[];
+}
+
+export async function createCustomExercise(input: CreateCustomExerciseInput): Promise<number> {
+  const db = await openDatabase();
+  const now = Date.now();
+  const res = await db.runAsync(
+    `INSERT INTO exercises (name, primary_muscle, movement_pattern, equipment, category, is_compound, is_custom, tips, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+    input.name, input.primaryMuscle, input.movementPattern, input.equipment, input.category, input.isCompound ? 1 : 0, input.tips ?? '', now, now,
+  );
+  const id = res.lastInsertRowId as number;
+  for (const alias of (input.aliases ?? [])) {
+    await db.runAsync(`INSERT INTO exercise_aliases (exercise_id, alias) VALUES (?, ?)`, id, alias.toLowerCase());
+  }
+  for (const muscle of (input.secondaryMuscles ?? [])) {
+    await db.runAsync(`INSERT INTO exercise_secondary_muscles (exercise_id, muscle) VALUES (?, ?)`, id, muscle);
+  }
+  for (let i = 0; i < (input.instructions ?? []).length; i++) {
+    await db.runAsync(`INSERT INTO exercise_instructions (exercise_id, step, text) VALUES (?, ?, ?)`, id, i + 1, input.instructions![i]);
+  }
+  return id;
+}
+
+export async function deleteCustomExercise(id: number): Promise<void> {
+  const db = await openDatabase();
+  await db.runAsync('DELETE FROM exercises WHERE id = ? AND is_custom = 1', id);
+}
+
+export async function updateExerciseDefaultRest(exerciseId: number, seconds: number): Promise<void> {
+  const db = await openDatabase();
+  await db.runAsync('UPDATE exercises SET default_rest_seconds = ?, updated_at = ? WHERE id = ?', seconds, Date.now(), exerciseId);
 }
 
 /* ------------------------------- templates ------------------------------- */
@@ -691,13 +741,13 @@ export async function getProfile(): Promise<UserProfile> {
   const db = await openDatabase();
   const row = await db.getFirstAsync<ProfileRow>('SELECT * FROM user_profile WHERE id = 1');
   if (!row) {
-    await db.runAsync(`INSERT INTO user_profile (id, name, goal, bodyweight, unit, onboarding_completed, updated_at) VALUES (1, '', 'build_muscle', NULL, 'metric', 0, ?)`, Date.now());
-    return { id: 1, name: '', goal: 'build_muscle', bodyweight: null, unit: 'metric', onboardingCompleted: false, updatedAt: Date.now() };
+    await db.runAsync(`INSERT INTO user_profile (id, name, goal, bodyweight, unit, experience_level, onboarding_completed, updated_at) VALUES (1, '', 'build_muscle', NULL, 'metric', 'intermediate', 0, ?)`, Date.now());
+    return { id: 1, name: '', goal: 'build_muscle', bodyweight: null, unit: 'metric', experienceLevel: 'intermediate', onboardingCompleted: false, updatedAt: Date.now() };
   }
   return mapProfile(row);
 }
 
-export async function saveProfile(patch: Partial<Pick<UserProfile, 'name' | 'goal' | 'bodyweight' | 'unit'>>): Promise<void> {
+export async function saveProfile(patch: Partial<Pick<UserProfile, 'name' | 'goal' | 'bodyweight' | 'unit' | 'experienceLevel'>>): Promise<void> {
   const db = await openDatabase();
   const sets: string[] = [];
   const args: (string | number | null)[] = [];
@@ -705,6 +755,7 @@ export async function saveProfile(patch: Partial<Pick<UserProfile, 'name' | 'goa
   if (patch.goal !== undefined) { sets.push('goal = ?'); args.push(patch.goal); }
   if (patch.bodyweight !== undefined) { sets.push('bodyweight = ?'); args.push(patch.bodyweight); }
   if (patch.unit !== undefined) { sets.push('unit = ?'); args.push(patch.unit); }
+  if (patch.experienceLevel !== undefined) { sets.push('experience_level = ?'); args.push(patch.experienceLevel); }
   if (sets.length === 0) return;
   sets.push('updated_at = ?');
   args.push(Date.now());
@@ -712,8 +763,8 @@ export async function saveProfile(patch: Partial<Pick<UserProfile, 'name' | 'goa
   await db.runAsync(`UPDATE user_profile SET ${sets.join(', ')} WHERE id = ?`, ...args);
 }
 
-export async function completeOnboarding(patch: { name: string; goal: Goal; unit: Unit }): Promise<void> {
-  await saveProfile({ name: patch.name, goal: patch.goal, unit: patch.unit });
+export async function completeOnboarding(patch: { name: string; goal: Goal; unit: Unit; experienceLevel?: ExperienceLevel; bodyweight?: number }): Promise<void> {
+  await saveProfile({ name: patch.name, goal: patch.goal, unit: patch.unit, experienceLevel: patch.experienceLevel, bodyweight: patch.bodyweight });
   const db = await openDatabase();
   await db.runAsync('UPDATE user_profile SET onboarding_completed = 1, updated_at = ? WHERE id = 1', Date.now());
 }

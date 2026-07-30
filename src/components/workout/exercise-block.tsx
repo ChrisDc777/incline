@@ -15,6 +15,7 @@ import { Plus, Clock } from 'lucide-react-native';
  */
 export function ExerciseBlock({
   name,
+  exerciseId,
   sets,
   unit,
   lastSets,
@@ -28,6 +29,7 @@ export function ExerciseBlock({
   className,
 }: {
   name: string;
+  exerciseId: number;
   sets: SetEntry[];
   unit: Unit;
   lastSets: SetEntry[];
@@ -96,6 +98,7 @@ export function ExerciseBlock({
         open={restPickerOpen}
         onOpenChange={setRestPickerOpen}
         currentValue={restSeconds}
+        exerciseId={exerciseId}
         onSelect={onChangeRestSeconds}
       />
     </View>

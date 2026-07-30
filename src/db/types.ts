@@ -38,6 +38,7 @@ export type Goal = 'build_muscle' | 'gain_strength' | 'lose_fat' | 'improve_endu
 export type Unit = 'metric' | 'imperial';
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
+export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 
 export interface Exercise {
   id: number;
@@ -49,6 +50,8 @@ export interface Exercise {
   equipment: Equipment;
   category: Category;
   isCompound: boolean;
+  isCustom: boolean;
+  defaultRestSeconds: number;
   instructions: string[];
   tips: string;
   createdAt: number;
@@ -140,6 +143,7 @@ export interface UserProfile {
   goal: Goal;
   bodyweight: number | null;
   unit: Unit;
+  experienceLevel: ExperienceLevel;
   onboardingCompleted: boolean;
   updatedAt: number;
 }

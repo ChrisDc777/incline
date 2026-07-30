@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, MessageSquarePlus, Plus, X } from 'lucide-react-native';
+import { Check, MessageSquarePlus, Pause, Play, Plus, Undo2, X } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Body, Caption } from '@/components/common/text';
+import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
+import { Sheet } from '@/components/ui/sheet';
 import { ExerciseBlock } from '@/components/workout/exercise-block';
 import { ExercisePickerSheet } from '@/components/workout/exercise-picker-sheet';
 import { RestTimer } from '@/components/workout/rest-timer';
@@ -29,6 +31,7 @@ import {
   updateWorkoutNotes,
   type SessionWorkout,
 } from '@/db/queries';
+import { openDatabase } from '@/db/client';
 import { formatClock, formatVolume } from '@/db/calc';
 import type { Exercise, SetEntry } from '@/db/types';
 
@@ -43,7 +46,7 @@ export default function SessionScreen() {
   const logId = Number(id);
   const router = useRouter();
   const { toast } = useToast();
-  const { notify, impact } = useHaptics();
+  const { impact } = useHaptics();
   const clear = useActiveWorkout((s) => s.clear);
   const { unit } = useSettings();
   const rest = useRestTimer();
@@ -65,6 +68,12 @@ export default function SessionScreen() {
   const [notes, setNotes] = useState('');
   const [notesOpen, setNotesOpen] = useState(false);
   const notesRef = useRef<TextInput>(null);
+  const [removedSet, setRemovedSet] = useState<{ setEntry: SetEntry; exerciseId: number; logId: number } | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pausedAt, setPausedAt] = useState<number | null>(null);
+  const [totalPausedMs, setTotalPausedMs] = useState(0);
+  const [timerSheetOpen, setTimerSheetOpen] = useState(false);
+  const pausedAtRef = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     const s = await getWorkoutLog(logId);
@@ -85,15 +94,42 @@ export default function SessionScreen() {
 
   useEffect(() => {
     if (!session) return;
-    const tick = () => setElapsed(Math.floor((Date.now() - session.startedAt) / 1000));
+    const tick = () => {
+      const now = Date.now();
+      const pauseEnd = pausedAtRef.current ?? 0;
+      setElapsed(Math.floor((now - session.startedAt - totalPausedMs - (pauseEnd ? now - pauseEnd : 0)) / 1000));
+    };
     tick();
     const iv = setInterval(tick, 1000);
     return () => clearInterval(iv);
-  }, [session]);
+  }, [session, totalPausedMs]);
 
   useEffect(() => {
     if (session?.isComplete) router.replace(`/summary/${session.id}`);
   }, [session?.isComplete, router]);
+
+  // Cleanup undo timer on unmount
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    };
+  }, []);
+
+  const onPause = () => {
+    const now = Date.now();
+    setPausedAt(now);
+    pausedAtRef.current = now;
+    impact();
+  };
+
+  const onResume = () => {
+    if (pausedAt) {
+      setTotalPausedMs((prev) => prev + (Date.now() - pausedAt));
+      setPausedAt(null);
+      pausedAtRef.current = null;
+      impact();
+    }
+  };
 
   const groups: Group[] = [];
   for (const s of session?.sets ?? []) {
@@ -122,7 +158,31 @@ export default function SessionScreen() {
       if (exRest > 0) rest.start(exRest);
     }
   };
-  const onRemoveSet = async (setId: number) => { await removeSet(setId); reload(); };
+  const onRemoveSet = async (setId: number) => {
+    const target = session?.sets.find((s) => s.id === setId);
+    if (!target) return;
+    // Save the removed set for undo
+    setRemovedSet({ setEntry: target, exerciseId: target.exerciseId, logId });
+    // Clear any existing undo timer
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    // Auto-dismiss after 5 seconds
+    undoTimerRef.current = setTimeout(() => setRemovedSet(null), 5000);
+    await removeSet(setId);
+    reload();
+  };
+  const onUndoRemove = async () => {
+    if (!removedSet) return;
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    const { setEntry, logId: lid } = removedSet;
+    const db = await openDatabase();
+    // Re-insert the set with its original values
+    await db.runAsync(
+      `INSERT INTO set_entries (workout_log_id, exercise_id, set_index, weight, reps, completed, rest_seconds, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      lid, setEntry.exerciseId, setEntry.setIndex, setEntry.weight, setEntry.reps, setEntry.completed ? 1 : 0, setEntry.restSeconds, setEntry.createdAt,
+    );
+    setRemovedSet(null);
+    reload();
+  };
   const onAddSet = async (exerciseId: number) => { impact(); await addSet(logId, exerciseId); reload(); };
   const onPickExercise = async (ex: Exercise) => {
     impact();
@@ -134,6 +194,16 @@ export default function SessionScreen() {
   const finish = async () => {
     setFinishOpen(false);
     if (notes.trim()) await updateWorkoutNotes(logId, notes.trim());
+    // If paused, account for the paused time in duration
+    const pauseBonus = pausedAt ? Date.now() - pausedAt : 0;
+    if (totalPausedMs > 0 || pauseBonus > 0) {
+      const db = await openDatabase();
+      const log = await db.getFirstAsync<{ started_at: number }>('SELECT started_at FROM workout_logs WHERE id = ?', logId);
+      if (log) {
+        const realDuration = Math.max(0, Date.now() - log.started_at - totalPausedMs - pauseBonus);
+        await db.runAsync('UPDATE workout_logs SET duration_seconds = ? WHERE id = ?', Math.floor(realDuration / 1000), logId);
+      }
+    }
     await finishWorkout(logId);
     clear();
     toast({ title: 'Workout saved', description: 'Great session — check your progress.', variant: 'success' });
@@ -182,10 +252,17 @@ export default function SessionScreen() {
       </View>
 
       <View className="flex-row items-center justify-between px-5 py-3">
-        <View className="flex-1 items-center">
+        <Pressable
+          onPress={() => setTimerSheetOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Workout timer"
+          className="flex-1 items-center">
           <Caption>Duration</Caption>
           <Body className="mt-0.5 font-semibold text-primary">{formatClock(elapsed)}</Body>
-        </View>
+          {pausedAt ? (
+            <Caption className="mt-0.5 text-amber-500">Paused</Caption>
+          ) : null}
+        </Pressable>
         <View className="flex-1 items-center">
           <Caption>Volume</Caption>
           <Body className="mt-0.5 font-semibold text-foreground">{formatVolume(totalVolume, unit)}</Body>
@@ -238,6 +315,7 @@ export default function SessionScreen() {
                 {i > 0 && <View className="mb-5 h-px bg-border/40" />}
                 <ExerciseBlock
                   name={g.exerciseName}
+                  exerciseId={g.exerciseId}
                   sets={g.sets}
                   unit={session.unit}
                   lastSets={lastSetsMap[g.exerciseId] ?? []}
@@ -254,6 +332,22 @@ export default function SessionScreen() {
           </View>
         )}
       </ScrollView>
+
+      {removedSet ? (
+        <View className="absolute inset-x-0 bottom-20 z-30 px-4">
+          <View className="flex-row items-center justify-between rounded-xl bg-card px-4 py-3 border border-border shadow-lg">
+            <Body className="text-sm text-foreground">Set removed</Body>
+            <Pressable
+              onPress={onUndoRemove}
+              accessibilityRole="button"
+              accessibilityLabel="Undo remove set"
+              className="flex-row items-center gap-1.5 rounded-lg bg-primary px-3 py-2">
+              <Icon icon={Undo2} size={14} color="primary-foreground" />
+              <Text className="text-sm font-semibold text-primary-foreground">Undo</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
 
       {rest.running || rest.remaining > 0 ? (
         <RestTimer
@@ -290,6 +384,39 @@ export default function SessionScreen() {
           </>
         }
       />
+
+      <Sheet open={timerSheetOpen} onOpenChange={setTimerSheetOpen} title="Workout Timer">
+        <View className="items-center gap-4 py-4">
+          <Body className="text-sm text-muted-foreground">Elapsed time</Body>
+          <Body className="text-5xl font-bold tracking-tight text-foreground">{formatClock(elapsed)}</Body>
+          {pausedAt ? (
+            <Caption className="text-amber-500">Timer paused</Caption>
+          ) : null}
+          <View className="mt-2 flex-row gap-3">
+            {pausedAt ? (
+              <Button
+                size="lg"
+                leftIcon={<Icon icon={Play} size={18} color="success-foreground" />}
+                variant="success"
+                onPress={onResume}>
+                Resume
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                leftIcon={<Icon icon={Pause} size={18} color="primary-foreground" />}
+                onPress={onPause}>
+                Pause
+              </Button>
+            )}
+          </View>
+          <Caption className="mt-2 text-center">
+            {pausedAt
+              ? 'Timer is paused. Resume when you are ready to continue.'
+              : 'Tap pause if you need to take a break. The timer will stop counting.'}
+          </Caption>
+        </View>
+      </Sheet>
     </SafeAreaView>
   );
 }

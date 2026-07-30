@@ -7,11 +7,13 @@ export function Chip({
   label,
   selected,
   onPress,
+  size = 'md',
   className,
 }: {
   label: string;
   selected?: boolean;
   onPress?: () => void;
+  size?: 'sm' | 'md';
   className?: string;
 }) {
   return (
@@ -20,11 +22,12 @@ export function Chip({
       accessibilityRole="button"
       accessibilityState={{ selected: !!selected }}
       className={cn(
-        'rounded-full border px-3.5 py-1.5',
+        'rounded-full border',
+        size === 'sm' ? 'px-2.5 py-1' : 'px-3.5 py-1.5',
         selected ? 'border-primary bg-primary' : 'border-border bg-transparent',
         className,
       )}>
-      <Text className={cn('text-sm font-medium', selected ? 'text-primary-foreground' : 'text-muted-foreground')}>
+      <Text className={cn('font-medium', size === 'sm' ? 'text-xs' : 'text-sm', selected ? 'text-primary-foreground' : 'text-muted-foreground')}>
         {label}
       </Text>
     </Pressable>

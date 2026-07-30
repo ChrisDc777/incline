@@ -32,7 +32,18 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
     );
     const current = meta ? Number(meta.value) : 0;
     if (current < SCHEMA_VERSION) {
-      // Placeholder for incremental migrations (see ROADMAP.md).
+      // v1 → v2: add is_custom column to exercises
+      if (current < 2) {
+        try {
+          await database.execAsync('ALTER TABLE exercises ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0');
+        } catch { /* column may already exist */ }
+        try {
+          await database.execAsync('ALTER TABLE exercises ADD COLUMN default_rest_seconds INTEGER NOT NULL DEFAULT 90');
+        } catch { /* column may already exist */ }
+        try {
+          await database.execAsync('ALTER TABLE user_profile ADD COLUMN experience_level TEXT NOT NULL DEFAULT \'intermediate\'');
+        } catch { /* column may already exist */ }
+      }
       await database.runAsync(
         "INSERT INTO schema_meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         String(SCHEMA_VERSION),
