@@ -50,6 +50,8 @@ type ButtonProps = PressableProps &
     textClass?: string;
   };
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function Button({
   className,
   variant,
@@ -68,31 +70,30 @@ export function Button({
   }));
 
   const onPressIn = useCallback(() => {
-    scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-  }, []);
+    scale.value = withSpring(0.97, { damping: 15, stiffness: 400 });
+  }, [scale]);
 
   const onPressOut = useCallback(() => {
     scale.value = withSpring(1, { damping: 15, stiffness: 400 });
-  }, []);
+  }, [scale]);
 
   return (
-    <Animated.View style={animatedStyle}>
-      <Pressable
-        className={cn(buttonVariants({ variant, size }), disabled && 'opacity-50', className)}
-        disabled={disabled}
-        accessibilityRole="button"
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        {...props}>
-        {leftIcon}
-        {typeof children === 'string' ? (
-          <Text className={cn(buttonTextVariants({ variant, size }), textClass)}>{children}</Text>
-        ) : (
-          children
-        )}
-        {rightIcon}
-      </Pressable>
-    </Animated.View>
+    <AnimatedPressable
+      style={animatedStyle}
+      className={cn(buttonVariants({ variant, size }), disabled && 'opacity-50', className)}
+      disabled={disabled}
+      accessibilityRole="button"
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      {...props}>
+      {leftIcon}
+      {typeof children === 'string' ? (
+        <Text className={cn(buttonTextVariants({ variant, size }), textClass)}>{children}</Text>
+      ) : (
+        children
+      )}
+      {rightIcon}
+    </AnimatedPressable>
   );
 }
 

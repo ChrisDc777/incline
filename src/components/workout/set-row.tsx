@@ -1,6 +1,4 @@
-import { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
 import { cn } from '@/lib/cn';
 import { Text } from '@/components/ui/text';
@@ -36,35 +34,9 @@ export function SetRow({
   onToggleComplete: () => void;
   onRemove?: () => void;
 }) {
-  const scale = useSharedValue(1);
-  const checkScale = useSharedValue(completed ? 1 : 0);
-
-  useEffect(() => {
-    if (completed) {
-      // Bounce the row
-      scale.value = withSpring(1.03, { damping: 8, stiffness: 300 }, () => {
-        scale.value = withSpring(1, { damping: 12, stiffness: 200 });
-      });
-      // Pop the checkmark
-      checkScale.value = withSpring(1, { damping: 10, stiffness: 300 });
-    } else {
-      checkScale.value = withSpring(0, { damping: 15, stiffness: 200 });
-    }
-  }, [completed]);
-
-  const rowStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const checkStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: checkScale.value }],
-    opacity: checkScale.value,
-  }));
-
   const hasPrevious = previousWeight !== undefined && previousWeight > 0;
   return (
-    <Animated.View
-      style={rowStyle}
+    <View
       className={cn(
         'flex-row items-center gap-1 rounded-xl px-1 py-1.5',
         completed && 'bg-success/8',
@@ -98,9 +70,7 @@ export function SetRow({
           'h-12 w-12 items-center justify-center rounded-full',
           completed ? 'bg-success' : 'border-2 border-border',
         )}>
-        <Animated.View style={checkStyle}>
-          <Icon icon={Check} size={20} color="success-foreground" />
-        </Animated.View>
+        <Icon icon={Check} size={20} color="success-foreground" />
       </Pressable>
 
       {onRemove ? (
@@ -113,6 +83,6 @@ export function SetRow({
           <Icon icon={X} size={16} color="muted-foreground" />
         </Pressable>
       ) : null}
-    </Animated.View>
+    </View>
   );
 }
