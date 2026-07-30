@@ -67,7 +67,7 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
 
 /** Palette used by charts, cycling by index. */
 export const CHART_PALETTE = [
-  '#25ca62',
+  '#16a34a',
   '#3b82f6',
   '#f59e0b',
   '#a855f7',

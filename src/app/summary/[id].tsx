@@ -127,7 +127,7 @@ export default function SummaryScreen() {
   if (loading)
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background" edges={['bottom']}>
-        <ActivityIndicator color="#25ca62" />
+        <ActivityIndicator color="#16a34a" />
       </SafeAreaView>
     );
   if (!log) {

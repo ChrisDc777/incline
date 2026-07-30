@@ -45,7 +45,7 @@ function MiniChart({ data, unit }: { data: Entry[]; unit: string }) {
                 style={{
                   width: barWidth,
                   height,
-                  backgroundColor: isLast ? '#25ca62' : '#25ca6250',
+                  backgroundColor: isLast ? '#16a34a' : '#16a34a50',
                   borderRadius: barWidth / 2,
                 }}
               />
@@ -109,7 +109,7 @@ export default function BodyweightScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <View className="flex-row items-center justify-between">
           <Heading>Bodyweight</Heading>

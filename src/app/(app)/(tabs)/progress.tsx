@@ -112,7 +112,7 @@ export default function ProgressScreen() {
         }
         ListFooterComponent={
           history.loading && history.items.length > 0 ? (
-            <View className="py-4"><ActivityIndicator color="#25ca62" /></View>
+            <View className="py-4"><ActivityIndicator color="#16a34a" /></View>
           ) : null
         }
       />

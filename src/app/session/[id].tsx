@@ -149,7 +149,7 @@ export default function SessionScreen() {
   if (loading)
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#25ca62" />
+        <ActivityIndicator color="#16a34a" />
       </SafeAreaView>
     );
   if (!session) {

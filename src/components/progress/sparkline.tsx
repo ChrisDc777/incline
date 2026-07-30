@@ -8,7 +8,7 @@ export function Sparkline({
   points,
   width = 120,
   height = 40,
-  color = '#25ca62',
+  color = '#16a34a',
 }: {
   points: number[];
   width?: number;

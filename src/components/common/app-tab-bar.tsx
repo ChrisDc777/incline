@@ -78,8 +78,8 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
               accessibilityState={{ selected: focused }}
               accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
               className="flex-1 items-center py-1.5">
-              <Icon icon={TabIcon} size={22} color={focused ? '#25ca62' : '#8e8e93'} />
-              <Text className={cn('mt-1 text-[10px]', focused ? 'font-semibold text-[#25ca62]' : 'text-[#8e8e93]')}>
+              <Icon icon={TabIcon} size={22} color={focused ? '#16a34a' : '#8e8e93'} />
+              <Text className={cn('mt-1 text-[10px]', focused ? 'font-semibold text-[#16a34a]' : 'text-[#8e8e93]')}>
                 {label}
               </Text>
             </Pressable>

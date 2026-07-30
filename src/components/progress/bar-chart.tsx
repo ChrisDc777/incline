@@ -10,7 +10,7 @@ import { Text } from '@/components/ui/text';
 export function BarChart({
   data,
   height = 160,
-  color = '#25ca62',
+  color = '#16a34a',
   formatValue,
 }: {
   data: { label: string; value: number }[];
