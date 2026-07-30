@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { useAsync } from './use-async';
 import { getActiveWorkout } from '@/db/queries';
@@ -20,5 +20,12 @@ export function useActiveSession() {
     else if (!loading) clear();
   }, [data, loading, setActive, clear]);
 
-  return { session: data, loading, error, refetch };
+  const nextExercise = useMemo(() => {
+    if (!data?.sets) return undefined;
+    const incomplete = data.sets.filter((s) => !s.completed);
+    if (incomplete.length === 0) return undefined;
+    return incomplete[0].exerciseName;
+  }, [data]);
+
+  return { session: data, loading, error, refetch, nextExercise };
 }

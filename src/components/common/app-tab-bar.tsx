@@ -43,7 +43,7 @@ interface TabBarProps {
  */
 export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
-  const { session, refetch } = useActiveSession();
+  const { session, refetch, nextExercise } = useActiveSession();
   const clear = useActiveWorkout((s) => s.clear);
   const [discardOpen, setDiscardOpen] = useState(false);
 
@@ -58,7 +58,7 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
   return (
     <View className="border-t border-border bg-background">
       {session ? (
-        <ActiveSessionBar logId={session.id} name={session.name} startedAt={session.startedAt} refetch={refetch} onDiscard={() => setDiscardOpen(true)} />
+        <ActiveSessionBar logId={session.id} name={session.name} startedAt={session.startedAt} nextExercise={nextExercise} refetch={refetch} onDiscard={() => setDiscardOpen(true)} />
       ) : null}
       <View className="flex-row" style={{ paddingBottom: insets.bottom, paddingTop: 6, height: 52 + insets.bottom }}>
         {state.routes.map((route, i) => {

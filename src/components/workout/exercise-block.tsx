@@ -1,21 +1,25 @@
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { cn } from '@/lib/cn';
 import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
 import { SetRow } from './set-row';
+import { RestTimerPickerSheet } from './rest-timer-picker-sheet';
 import type { SetEntry, Unit } from '@/db/types';
-import { Plus } from 'lucide-react-native';
+import { Plus, Clock } from 'lucide-react-native';
 
 /**
- * One exercise within an active session: header (name + carry-over hint) and
- * its set rows, plus an "Add set" action that copies the last set's values.
+ * One exercise within an active session: header (name + rest timer config) and
+ * its set rows, plus an "Add set" action.
  */
 export function ExerciseBlock({
   name,
   sets,
   unit,
   lastSets,
+  restSeconds,
+  onChangeRestSeconds,
   onChangeWeight,
   onChangeReps,
   onToggleComplete,
@@ -27,6 +31,8 @@ export function ExerciseBlock({
   sets: SetEntry[];
   unit: Unit;
   lastSets: SetEntry[];
+  restSeconds: number;
+  onChangeRestSeconds: (seconds: number) => void;
   onChangeWeight: (setId: number, v: number) => void;
   onChangeReps: (setId: number, v: number) => void;
   onToggleComplete: (setId: number) => void;
@@ -34,14 +40,28 @@ export function ExerciseBlock({
   onAddSet: () => void;
   className?: string;
 }) {
+  const [restPickerOpen, setRestPickerOpen] = useState(false);
   const completedCount = sets.filter((s) => s.completed).length;
+
   return (
     <View className={cn('gap-2', className)}>
       <View className="flex-row items-center justify-between px-1">
         <Text className="text-base font-semibold text-foreground">{name}</Text>
-        <Text className="text-xs text-muted-foreground">
-          {completedCount}/{sets.length}
-        </Text>
+        <View className="flex-row items-center gap-3">
+          <Text className="text-xs text-muted-foreground">
+            {completedCount}/{sets.length}
+          </Text>
+          <Pressable
+            onPress={() => setRestPickerOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Rest timer: ${restSeconds > 0 ? restSeconds + 's' : 'off'}`}
+            className="flex-row items-center gap-1">
+            <Icon icon={Clock} size={13} color={restSeconds > 0 ? 'primary' : 'muted-foreground'} />
+            <Text className={cn('text-xs', restSeconds > 0 ? 'font-medium text-primary' : 'text-muted-foreground')}>
+              {restSeconds > 0 ? `${restSeconds}s` : 'Off'}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <View className="gap-1">
@@ -71,6 +91,13 @@ export function ExerciseBlock({
         <Icon icon={Plus} size={15} color="primary" />
         <Text className="text-sm font-medium text-primary">Add set</Text>
       </Pressable>
+
+      <RestTimerPickerSheet
+        open={restPickerOpen}
+        onOpenChange={setRestPickerOpen}
+        currentValue={restSeconds}
+        onSelect={onChangeRestSeconds}
+      />
     </View>
   );
 }

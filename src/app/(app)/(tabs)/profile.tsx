@@ -2,7 +2,7 @@
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Settings as SettingsIcon, Pencil, ChevronRight, Trash2, Info, Dumbbell, Flame, Layers } from 'lucide-react-native';
+import { Settings as SettingsIcon, Pencil, ChevronRight, Trash2, Info, Dumbbell, Flame, Layers, BarChart3, Ruler, Calendar, Target } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
@@ -10,7 +10,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { Chip } from '@/components/common/chip';
 import { StatCard } from '@/components/common/stat-card';
 import { InitialsAvatar } from '@/components/common/initials-avatar';
@@ -90,7 +89,30 @@ export default function ProfileScreen() {
           <StatCard label="Streak" value={`${stats?.streak ?? 0}w`} icon={<Icon icon={Flame} size={16} color="warning" />} />
         </View>
 
-        <View className="mt-6 gap-2">
+        <Caption className="mt-8 mb-3">Dashboard</Caption>
+        <View className="flex-row gap-3">
+          <Pressable className="flex-1 flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={BarChart3} size={20} color="primary" />
+            <Body className="font-medium text-foreground">Statistics</Body>
+          </Pressable>
+          <Pressable className="flex-1 flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={Dumbbell} size={20} color="primary" />
+            <Body className="font-medium text-foreground">Exercises</Body>
+          </Pressable>
+        </View>
+        <View className="mt-3 flex-row gap-3">
+          <Pressable className="flex-1 flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={Ruler} size={20} color="primary" />
+            <Body className="font-medium text-foreground">Measures</Body>
+          </Pressable>
+          <Pressable className="flex-1 flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={Calendar} size={20} color="primary" />
+            <Body className="font-medium text-foreground">Calendar</Body>
+          </Pressable>
+        </View>
+
+        <Caption className="mt-8 mb-3">Settings</Caption>
+        <View className="gap-2">
           <Pressable onPress={() => router.push('/(app)/settings')} className="flex-row items-center gap-3 rounded-2xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={SettingsIcon} size={20} color="primary" />
             <Body className="flex-1 font-medium text-foreground">Settings</Body>

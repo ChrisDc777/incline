@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppState, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Dumbbell, ChevronRight, Trash2 } from 'lucide-react-native';
+import { Dumbbell, Trash2 } from 'lucide-react-native';
 
 import { cn } from '@/lib/cn';
 import { Icon } from '@/components/common/icon';
@@ -10,12 +10,13 @@ import { formatClock } from '@/db/calc';
 
 /**
  * Cross-tab mini bar shown above the tab bar whenever a workout is in progress.
- * Tapping the main area resumes the active session. Trash icon discards it.
+ * Left: dumbbell icon. Center: elapsed time + next exercise. Right: trash icon.
  */
 export function ActiveSessionBar({
   logId,
   name,
   startedAt,
+  nextExercise,
   refetch,
   onDiscard,
   className,
@@ -23,6 +24,7 @@ export function ActiveSessionBar({
   logId: number;
   name: string;
   startedAt: number;
+  nextExercise?: string;
   refetch?: () => void;
   onDiscard?: () => void;
   className?: string;
@@ -55,10 +57,11 @@ export function ActiveSessionBar({
           <Icon icon={Dumbbell} size={18} color="primary-foreground" />
         </View>
         <View className="flex-1">
-          <Text className="text-sm font-semibold text-primary-foreground">{name}</Text>
-          <Text className="text-xs text-primary-foreground/80">In progress · {formatClock(elapsed)}</Text>
+          <Text className="text-sm font-semibold text-primary-foreground">{formatClock(elapsed)}</Text>
+          {nextExercise ? (
+            <Text className="text-xs text-primary-foreground/70" numberOfLines={1}>{nextExercise}</Text>
+          ) : null}
         </View>
-        <Icon icon={ChevronRight} size={20} color="primary-foreground" />
       </Pressable>
       {onDiscard ? (
         <Pressable

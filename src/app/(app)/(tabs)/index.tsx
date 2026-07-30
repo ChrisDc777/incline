@@ -2,8 +2,7 @@
 import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Play, Plus, Flame, TrendingUp, ChevronRight, Dumbbell } from 'lucide-react-native';
+import { Play, Plus, Flame, TrendingUp, Dumbbell } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Hero, Body, Caption } from '@/components/common/text';
@@ -39,7 +38,7 @@ export default function HomeScreen() {
   const { data: profile } = useProfile();
   const { data: suggested, loading: sugLoading } = useSuggestedTemplate();
   const { data: stats, loading: statsLoading } = useProgressStats();
-  const { session, refetch: refetchActive } = useActiveSession();
+  const { session } = useActiveSession();
   const clear = useActiveWorkout((s) => s.clear);
   const recentLogs = useWorkoutLogs();
   const [starting, setStarting] = useState(false);
@@ -51,7 +50,6 @@ export default function HomeScreen() {
     impact();
     try {
       const logId = await startWorkout(templateId, name);
-      await refetchActive();
       router.push(`/session/${logId}`);
     } catch {
       toast({ title: 'Could not start workout', variant: 'destructive' });
@@ -108,27 +106,6 @@ export default function HomeScreen() {
         <Body className="mt-1 text-muted-foreground">{formatFullDate(Date.now())}</Body>
 
         <View className="mt-6 gap-3">
-          {session ? (
-            <Pressable
-              onPress={() => router.push(`/session/${session.id}`)}
-              android_ripple={{ color: 'rgba(255,255,255,0.15)' }}>
-              <LinearGradient
-                colors={['#16a34a', '#22c55e']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                className="flex-row items-center gap-4 rounded-2xl p-4 shadow-lg">
-                <View className="h-11 w-11 items-center justify-center rounded-xl bg-white/20">
-                  <Icon icon={Play} size={20} color="primary-foreground" />
-                </View>
-                <View className="flex-1">
-                  <Body className="font-semibold text-primary-foreground">Continue workout</Body>
-                  <Caption className="text-primary-foreground/80">{session.name} · in progress</Caption>
-                </View>
-                <Icon icon={ChevronRight} size={20} color="primary-foreground" />
-              </LinearGradient>
-            </Pressable>
-          ) : null}
-
           {sugLoading ? (
             <CardSkeleton />
           ) : suggested ? (

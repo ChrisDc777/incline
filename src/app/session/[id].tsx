@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Plus, X, Clock, Layers, Dumbbell } from 'lucide-react-native';
+import { Check, Plus, X } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Body, Caption } from '@/components/common/text';
@@ -11,7 +11,6 @@ import { Dialog } from '@/components/ui/dialog';
 import { ExerciseBlock } from '@/components/workout/exercise-block';
 import { ExercisePickerSheet } from '@/components/workout/exercise-picker-sheet';
 import { RestTimer } from '@/components/workout/rest-timer';
-import { RestTimerPickerSheet } from '@/components/workout/rest-timer-picker-sheet';
 import { useRestTimer } from '@/hooks/use-rest-timer';
 import { useHaptics } from '@/hooks/use-haptics';
 import { useActiveWorkout } from '@/store/active-workout-store';
@@ -29,7 +28,6 @@ import {
   type SessionWorkout,
 } from '@/db/queries';
 import { formatClock, formatVolume } from '@/db/calc';
-import { DEFAULT_REST_SECONDS } from '@/constants/rest-presets';
 import type { Exercise, SetEntry } from '@/db/types';
 
 interface Group {
@@ -55,8 +53,7 @@ export default function SessionScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
-  const [restPickerOpen, setRestPickerOpen] = useState(false);
-  const [currentRestSeconds, setCurrentRestSeconds] = useState(DEFAULT_REST_SECONDS);
+  const [restSecondsMap, setRestSecondsMap] = useState<Record<number, number>>({});
 
   const load = useCallback(async () => {
     const s = await getWorkoutLog(logId);
@@ -99,14 +96,18 @@ export default function SessionScreen() {
   const reload = () => load();
   const onChangeWeight = async (setId: number, v: number) => { await updateSet(setId, { weight: v }); reload(); };
   const onChangeReps = async (setId: number, v: number) => { await updateSet(setId, { reps: v }); reload(); };
+  const onChangeRestSeconds = (exerciseId: number, seconds: number) => {
+    setRestSecondsMap((prev) => ({ ...prev, [exerciseId]: seconds }));
+  };
   const onToggleComplete = async (setId: number) => {
     const target = session?.sets.find((x) => x.id === setId);
     const next = !target?.completed;
-    await updateSet(setId, { completed: next, restSeconds: next ? currentRestSeconds : null });
+    await updateSet(setId, { completed: next, restSeconds: next ? (restSecondsMap[target?.exerciseId ?? 0] ?? 0) : null });
     reload();
     impact();
     if (next) {
-      rest.start(currentRestSeconds);
+      const exRest = restSecondsMap[target?.exerciseId ?? 0] ?? 0;
+      if (exRest > 0) rest.start(exRest);
     }
   };
   const onRemoveSet = async (setId: number) => { await removeSet(setId); reload(); };
@@ -194,6 +195,8 @@ export default function SessionScreen() {
                   sets={g.sets}
                   unit={session.unit}
                   lastSets={lastSetsMap[g.exerciseId] ?? []}
+                  restSeconds={restSecondsMap[g.exerciseId] ?? 0}
+                  onChangeRestSeconds={(s) => onChangeRestSeconds(g.exerciseId, s)}
                   onChangeWeight={onChangeWeight}
                   onChangeReps={onChangeReps}
                   onToggleComplete={onToggleComplete}
@@ -212,17 +215,8 @@ export default function SessionScreen() {
           total={rest.total}
           onAdd={rest.add}
           onSkip={rest.stop}
-          onConfigure={() => setRestPickerOpen(true)}
-          currentRestSeconds={currentRestSeconds}
         />
       ) : null}
-
-      <RestTimerPickerSheet
-        open={restPickerOpen}
-        onOpenChange={setRestPickerOpen}
-        currentValue={currentRestSeconds}
-        onSelect={(s) => { setCurrentRestSeconds(s); if (rest.running) rest.start(s); }}
-      />
 
       <ExercisePickerSheet open={pickerOpen} onOpenChange={setPickerOpen} onPick={onPickExercise} />
 
