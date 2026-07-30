@@ -44,6 +44,29 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
           await database.execAsync('ALTER TABLE user_profile ADD COLUMN experience_level TEXT NOT NULL DEFAULT \'intermediate\'');
         } catch { /* column may already exist */ }
       }
+      // v2 → v3: add ExerciseDB columns + exercise_images table
+      if (current < 3) {
+        try {
+          await database.execAsync('ALTER TABLE exercises ADD COLUMN source TEXT NOT NULL DEFAULT \'seed\'');
+        } catch { /* column may already exist */ }
+        try {
+          await database.execAsync('ALTER TABLE exercises ADD COLUMN external_id TEXT');
+        } catch { /* column may already exist */ }
+        try {
+          await database.execAsync('ALTER TABLE exercises ADD COLUMN difficulty TEXT NOT NULL DEFAULT \'intermediate\'');
+        } catch { /* column may already exist */ }
+        try {
+          await database.execAsync(`CREATE TABLE IF NOT EXISTS exercise_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            exercise_id INTEGER NOT NULL,
+            url TEXT NOT NULL,
+            is_primary INTEGER NOT NULL DEFAULT 0,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
+          )`);
+          await database.execAsync('CREATE INDEX IF NOT EXISTS idx_exercise_images_exercise ON exercise_images(exercise_id, sort_order)');
+        } catch { /* table may already exist */ }
+      }
       await database.runAsync(
         "INSERT INTO schema_meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         String(SCHEMA_VERSION),

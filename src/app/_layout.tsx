@@ -4,10 +4,10 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import { Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ClerkProvider } from '@clerk/clerk-expo';
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -16,6 +16,8 @@ import {
 } from '@expo-google-fonts/inter';
 
 import { cn } from '@/lib/cn';
+import { CLERK_PUBLISHABLE_KEY } from '@/lib/env';
+import { secureTokenCache } from '@/auth/secure-store';
 import { ToastProvider } from '@/components/ui/toast';
 import { ErrorBoundary } from '@/components/common/error-boundary';
 import { useDatabaseReady } from '@/hooks/use-database';
@@ -42,26 +44,31 @@ export default function RootLayout() {
   const isDark = scheme === 'dark';
 
   return (
-    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-      <ErrorBoundary>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <View className={cn('flex-1', isDark && 'dark')}>
-            <ToastProvider>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="index" />
-                <Stack.Screen name="(onboarding)" />
-                <Stack.Screen name="(app)" />
-                <Stack.Screen name="exercise/[id]" options={{ headerShown: true, title: 'Exercise' }} />
-                <Stack.Screen name="workout/[id]" options={{ headerShown: true, title: 'Workout' }} />
-                <Stack.Screen name="session/[id]" options={{ headerShown: true, title: 'Workout' }} />
-                <Stack.Screen name="summary/[id]" options={{ headerShown: true, title: 'Summary' }} />
-                <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
-              </Stack>
-            </ToastProvider>
-          </View>
-        </GestureHandlerRootView>
-      </ErrorBoundary>
-    </ThemeProvider>
+    <ClerkProvider
+      publishableKey={CLERK_PUBLISHABLE_KEY}
+      tokenCache={secureTokenCache}>
+      <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+        <ErrorBoundary>
+          <StatusBar style={isDark ? 'light' : 'dark'} />
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <View className={cn('flex-1', isDark && 'dark')}>
+              <ToastProvider>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="(onboarding)" />
+                  <Stack.Screen name="(auth)" />
+                  <Stack.Screen name="(app)" />
+                  <Stack.Screen name="exercise/[id]" options={{ headerShown: true, title: 'Exercise' }} />
+                  <Stack.Screen name="workout/[id]" options={{ headerShown: true, title: 'Workout' }} />
+                  <Stack.Screen name="session/[id]" options={{ headerShown: true, title: 'Workout' }} />
+                  <Stack.Screen name="summary/[id]" options={{ headerShown: true, title: 'Summary' }} />
+                  <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
+                </Stack>
+              </ToastProvider>
+            </View>
+          </GestureHandlerRootView>
+        </ErrorBoundary>
+      </ThemeProvider>
+    </ClerkProvider>
   );
 }

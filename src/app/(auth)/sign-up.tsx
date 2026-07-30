@@ -1,0 +1,139 @@
+import * as React from 'react';
+import { View, TextInput, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useSignUp } from '@clerk/clerk-expo';
+
+import { Heading, Body, Caption } from '@/components/common/text';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+
+export default function SignUpScreen() {
+  const router = useRouter();
+  const { signUp, setActive, isLoaded } = useSignUp();
+  const [emailAddress, setEmailAddress] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [pendingVerification, setPendingVerification] = React.useState(false);
+  const [code, setCode] = React.useState('');
+  const [error, setError] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+
+  const onSignUpPress = async () => {
+    if (!isLoaded) return;
+    setLoading(true);
+    setError('');
+    try {
+      await signUp.create({ emailAddress, password });
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      setPendingVerification(true);
+    } catch (err: any) {
+      setError(err?.errors?.[0]?.message ?? 'Sign up failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onVerifyPress = async () => {
+    if (!isLoaded) return;
+    setLoading(true);
+    setError('');
+    try {
+      const result = await signUp.attemptEmailAddressVerification({ code });
+      if (result.status === 'complete') {
+        await setActive({ session: result.createdSessionId });
+        router.replace('/(onboarding)');
+      }
+    } catch (err: any) {
+      setError(err?.errors?.[0]?.message ?? 'Verification failed. Check the code and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-background">
+      <View className="flex-1 px-6 pt-8">
+        <View className="mb-8 items-center">
+          <Heading className="text-center">
+            {pendingVerification ? 'Verify email' : 'Create account'}
+          </Heading>
+          <Caption className="mt-2 text-center">
+            {pendingVerification
+              ? `We sent a code to ${emailAddress}`
+              : 'Start tracking your workouts today.'}
+          </Caption>
+        </View>
+
+        {!pendingVerification ? (
+          <View className="gap-4">
+            <View className="gap-1.5">
+              <Caption>Email</Caption>
+              <TextInput
+                value={emailAddress}
+                onChangeText={setEmailAddress}
+                placeholder="you@example.com"
+                placeholderTextColor="#6b7280"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+                className="rounded-xl border border-border bg-card px-4 py-3 text-base text-foreground"
+              />
+            </View>
+
+            <View className="gap-1.5">
+              <Caption>Password</Caption>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="At least 8 characters"
+                placeholderTextColor="#6b7280"
+                secureTextEntry
+                autoComplete="new-password"
+                className="rounded-xl border border-border bg-card px-4 py-3 text-base text-foreground"
+              />
+            </View>
+
+            {error ? (
+              <Caption className="text-destructive">{error}</Caption>
+            ) : null}
+
+            <Button size="lg" onPress={onSignUpPress} disabled={loading}>
+              {loading ? 'Creating account…' : 'Sign up'}
+            </Button>
+
+            <View className="items-center">
+              <Pressable onPress={() => router.push('/(auth)/sign-in')}>
+                <Text className="text-sm text-muted-foreground">
+                  Already have an account? <Text className="font-semibold text-primary">Sign in</Text>
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <View className="gap-4">
+            <View className="gap-1.5">
+              <Caption>Verification code</Caption>
+              <TextInput
+                value={code}
+                onChangeText={setCode}
+                placeholder="Enter the 6-digit code"
+                placeholderTextColor="#6b7280"
+                keyboardType="number-pad"
+                autoComplete="one-time-code"
+                className="rounded-xl border border-border bg-card px-4 py-3 text-base text-foreground"
+              />
+            </View>
+
+            {error ? (
+              <Caption className="text-destructive">{error}</Caption>
+            ) : null}
+
+            <Button size="lg" onPress={onVerifyPress} disabled={loading}>
+              {loading ? 'Verifying…' : 'Verify email'}
+            </Button>
+          </View>
+        )}
+      </View>
+    </SafeAreaView>
+  );
+}

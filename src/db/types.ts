@@ -51,6 +51,9 @@ export interface Exercise {
   category: Category;
   isCompound: boolean;
   isCustom: boolean;
+  source: 'seed' | 'exercisedb' | 'custom';
+  externalId: string | null;
+  difficulty: string;
   defaultRestSeconds: number;
   instructions: string[];
   tips: string;

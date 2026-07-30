@@ -1,4 +1,4 @@
-﻿import { openDatabase } from './client';
+import { openDatabase } from './client';
 import { estimated1RM, isoDate, startOfWeek } from './calc';
 import { PAGINATION } from '@/constants/config';
 import type {
@@ -37,6 +37,9 @@ interface ExerciseRow {
   category: string;
   is_compound: number;
   is_custom: number;
+  source: string;
+  external_id: string | null;
+  difficulty: string;
   default_rest_seconds: number;
   tips: string;
   created_at: number;
@@ -120,6 +123,9 @@ async function mapExercise(db: DB, row: ExerciseRow): Promise<Exercise> {
     category: row.category as Category,
     isCompound: !!row.is_compound,
     isCustom: !!row.is_custom,
+    source: row.source as 'seed' | 'exercisedb' | 'custom',
+    externalId: row.external_id,
+    difficulty: row.difficulty,
     defaultRestSeconds: row.default_rest_seconds,
     instructions,
     tips: row.tips,

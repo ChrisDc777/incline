@@ -7,7 +7,7 @@
  * Migrations: for the MVP we bump SCHEMA_VERSION and (in client.ts) could run
  * incremental migrations. A formal migration runner is deferred — see ROADMAP.md.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const SCHEMA_STATEMENTS: string[] = [
   // ---- exercises (catalog) ----
@@ -20,6 +20,9 @@ export const SCHEMA_STATEMENTS: string[] = [
     category TEXT NOT NULL,
     is_compound INTEGER NOT NULL DEFAULT 0,
     is_custom INTEGER NOT NULL DEFAULT 0,
+    source TEXT NOT NULL DEFAULT 'seed',
+    external_id TEXT,
+    difficulty TEXT NOT NULL DEFAULT 'intermediate',
     default_rest_seconds INTEGER NOT NULL DEFAULT 90,
     tips TEXT NOT NULL DEFAULT '',
     created_at INTEGER NOT NULL,
@@ -47,6 +50,16 @@ export const SCHEMA_STATEMENTS: string[] = [
     text TEXT NOT NULL,
     FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
   )`,
+
+  `CREATE TABLE IF NOT EXISTS exercise_images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    exercise_id INTEGER NOT NULL,
+    url TEXT NOT NULL,
+    is_primary INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_exercise_images_exercise ON exercise_images(exercise_id, sort_order)`,
 
   // ---- templates ----
   `CREATE TABLE IF NOT EXISTS workout_templates (
