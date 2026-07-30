@@ -107,7 +107,7 @@ export default function SummaryScreen() {
       const templateId = await createTemplate(
         log.name,
         `Saved from workout on ${formatFullDate(log.startedAt)}`,
-        profile?.goal === 'gain_strength' ? 'intermediate' : 'intermediate',
+        profile?.goal === 'build_muscle' ? 'beginner' : profile?.goal === 'improve_endurance' ? 'intermediate' : 'intermediate',
       );
       for (const exId of exerciseIds) {
         const exSets = log.sets.filter((s) => s.exerciseId === exId);
@@ -130,7 +130,15 @@ export default function SummaryScreen() {
         <ActivityIndicator color="#25ca62" />
       </SafeAreaView>
     );
-  if (!log) return null;
+  if (!log) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background px-6" edges={['bottom']}>
+        <Body className="text-center font-semibold text-foreground">Workout not found</Body>
+        <Caption className="mt-2 text-center">This session may have been deleted.</Caption>
+        <Button className="mt-4" onPress={() => router.replace('/(app)/(tabs)')}>Go home</Button>
+      </SafeAreaView>
+    );
+  }
 
   const completedSets = log.sets.filter((s) => s.completed).length;
 
@@ -193,7 +201,7 @@ export default function SummaryScreen() {
             multiline
             numberOfLines={3}
             textAlignVertical="top"
-            style={{ minHeight: 80, fontSize: 14, color: '#f5f5f5', lineHeight: 20 }}
+            style={{ minHeight: 80, fontSize: 14, lineHeight: 20 }}
           />
         </Card>
 

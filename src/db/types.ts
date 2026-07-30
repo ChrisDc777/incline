@@ -89,6 +89,8 @@ export interface ProgramWorkout {
   week: number;
   day: number;
   sortOrder: number;
+  templateName?: string;
+  estimatedMinutes?: number;
   template?: WorkoutTemplate;
 }
 

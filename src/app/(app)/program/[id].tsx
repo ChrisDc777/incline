@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { ErrorState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
 import { openDatabase } from '@/db/client';
-import { DIFFICULTY_LABELS } from '@/lib/labels';
 import type { Program, ProgramWorkout } from '@/db/types';
 
 export default function ProgramDetailScreen() {
@@ -84,11 +83,11 @@ export default function ProgramDetailScreen() {
                     <View className="flex-row items-center justify-between">
                       <View className="flex-1">
                         <Body className="font-medium text-foreground">
-                          Day {pw.day} — {pw.template?.name ?? 'Workout'}
+                          Day {pw.day} — {pw.templateName ?? 'Workout'}
                         </Body>
-                        {pw.template ? (
+                        {pw.estimatedMinutes ? (
                           <Caption className="mt-0.5">
-                            {pw.template.estimatedMinutes} min · {DIFFICULTY_LABELS[pw.template.difficulty]}
+                            {pw.estimatedMinutes} min
                           </Caption>
                         ) : null}
                       </View>

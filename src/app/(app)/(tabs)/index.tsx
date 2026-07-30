@@ -20,7 +20,7 @@ import { useSettings } from '@/store/settings-store';
 import { useActiveWorkout } from '@/store/active-workout-store';
 import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
-import { startWorkout, discardWorkout } from '@/db/queries';
+import { startWorkout, discardWorkout, deleteWorkout } from '@/db/queries';
 import { formatVolume, formatFullDate } from '@/db/calc';
 
 function greeting() {
@@ -44,6 +44,7 @@ export default function HomeScreen() {
   const [starting, setStarting] = useState(false);
   const [conflictOpen, setConflictOpen] = useState(false);
   const [pendingStart, setPendingStart] = useState<{ templateId: number | null; name: string } | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const doStart = async (templateId: number | null, name: string) => {
     setStarting(true);
@@ -179,7 +180,7 @@ export default function HomeScreen() {
                 />
                 <View className="gap-2">
                   {recentLogs.items.slice(0, 3).map((log) => (
-                    <HistoryRow key={log.id} log={log} unit={unit} />
+                    <HistoryRow key={log.id} log={log} unit={unit} onLongPress={() => setDeleteId(log.id)} />
                   ))}
                 </View>
               </View>
@@ -213,6 +214,26 @@ export default function HomeScreen() {
             <Button variant="destructive" onPress={startNewAndDiscard}>Start new workout</Button>
             <Button variant="outline" onPress={() => { setConflictOpen(false); setPendingStart(null); }}>Cancel</Button>
           </View>
+        }
+      />
+
+      <Dialog
+        open={deleteId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
+        title="Delete workout?"
+        description="This workout will be permanently removed from your history."
+        footer={
+          <>
+            <Button variant="outline" onPress={() => setDeleteId(null)}>Cancel</Button>
+            <Button variant="destructive" onPress={async () => {
+              if (deleteId !== null) {
+                await deleteWorkout(deleteId);
+                recentLogs.refresh?.();
+                setDeleteId(null);
+                toast({ title: 'Workout deleted', variant: 'info' });
+              }
+            }}>Delete</Button>
+          </>
         }
       />
     </SafeAreaView>

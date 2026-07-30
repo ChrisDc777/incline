@@ -17,6 +17,7 @@ import {
 
 import { cn } from '@/lib/cn';
 import { ToastProvider } from '@/components/ui/toast';
+import { ErrorBoundary } from '@/components/common/error-boundary';
 import { useDatabaseReady } from '@/hooks/use-database';
 import { useAppColorScheme } from '@/lib/use-color-scheme';
 
@@ -42,23 +43,25 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <View className={cn('flex-1', isDark && 'dark')}>
-          <ToastProvider>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="(onboarding)" />
-              <Stack.Screen name="(app)" />
-              <Stack.Screen name="exercise/[id]" options={{ headerShown: true, title: 'Exercise' }} />
-              <Stack.Screen name="workout/[id]" options={{ headerShown: true, title: 'Workout' }} />
-              <Stack.Screen name="session/[id]" options={{ headerShown: true, title: 'Workout' }} />
-              <Stack.Screen name="summary/[id]" options={{ headerShown: true, title: 'Summary' }} />
-              <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
-            </Stack>
-          </ToastProvider>
-        </View>
-      </GestureHandlerRootView>
+      <ErrorBoundary>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View className={cn('flex-1', isDark && 'dark')}>
+            <ToastProvider>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="(onboarding)" />
+                <Stack.Screen name="(app)" />
+                <Stack.Screen name="exercise/[id]" options={{ headerShown: true, title: 'Exercise' }} />
+                <Stack.Screen name="workout/[id]" options={{ headerShown: true, title: 'Workout' }} />
+                <Stack.Screen name="session/[id]" options={{ headerShown: true, title: 'Workout' }} />
+                <Stack.Screen name="summary/[id]" options={{ headerShown: true, title: 'Summary' }} />
+                <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
+              </Stack>
+            </ToastProvider>
+          </View>
+        </GestureHandlerRootView>
+      </ErrorBoundary>
     </ThemeProvider>
   );
 }

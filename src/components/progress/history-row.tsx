@@ -9,12 +9,13 @@ import { formatDuration, formatFullDate, formatVolume } from '@/db/calc';
 import type { Unit, WorkoutLog } from '@/db/types';
 
 /** A completed workout row in the history list. */
-export function HistoryRow({ log, unit, className }: { log: WorkoutLog; unit: Unit; className?: string }) {
+export function HistoryRow({ log, unit, className, onLongPress }: { log: WorkoutLog; unit: Unit; className?: string; onLongPress?: () => void }) {
   const router = useRouter();
   return (
     <Pressable
       className={cn('flex-row items-center gap-3 rounded-xl bg-card/50 px-3 py-2.5', className)}
       onPress={() => router.push(`/summary/${log.id}`)}
+      onLongPress={onLongPress}
       android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
       <View className="h-11 w-11 items-center justify-center rounded-2xl bg-primary/15">
         <Icon icon={Dumbbell} size={18} color="primary" />
