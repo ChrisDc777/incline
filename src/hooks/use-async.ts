@@ -9,6 +9,9 @@ interface AsyncState<T> {
 /**
  * Generic async data hook with loading/error/refetch. The backbone of every
  * data-bound screen so loading/empty/error states stay consistent.
+ *
+ * Key behavior: during refetches, the previous `data` is preserved (not reset
+ * to null) so UI components stay visible and don't flicker/unmount.
  */
 export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
   const [state, setState] = useState<AsyncState<T>>({ data: null, loading: true, error: null });
@@ -18,7 +21,13 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
 
   useEffect(() => {
     let active = true;
-    setState((s) => ({ ...s, loading: true, error: null }));
+    setState((s) => ({
+      ...s,
+      loading: true,
+      error: null,
+      // Preserve previous data during refetches so UI doesn't flash empty
+      ...(s.data !== null ? {} : { data: null }),
+    }));
     fnRef
       .current()
       .then((data) => {

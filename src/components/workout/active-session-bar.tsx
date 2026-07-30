@@ -11,6 +11,7 @@ import { formatClock } from '@/db/calc';
 /**
  * Cross-tab mini bar shown above the tab bar whenever a workout is in progress.
  * Left: dumbbell icon. Center: elapsed time + next exercise. Right: trash icon.
+ * Always renders immediately when a session is known to exist (even if still loading full data).
  */
 export function ActiveSessionBar({
   logId,
@@ -22,17 +23,18 @@ export function ActiveSessionBar({
   className,
 }: {
   logId: number;
-  name: string;
-  startedAt: number;
+  name?: string;
+  startedAt?: number;
   nextExercise?: string;
   refetch?: () => void;
   onDiscard?: () => void;
   className?: string;
 }) {
   const router = useRouter();
-  const [elapsed, setElapsed] = useState(() => Math.floor((Date.now() - startedAt) / 1000));
+  const [elapsed, setElapsed] = useState(() => startedAt ? Math.floor((Date.now() - startedAt) / 1000) : 0);
 
   useEffect(() => {
+    if (!startedAt) return;
     const tick = () => setElapsed(Math.floor((Date.now() - startedAt) / 1000));
     tick();
     const iv = setInterval(tick, 1000);
@@ -47,6 +49,8 @@ export function ActiveSessionBar({
     return () => sub.remove();
   }, [refetch]);
 
+  const displayName = name ?? 'Workout';
+
   return (
     <View className={cn('mx-4 mb-2 flex-row items-center rounded-2xl bg-primary shadow-lg', className)}>
       <Pressable
@@ -57,7 +61,9 @@ export function ActiveSessionBar({
           <Icon icon={Dumbbell} size={18} color="primary-foreground" />
         </View>
         <View className="flex-1">
-          <Text className="text-sm font-semibold text-primary-foreground">{formatClock(elapsed)}</Text>
+          <Text className="text-sm font-semibold text-primary-foreground">
+            {startedAt ? formatClock(elapsed) : displayName}
+          </Text>
           {nextExercise ? (
             <Text className="text-xs text-primary-foreground/70" numberOfLines={1}>{nextExercise}</Text>
           ) : null}
