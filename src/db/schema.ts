@@ -141,7 +141,7 @@ export const SCHEMA_STATEMENTS: string[] = [
     recorded_at INTEGER NOT NULL,
     created_at INTEGER NOT NULL
   )`,
-  `CREATE INDEX IF NOT EXISTS idx_bodyweight_recorded ON bodyweight_entries(recorded_at DESC)`,,
+  `CREATE INDEX IF NOT EXISTS idx_bodyweight_recorded ON bodyweight_entries(recorded_at DESC)`,
 
   // ---- key/value (Zustand persist + flags) ----
   `CREATE TABLE IF NOT EXISTS kv (
