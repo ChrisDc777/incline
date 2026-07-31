@@ -1,39 +1,26 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Dumbbell, Search as SearchIcon, Plus } from 'lucide-react-native';
+import { Dumbbell, Plus } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
-import { Heading, Caption } from '@/components/common/text';
+import { Heading } from '@/components/common/text';
 import { Button } from '@/components/ui/button';
 import { SegmentedControl } from '@/components/common/segmented-control';
-import { SearchBar } from '@/components/common/search-bar';
-import { FilterChips, type FilterOption } from '@/components/common/chip';
 import { EmptyState, ErrorState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
 import { WorkoutCard } from '@/components/workout/workout-card';
 import { ProgramCard } from '@/components/workout/program-card';
-import { ExerciseListItem } from '@/components/exercise/exercise-list-item';
-import { useTemplateSummaries, useSearchExercises, usePrograms } from '@/hooks/use-data';
-import { MUSCLE_LABELS } from '@/lib/labels';
-import type { MuscleGroup } from '@/db/types';
+import { useTemplateSummaries, usePrograms } from '@/hooks/use-data';
 
-type Tab = 'templates' | 'exercises' | 'programs';
-
-const MUSCLE_OPTIONS: FilterOption<MuscleGroup>[] = (
-  ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'quads', 'hamstrings', 'core'] as MuscleGroup[]
-).map((m) => ({ value: m, label: MUSCLE_LABELS[m] }));
+type Tab = 'templates' | 'programs';
 
 export default function WorkoutsScreen() {
   const [tab, setTab] = useState<Tab>('templates');
-  const [query, setQuery] = useState('');
-  const [muscle, setMuscle] = useState<MuscleGroup | null>(null);
   const router = useRouter();
-
   const templates = useTemplateSummaries();
-  const exercises = useSearchExercises(query, muscle ? { muscle } : undefined);
   const programs = usePrograms();
 
   return (
@@ -46,7 +33,6 @@ export default function WorkoutsScreen() {
           onChange={setTab}
           values={[
             { value: 'templates', label: 'Templates' },
-            { value: 'exercises', label: 'Exercises' },
             { value: 'programs', label: 'Programs' },
           ]}
         />
@@ -81,30 +67,6 @@ export default function WorkoutsScreen() {
               <ErrorState onRetry={templates.refetch} />
             ) : (
               <EmptyState icon={<Icon icon={Dumbbell} size={28} color="muted-foreground" />} title="No templates yet" description="Create your first workout template." actionLabel="Create" onAction={() => router.push({ pathname: '/(app)/template/[id]' as any, params: { id: 'new' } })} />
-            )
-          }
-        />
-      ) : null}
-
-      {tab === 'exercises' ? (
-        <FlashList
-          data={exercises.data ?? []}
-          renderItem={({ item }) => <ExerciseListItem exercise={item.exercise} />}
-          keyExtractor={(item) => String(item.exercise.id)}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
-          ItemSeparatorComponent={() => <View className="h-2" />}
-          ListHeaderComponent={
-            <View className="mb-3 gap-3">
-              <SearchBar value={query} onChangeText={setQuery} placeholder="Search exercises, e.g. “bp” or “push”" />
-              <FilterChips options={MUSCLE_OPTIONS} value={muscle} onChange={setMuscle} />
-              <Caption>{exercises.data?.length ?? 0} exercises</Caption>
-            </View>
-          }
-          ListEmptyComponent={
-            exercises.loading ? (
-              <ListSkeleton count={4} />
-            ) : (
-              <EmptyState icon={<Icon icon={SearchIcon} size={28} color="muted-foreground" />} title="No exercises found" description="Try a different search or filter." actionLabel="Clear" onAction={() => { setQuery(''); setMuscle(null); }} />
             )
           }
         />

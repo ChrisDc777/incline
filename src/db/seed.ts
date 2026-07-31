@@ -1,9 +1,8 @@
-﻿import type { SQLiteDatabase } from 'expo-sqlite';
+import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type {
   Category,
   Equipment,
-  Exercise,
   MovementPattern,
   MuscleGroup,
 } from './types';

@@ -1,9 +1,8 @@
 import * as React from 'react';
-import { View, TextInput, Pressable } from 'react-native';
+import { View, TextInput, Pressable, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useSignUp } from '@clerk/clerk-expo';
-import { useSSO } from '@clerk/clerk-expo';
+import { useSignUp, useSSO } from '@clerk/clerk-expo';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 
@@ -83,8 +82,13 @@ export default function SignUpScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <View className="flex-1 px-6 pt-8">
+      <View className="flex-1 items-center justify-center px-6">
         <View className="mb-8 items-center">
+          <Image
+            source={require('../../../assets/images/icon.png')}
+            className="mb-4 h-20 w-20 rounded-2xl"
+            resizeMode="contain"
+          />
           <Heading className="text-center">
             {pendingVerification ? 'Verify email' : 'Create account'}
           </Heading>

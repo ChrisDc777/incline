@@ -1,6 +1,5 @@
 import { Pressable, View } from 'react-native';
 
-import { Icon } from '@/components/common/icon';
 import { formatClock } from '@/db/calc';
 import { Text } from '@/components/ui/text';
 

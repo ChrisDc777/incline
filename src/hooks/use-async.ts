@@ -16,8 +16,13 @@ interface AsyncState<T> {
 export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
   const [state, setState] = useState<AsyncState<T>>({ data: null, loading: true, error: null });
   const fnRef = useRef(fn);
-  fnRef.current = fn;
   const [nonce, setNonce] = useState(0);
+
+  // Keep the latest fn in a ref without writing it during render (react-hooks/refs).
+  // Declared before the fetch effect so the ref is fresh when that effect runs.
+  useEffect(() => {
+    fnRef.current = fn;
+  });
 
   useEffect(() => {
     let active = true;

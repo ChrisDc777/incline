@@ -148,6 +148,7 @@ export interface UserProfile {
   unit: Unit;
   experienceLevel: ExperienceLevel;
   onboardingCompleted: boolean;
+  avatarUrl: string | null;
   updatedAt: number;
 }
 

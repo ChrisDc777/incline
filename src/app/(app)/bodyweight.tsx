@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Trash2, TrendingDown, TrendingUp, Minus } from 'lucide-react-native';
+import { Plus, TrendingDown, TrendingUp, Minus } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
@@ -62,13 +61,12 @@ function MiniChart({ data, unit }: { data: Entry[]; unit: string }) {
 }
 
 export default function BodyweightScreen() {
-  const router = useRouter();
   const { toast } = useToast();
   const { impact } = useHaptics();
   const { unit } = useSettings();
 
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [weightInput, setWeightInput] = useState('');
   const [deleteId, setDeleteId] = useState<number | null>(null);

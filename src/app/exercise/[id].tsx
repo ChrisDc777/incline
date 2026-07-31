@@ -1,4 +1,4 @@
-import { useMemo, useLayoutEffect } from 'react';
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { Dumbbell, Target, ListChecks, Lightbulb, History } from 'lucide-react-native';
@@ -11,10 +11,11 @@ import { EmptyState, ErrorState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
 import { MuscleBadge } from '@/components/exercise/muscle-badge';
 import { useExercise, useExerciseHistory } from '@/hooks/use-data';
+import { getExerciseByExternalId } from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
 import { MUSCLE_LABELS, EQUIPMENT_LABELS, MOVEMENT_LABELS, CATEGORY_LABELS } from '@/lib/labels';
 import { formatWeight, relativeTime } from '@/db/calc';
-import type { ExerciseHistoryRow } from '@/db/types';
+import type { Exercise, ExerciseHistoryRow } from '@/db/types';
 
 interface SessionGroup {
   workoutLogId: number;
@@ -25,11 +26,34 @@ interface SessionGroup {
 
 export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const exerciseId = Number(id);
   const { unit } = useSettings();
-  const { data: exercise, loading, error, refetch } = useExercise(exerciseId);
-  const { data: history } = useExerciseHistory(exerciseId);
   const navigation = useNavigation();
+
+  // Handle both local IDs and supabase:external_id format
+  const isSupabaseId = typeof id === 'string' && id.startsWith('supabase:');
+  const externalId = isSupabaseId ? id.replace('supabase:', '') : null;
+  const localId = !isSupabaseId ? Number(id) : 0;
+
+  const { data: localExercise, loading: localLoading, error: localError, refetch: localRefetch } = useExercise(localId);
+  const [supabaseExercise, setSupabaseExercise] = useState<Exercise | null>(null);
+  const [supabaseLoading, setSupabaseLoading] = useState(false);
+
+  useEffect(() => {
+    if (externalId) {
+      setSupabaseLoading(true);
+      getExerciseByExternalId(externalId).then((ex) => {
+        setSupabaseExercise(ex);
+        setSupabaseLoading(false);
+      });
+    }
+  }, [externalId]);
+
+  const exercise = isSupabaseId ? supabaseExercise : localExercise;
+  const loading = isSupabaseId ? supabaseLoading : localLoading;
+  const error = isSupabaseId ? !supabaseExercise && !supabaseLoading : localError;
+  const refetch = isSupabaseId ? () => {} : localRefetch;
+  const exerciseId = exercise?.id ?? 0;
+  const { data: history } = useExerciseHistory(exerciseId);
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: true, title: 'Exercise' });
@@ -61,7 +85,7 @@ export default function ExerciseDetailScreen() {
         <View className="flex-1">
           <Heading>{exercise.name}</Heading>
           <Caption>
-            {EQUIPMENT_LABELS[exercise.equipment]} · {CATEGORY_LABELS[exercise.category]}
+            {EQUIPMENT_LABELS[exercise.equipment as keyof typeof EQUIPMENT_LABELS] ?? exercise.equipment} · {CATEGORY_LABELS[exercise.category as keyof typeof CATEGORY_LABELS] ?? exercise.category}
           </Caption>
         </View>
       </View>

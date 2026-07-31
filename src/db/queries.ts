@@ -95,7 +95,7 @@ interface SetRow {
   rest_seconds: number | null;
   created_at: number;
 }
-interface ProfileRow { id: number; name: string; goal: string; bodyweight: number | null; unit: string; experience_level: string; onboarding_completed: number; updated_at: number }
+interface ProfileRow { id: number; name: string; goal: string; bodyweight: number | null; unit: string; experience_level: string; onboarding_completed: number; avatar_url: string | null; updated_at: number }
 
 /* ------------------------------- session types ------------------------------- */
 export interface SessionSet extends SetEntry {
@@ -174,6 +174,7 @@ function mapProfile(r: ProfileRow): UserProfile {
     unit: r.unit as Unit,
     experienceLevel: (r.experience_level as ExperienceLevel) ?? 'intermediate',
     onboardingCompleted: !!r.onboarding_completed,
+    avatarUrl: r.avatar_url ?? null,
     updatedAt: r.updated_at,
   };
 }
@@ -229,6 +230,12 @@ export async function listExercises(): Promise<Exercise[]> {
 export async function getExercise(id: number): Promise<Exercise | null> {
   const db = await openDatabase();
   const row = await db.getFirstAsync<ExerciseRow>('SELECT * FROM exercises WHERE id = ?', id);
+  return row ? mapExercise(db, row) : null;
+}
+
+export async function getExerciseByExternalId(externalId: string): Promise<Exercise | null> {
+  const db = await openDatabase();
+  const row = await db.getFirstAsync<ExerciseRow>('SELECT * FROM exercises WHERE external_id = ?', externalId);
   return row ? mapExercise(db, row) : null;
 }
 
@@ -804,12 +811,12 @@ export async function getProfile(): Promise<UserProfile> {
   const row = await db.getFirstAsync<ProfileRow>('SELECT * FROM user_profile WHERE id = 1');
   if (!row) {
     await db.runAsync(`INSERT INTO user_profile (id, name, goal, bodyweight, unit, experience_level, onboarding_completed, updated_at) VALUES (1, '', 'build_muscle', NULL, 'metric', 'intermediate', 0, ?)`, Date.now());
-    return { id: 1, name: '', goal: 'build_muscle', bodyweight: null, unit: 'metric', experienceLevel: 'intermediate', onboardingCompleted: false, updatedAt: Date.now() };
+    return { id: 1, name: '', goal: 'build_muscle', bodyweight: null, unit: 'metric', experienceLevel: 'intermediate', onboardingCompleted: false, avatarUrl: null, updatedAt: Date.now() };
   }
   return mapProfile(row);
 }
 
-export async function saveProfile(patch: Partial<Pick<UserProfile, 'name' | 'goal' | 'bodyweight' | 'unit' | 'experienceLevel'>>): Promise<void> {
+export async function saveProfile(patch: Partial<Pick<UserProfile, 'name' | 'goal' | 'bodyweight' | 'unit' | 'experienceLevel' | 'avatarUrl'>>): Promise<void> {
   const db = await openDatabase();
   const sets: string[] = [];
   const args: (string | number | null)[] = [];
@@ -818,6 +825,7 @@ export async function saveProfile(patch: Partial<Pick<UserProfile, 'name' | 'goa
   if (patch.bodyweight !== undefined) { sets.push('bodyweight = ?'); args.push(patch.bodyweight); }
   if (patch.unit !== undefined) { sets.push('unit = ?'); args.push(patch.unit); }
   if (patch.experienceLevel !== undefined) { sets.push('experience_level = ?'); args.push(patch.experienceLevel); }
+  if (patch.avatarUrl !== undefined) { sets.push('avatar_url = ?'); args.push(patch.avatarUrl); }
   if (sets.length === 0) return;
   sets.push('updated_at = ?');
   args.push(Date.now());

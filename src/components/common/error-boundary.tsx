@@ -1,6 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { View } from 'react-native';
-import { Heading, Body, Caption } from '@/components/common/text';
+import { Heading, Caption } from '@/components/common/text';
 import { Button } from '@/components/ui/button';
 
 interface Props { children: ReactNode }

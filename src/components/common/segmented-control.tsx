@@ -42,8 +42,8 @@ export function SegmentedControl<T extends string>({
 
   // Update indicator when selection changes
   if (offsets[selectedIndex] !== undefined && widths[selectedIndex] > 0) {
-    indicatorX.value = withSpring(offsets[selectedIndex], { damping: 20, stiffness: 300 });
-    indicatorWidth.value = withSpring(widths[selectedIndex], { damping: 20, stiffness: 300 });
+    indicatorX.value = withSpring(offsets[selectedIndex], { damping: 40, stiffness: 150 });
+    indicatorWidth.value = withSpring(widths[selectedIndex], { damping: 40, stiffness: 150 });
   }
 
   const indicatorStyle = useAnimatedStyle(() => ({

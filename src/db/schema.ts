@@ -7,7 +7,7 @@
  * Migrations: for the MVP we bump SCHEMA_VERSION and (in client.ts) could run
  * incremental migrations. A formal migration runner is deferred — see ROADMAP.md.
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const SCHEMA_STATEMENTS: string[] = [
   // ---- exercises (catalog) ----
@@ -146,6 +146,7 @@ export const SCHEMA_STATEMENTS: string[] = [
     unit TEXT NOT NULL DEFAULT 'metric',
     experience_level TEXT NOT NULL DEFAULT 'intermediate',
     onboarding_completed INTEGER NOT NULL DEFAULT 0,
+    avatar_url TEXT,
     updated_at INTEGER NOT NULL
   )`,
 

@@ -5,7 +5,6 @@ import { Plus } from 'lucide-react-native';
 
 import { Sheet } from '@/components/ui/sheet';
 import { SearchBar } from '@/components/common/search-bar';
-import { ExerciseListItem } from '@/components/exercise/exercise-list-item';
 import { CreateExerciseForm } from '@/components/exercise/create-exercise-form';
 import { EmptyState } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
@@ -131,7 +130,7 @@ export function ExercisePickerSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title={creating ? 'Create exercise' : 'Add exercise'}>
+    <Sheet open={open} onOpenChange={onOpenChange} title={creating ? 'Create exercise' : 'Add exercise'} snapPoints={['75%', '95%']} scroll>
       {creating ? (
         <CreateExerciseForm onCreated={handleCreated} onCancel={() => setCreating(false)} />
       ) : (
@@ -144,7 +143,7 @@ export function ExercisePickerSheet({
             Create custom exercise
           </Button>
           <SearchBar value={query} onChangeText={setQuery} placeholder="Search exercises" className="mb-3" />
-          <View style={{ height: 360 }}>
+          <View style={{ minHeight: 300, maxHeight: 500 }}>
             {error ? (
               <EmptyState title="Error" description={error} />
             ) : items.length === 0 && !loading ? (

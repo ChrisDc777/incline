@@ -16,10 +16,13 @@ export default function TabsLayout() {
   const [open, setOpen] = useState(false);
 
   // On cold start with an unfinished session, prompt to resume or discard.
-  // The layout persists across tab switches, so this only fires once per launch.
+  // Only show for sessions older than 5s (not a fresh start that's still animating).
   useEffect(() => {
     if (session && !prompted) {
-      setOpen(true);
+      const ageMs = Date.now() - session.startedAt;
+      if (ageMs > 5000) {
+        setOpen(true);
+      }
       setPrompted(true);
     }
   }, [session, prompted]);

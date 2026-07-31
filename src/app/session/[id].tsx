@@ -72,7 +72,7 @@ export default function SessionScreen() {
   const [removedSet, setRemovedSet] = useState<{ setEntry: SetEntry; exerciseId: number; logId: number } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pausedAt, setPausedAt] = useState<number | null>(null);
-  const [totalPausedMs, setTotalPausedMs] = useState(0);
+  const totalPausedMsRef = useRef(0);
   const [timerSheetOpen, setTimerSheetOpen] = useState(false);
   const [plateCalcOpen, setPlateCalcOpen] = useState(false);
   const pausedAtRef = useRef<number | null>(null);
@@ -97,14 +97,14 @@ export default function SessionScreen() {
   useEffect(() => {
     if (!session) return;
     const tick = () => {
+      if (pausedAtRef.current) return;
       const now = Date.now();
-      const pauseEnd = pausedAtRef.current ?? 0;
-      setElapsed(Math.floor((now - session.startedAt - totalPausedMs - (pauseEnd ? now - pauseEnd : 0)) / 1000));
+      setElapsed(Math.floor((now - session.startedAt - totalPausedMsRef.current) / 1000));
     };
     tick();
     const iv = setInterval(tick, 1000);
     return () => clearInterval(iv);
-  }, [session, totalPausedMs]);
+  }, [session]);
 
   useEffect(() => {
     if (session?.isComplete) router.replace(`/summary/${session.id}`);
@@ -126,7 +126,7 @@ export default function SessionScreen() {
 
   const onResume = () => {
     if (pausedAt) {
-      setTotalPausedMs((prev) => prev + (Date.now() - pausedAt));
+      totalPausedMsRef.current += Date.now() - pausedAt;
       setPausedAt(null);
       pausedAtRef.current = null;
       impact();
@@ -198,11 +198,11 @@ export default function SessionScreen() {
     if (notes.trim()) await updateWorkoutNotes(logId, notes.trim());
     // If paused, account for the paused time in duration
     const pauseBonus = pausedAt ? Date.now() - pausedAt : 0;
-    if (totalPausedMs > 0 || pauseBonus > 0) {
+    if (totalPausedMsRef.current > 0 || pauseBonus > 0) {
       const db = await openDatabase();
       const log = await db.getFirstAsync<{ started_at: number }>('SELECT started_at FROM workout_logs WHERE id = ?', logId);
       if (log) {
-        const realDuration = Math.max(0, Date.now() - log.started_at - totalPausedMs - pauseBonus);
+        const realDuration = Math.max(0, Date.now() - log.started_at - totalPausedMsRef.current - pauseBonus);
         await db.runAsync('UPDATE workout_logs SET duration_seconds = ? WHERE id = ?', Math.floor(realDuration / 1000), logId);
       }
     }
@@ -406,14 +406,14 @@ export default function SessionScreen() {
         }
       />
 
-      <Sheet open={timerSheetOpen} onOpenChange={setTimerSheetOpen} title="Workout Timer">
-        <View className="items-center gap-4 py-4">
+      <Sheet open={timerSheetOpen} onOpenChange={setTimerSheetOpen} title="Workout Timer" snapPoints={['25%']} dynamicSizing={false}>
+        <View className="items-center gap-3 py-2">
           <Body className="text-sm text-muted-foreground">Elapsed time</Body>
           <Body className="text-5xl font-bold tracking-tight text-foreground">{formatClock(elapsed)}</Body>
           {pausedAt ? (
-            <Caption className="text-amber-500">Timer paused</Caption>
+            <Caption className="text-amber-500">Paused</Caption>
           ) : null}
-          <View className="mt-2 flex-row gap-3">
+          <View className="mt-1 flex-row gap-3">
             {pausedAt ? (
               <Button
                 size="lg"
@@ -431,11 +431,6 @@ export default function SessionScreen() {
               </Button>
             )}
           </View>
-          <Caption className="mt-2 text-center">
-            {pausedAt
-              ? 'Timer is paused. Resume when you are ready to continue.'
-              : 'Tap pause if you need to take a break. The timer will stop counting.'}
-          </Caption>
         </View>
       </Sheet>
     </SafeAreaView>
