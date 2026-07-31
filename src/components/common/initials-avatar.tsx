@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { View, Image } from 'react-native';
 
 import { cn } from '@/lib/cn';
 import { Text } from '@/components/ui/text';
@@ -24,13 +24,15 @@ function colorForName(name: string): string {
   return COLORS[Math.abs(hash) % COLORS.length];
 }
 
-/** Avatar derived from initials with a deterministic color based on name. */
+/** Avatar with image support, falling back to colored initials. */
 export function InitialsAvatar({
   name,
+  uri,
   size = 44,
   className,
 }: {
   name: string;
+  uri?: string | null;
   size?: number;
   className?: string;
 }) {
@@ -41,6 +43,17 @@ export function InitialsAvatar({
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join('') || '?';
   const bgColor = colorForName(name || 'A');
+
+  if (uri) {
+    return (
+      <Image
+        source={{ uri }}
+        className={cn('rounded-full', className)}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
   return (
     <View
       className={cn('items-center justify-center rounded-full', bgColor, className)}

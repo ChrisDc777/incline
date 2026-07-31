@@ -3,6 +3,7 @@ import * as SQLite from 'expo-sqlite';
 import { DB_NAME } from '@/constants/config';
 import { SCHEMA_STATEMENTS, SCHEMA_VERSION } from './schema';
 import { seedDatabase } from './seed';
+import { seedFromSupabase } from './seed-supabase';
 
 let _db: SQLite.SQLiteDatabase | null = null;
 let _ready: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -67,6 +68,12 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
           await database.execAsync('CREATE INDEX IF NOT EXISTS idx_exercise_images_exercise ON exercise_images(exercise_id, sort_order)');
         } catch { /* table may already exist */ }
       }
+      // v3 → v4: add avatar_url to user_profile
+      if (current < 4) {
+        try {
+          await database.execAsync('ALTER TABLE user_profile ADD COLUMN avatar_url TEXT');
+        } catch { /* column may already exist */ }
+      }
       await database.runAsync(
         "INSERT INTO schema_meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         String(SCHEMA_VERSION),
@@ -81,6 +88,21 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
       await database.runAsync(
         "INSERT INTO schema_meta (key, value) VALUES ('seeded', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value",
       );
+    }
+
+    // Sync Supabase exercises into local SQLite for offline use
+    const supabaseSeeded = await database.getFirstAsync<{ value: string }>(
+      "SELECT value FROM schema_meta WHERE key = 'supabase_seeded'",
+    );
+    if (!supabaseSeeded) {
+      const count = await seedFromSupabase(database);
+      if (count > 0) {
+        await database.runAsync(
+          "INSERT INTO schema_meta (key, value) VALUES ('supabase_seeded', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        );
+      }
+      // If count === 0 (Supabase unreachable), we'll retry next launch.
+      // Only mark as seeded if we actually got data, so it retries.
     }
 
     _db = database;

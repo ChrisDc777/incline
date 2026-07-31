@@ -5,8 +5,7 @@ import { cn } from '@/lib/cn';
 import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
 import { formatWeight } from '@/db/calc';
-import type { Unit } from '@/db/types';
-import type { SetEntry } from '@/db/types';
+import type { SetEntry, Unit } from '@/db/types';
 
 /** Shows the carry-over values from the last completed workout for an exercise. */
 export function PreviousBestBadge({

@@ -1,11 +1,10 @@
-﻿import { View } from 'react-native';
-import { ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Flame, Dumbbell, Layers, TrendingUp } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
-import { Heading, Body, Caption } from '@/components/common/text';
+import { Heading, Caption } from '@/components/common/text';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { StatCard } from '@/components/common/stat-card';
 import { SectionHeader } from '@/components/common/section-header';

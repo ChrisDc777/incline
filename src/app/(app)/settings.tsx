@@ -1,4 +1,4 @@
-﻿import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Moon, Sun, Smartphone, Vibrate, Ruler } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
@@ -10,7 +10,7 @@ import { Chip } from '@/components/common/chip';
 import { useSettings } from '@/store/settings-store';
 import { useProfile } from '@/hooks/use-data';
 import { saveProfile } from '@/db/queries';
-import type { ThemeMode, Unit } from '@/db/types';
+import type { Unit } from '@/db/types';
 
 function Row({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (

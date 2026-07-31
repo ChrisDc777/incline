@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Modal, Pressable, View } from 'react-native';
+import { ReactNode, useRef, useCallback, useEffect } from 'react';
+import BottomSheetModal, { BottomSheetView, BottomSheetScrollView } from '@expo/ui/community/bottom-sheet';
 
 import { Text } from './text';
 
@@ -7,22 +7,47 @@ export function Sheet({
   open,
   onOpenChange,
   title,
+  snapPoints = ['45%', '75%'],
+  scroll = false,
+  dynamicSizing = true,
   children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title?: string;
+  snapPoints?: (string | number)[];
+  scroll?: boolean;
+  dynamicSizing?: boolean;
   children: ReactNode;
 }) {
+  const sheetRef = useRef<BottomSheetModal>(null);
+
+  const handleClose = useCallback(() => {
+    onOpenChange(false);
+  }, [onOpenChange]);
+
+  useEffect(() => {
+    if (open) {
+      sheetRef.current?.present();
+    } else {
+      sheetRef.current?.dismiss();
+    }
+  }, [open]);
+
+  const Content = scroll ? BottomSheetScrollView : BottomSheetView;
+
   return (
-    <Modal transparent animationType="slide" visible={open} onRequestClose={() => onOpenChange(false)}>
-      <Pressable className="flex-1 justify-end bg-black/50" onPress={() => onOpenChange(false)}>
-        <Pressable className="rounded-t-3xl bg-card p-5 pb-10" onPress={(e) => e.stopPropagation()}>
-          <View className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-muted" />
-          {title ? <Text className="mb-3 text-lg font-semibold text-foreground">{title}</Text> : null}
-          {children}
-        </Pressable>
-      </Pressable>
-    </Modal>
+    <BottomSheetModal
+      ref={sheetRef}
+      index={-1}
+      snapPoints={snapPoints}
+      enableDynamicSizing={dynamicSizing}
+      enablePanDownToClose
+      onClose={handleClose}>
+      <Content style={{ padding: 20 }}>
+        {title ? <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12 }}>{title}</Text> : null}
+        {children}
+      </Content>
+    </BottomSheetModal>
   );
 }

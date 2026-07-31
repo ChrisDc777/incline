@@ -7,6 +7,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@expo/ui/community/bottom-sheet';
 import { ClerkProvider } from '@clerk/clerk-expo';
 import {
   Inter_400Regular,
@@ -51,21 +52,23 @@ export default function RootLayout() {
         <ErrorBoundary>
           <StatusBar style={isDark ? 'light' : 'dark'} />
           <GestureHandlerRootView style={{ flex: 1 }}>
-            <View className={cn('flex-1', isDark && 'dark')}>
-              <ToastProvider>
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="index" />
-                  <Stack.Screen name="(onboarding)" />
-                  <Stack.Screen name="(auth)" />
-                  <Stack.Screen name="(app)" />
-                  <Stack.Screen name="exercise/[id]" options={{ headerShown: true, title: 'Exercise' }} />
-                  <Stack.Screen name="workout/[id]" options={{ headerShown: true, title: 'Workout' }} />
-                  <Stack.Screen name="session/[id]" options={{ headerShown: true, title: 'Workout' }} />
-                  <Stack.Screen name="summary/[id]" options={{ headerShown: true, title: 'Summary' }} />
-                  <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
-                </Stack>
-              </ToastProvider>
-            </View>
+            <BottomSheetModalProvider>
+              <View className={cn('flex-1', isDark && 'dark')}>
+                <ToastProvider>
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="index" />
+                    <Stack.Screen name="(onboarding)" />
+                    <Stack.Screen name="(auth)" />
+                    <Stack.Screen name="(app)" />
+                    <Stack.Screen name="exercise/[id]" options={{ headerShown: true, title: 'Exercise' }} />
+                    <Stack.Screen name="workout/[id]" options={{ headerShown: true, title: 'Workout' }} />
+                    <Stack.Screen name="session/[id]" options={{ headerShown: true, title: 'Workout' }} />
+                    <Stack.Screen name="summary/[id]" options={{ headerShown: true, title: 'Summary' }} />
+                    <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
+                  </Stack>
+                </ToastProvider>
+              </View>
+            </BottomSheetModalProvider>
           </GestureHandlerRootView>
         </ErrorBoundary>
       </ThemeProvider>

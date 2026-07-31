@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 
 import { useAsync } from './use-async';
 import {
+  getActiveWorkout,
   getExercise,
   getExerciseHistory,
   getProgram,
@@ -9,14 +11,17 @@ import {
   getProgressStats,
   getSuggestedTemplate,
   getTemplate,
+  getWorkoutLog,
   listExercises,
   listPrograms,
   listTemplateSummaries,
   listWorkoutLogs,
   searchExercises,
   type ExerciseFilters,
+  type SessionWorkout,
 } from '@/db/queries';
 import type { Exercise, MuscleGroup, PR, Program, ProgressStats, SearchHit, UserProfile, WorkoutLog, WorkoutTemplate } from '@/db/types';
+import { useSettings } from '@/store/settings-store';
 
 /* ---- catalog ---- */
 export function useExercises() {
@@ -104,8 +109,6 @@ export function useWorkoutLogs() {
 }
 
 /* ---- active workout / session ---- */
-import { getActiveWorkout, getWorkoutLog, type SessionWorkout } from '@/db/queries';
-
 export function useActiveSession() {
   return useAsync<SessionWorkout | null>(() => getActiveWorkout(), []);
 }
@@ -115,9 +118,6 @@ export function useWorkoutLog(id: number) {
 }
 
 /* ---- haptics ---- */
-import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
-import { useSettings } from '@/store/settings-store';
-
 export function useHaptics() {
   const { hapticsEnabled } = useSettings();
   const impact = useCallback(() => {

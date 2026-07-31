@@ -1,6 +1,5 @@
 import { View } from 'react-native';
-import { CalendarDays, Layers } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { CalendarDays } from 'lucide-react-native';
 
 import { Icon } from '@/components/common/icon';
 import { Card } from '@/components/ui/card';
@@ -10,7 +9,6 @@ import type { Program } from '@/db/types';
 
 /** Program card that navigates to the program detail screen. */
 export function ProgramCard({ program }: { program: Program }) {
-  const router = useRouter();
   const daysPerWeek = program.workouts && program.weeks
     ? Math.ceil(program.workouts.length / program.weeks)
     : 0;

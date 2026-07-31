@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Settings as SettingsIcon, Pencil, ChevronRight, Trash2, Info, Dumbbell, Flame, Layers, BarChart3, Ruler, Calendar } from 'lucide-react-native';
+import { useAuth } from '@clerk/clerk-expo';
+import * as ImagePicker from 'expo-image-picker';
+import { documentDirectory, makeDirectoryAsync, copyAsync } from 'expo-file-system/legacy';
+import { Settings as SettingsIcon, Pencil, ChevronRight, Trash2, Info, Dumbbell, Flame, Layers, BarChart3, Ruler, Calendar, LogOut, Camera } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '@/components/common/icon';
 
@@ -29,6 +32,7 @@ export default function ProfileScreen() {
   const { unit } = useSettings();
   const { data: profile, refetch } = useProfile();
   const { data: stats, refetch: refetchStats } = useProgressStats();
+  const { signOut } = useAuth();
 
   const [editOpen, setEditOpen] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
@@ -51,6 +55,32 @@ export default function ProfileScreen() {
     toast({ title: 'Profile updated', variant: 'success' });
   };
 
+  const pickAvatar = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Allow photo access to set a profile picture.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    const dir = `${documentDirectory}avatars/`;
+    await makeDirectoryAsync(dir, { intermediates: true });
+    const filename = `avatar_${Date.now()}.jpg`;
+    const localUri = `${dir}${filename}`;
+    await copyAsync({ from: asset.uri, to: localUri });
+
+    await saveProfile({ avatarUrl: localUri });
+    refetch();
+    toast({ title: 'Profile photo updated', variant: 'success' });
+  };
+
   const clearHistory = async () => {
     setClearOpen(false);
     await clearWorkoutHistory();
@@ -63,29 +93,35 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
         <Heading>Profile</Heading>
 
-        <LinearGradient
-          colors={['rgba(22,163,74,0.12)', 'rgba(22,163,74,0.02)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="mt-4 rounded-3xl"
-        >
-          <View className="p-4">
-            <View className="flex-row items-start gap-4">
-              <InitialsAvatar name={profile?.name ?? ''} size={80} />
-              <View className="flex-1 pt-1">
-                <Body className="text-lg font-bold text-foreground">
-                  {profile?.name?.trim() || 'Athlete'}
-                </Body>
-                <Caption className="mt-0.5">
-                  {profile?.goal ? GOAL_LABELS[profile.goal] : 'Set your goal'}
-                </Caption>
+        <View className="mt-4 overflow-hidden rounded-3xl">
+          <LinearGradient
+            colors={['rgba(22,163,74,0.12)', 'rgba(22,163,74,0.02)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View className="p-4">
+              <View className="flex-row items-start gap-4">
+                <Pressable onPress={pickAvatar} className="relative">
+                  <InitialsAvatar name={profile?.name ?? ''} uri={profile?.avatarUrl} size={80} />
+                  <View className="absolute bottom-0 right-0 h-6 w-6 items-center justify-center rounded-full bg-primary">
+                    <Icon icon={Camera} size={12} color="primary-foreground" />
+                  </View>
+                </Pressable>
+                <View className="flex-1 pt-1">
+                  <Body className="text-lg font-bold text-foreground">
+                    {profile?.name?.trim() || 'Athlete'}
+                  </Body>
+                  <Caption className="mt-0.5">
+                    {profile?.goal ? GOAL_LABELS[profile.goal] : 'Set your goal'}
+                  </Caption>
+                </View>
               </View>
+              <Button variant="outline" size="sm" className="mt-4" leftIcon={<Icon icon={Pencil} size={14} color="primary" />} onPress={openEdit}>
+                Edit profile
+              </Button>
             </View>
-            <Button variant="outline" size="sm" className="mt-4" leftIcon={<Icon icon={Pencil} size={14} color="primary" />} onPress={openEdit}>
-              Edit profile
-            </Button>
-          </View>
-        </LinearGradient>
+          </LinearGradient>
+        </View>
 
         <View className="mt-6 flex-row gap-3">
           <StatCard label="Sessions" value={stats?.totalSessions ?? 0} icon={<Icon icon={Dumbbell} size={16} color="primary" />} />
@@ -99,7 +135,7 @@ export default function ProfileScreen() {
             <Icon icon={BarChart3} size={20} color="primary" />
             <Body className="font-medium text-foreground">Statistics</Body>
           </Pressable>
-          <Pressable onPress={() => router.push('/(app)/(tabs)/workouts')} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => router.push('/(app)/exercises' as any)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Dumbbell} size={20} color="primary" />
             <Body className="font-medium text-foreground">Exercises</Body>
           </Pressable>
@@ -136,6 +172,11 @@ export default function ProfileScreen() {
               <Caption>Version 1.0.0</Caption>
             </View>
           </View>
+
+          <Pressable onPress={async () => { await signOut(); router.replace('/(auth)/sign-in' as any); }} className="flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={LogOut} size={20} color="destructive" />
+            <Body className="flex-1 font-medium text-foreground">Sign out</Body>
+          </Pressable>
         </View>
       </ScrollView>
 
