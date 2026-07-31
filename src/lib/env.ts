@@ -25,3 +25,7 @@ export const CLERK_PUBLISHABLE_KEY = requireEnv('EXPO_PUBLIC_CLERK_PUBLISHABLE_K
 /* ---- ExerciseDB (RapidAPI, optional — free tier needs neither) ---- */
 export const EXERCISEDB_API_KEY = optionalEnv('EXPO_PUBLIC_EXERCISEDB_API_KEY');
 export const EXERCISEDB_API_HOST = optionalEnv('EXPO_PUBLIC_EXERCISEDB_API_HOST');
+
+/* ---- Supabase (required for exercise library) ---- */
+export const SUPABASE_URL = optionalEnv('EXPO_PUBLIC_SUPABASE_URL');
+export const SUPABASE_ANON_KEY = optionalEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY');

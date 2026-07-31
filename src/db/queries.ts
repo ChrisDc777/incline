@@ -326,6 +326,62 @@ export async function updateExerciseDefaultRest(exerciseId: number, seconds: num
   await db.runAsync('UPDATE exercises SET default_rest_seconds = ?, updated_at = ? WHERE id = ?', seconds, Date.now(), exerciseId);
 }
 
+/**
+ * Ensure an exercise exists in local SQLite by external_id.
+ * If it exists, return its local id. If not, insert it and return the new id.
+ * Used when picking exercises from Supabase — saves locally for workout logging.
+ */
+export async function ensureExerciseExists(
+  exercise: {
+    name: string;
+    primaryMuscle: MuscleGroup;
+    secondaryMuscles?: MuscleGroup[];
+    movementPattern: MovementPattern;
+    equipment: Equipment;
+    category: Category;
+    isCompound: boolean;
+    instructions?: string[];
+    tips?: string;
+    defaultRestSeconds?: number;
+  },
+  externalId: string,
+): Promise<number> {
+  const db = await openDatabase();
+  const existing = await db.getFirstAsync<{ id: number }>(
+    'SELECT id FROM exercises WHERE external_id = ?',
+    externalId,
+  );
+  if (existing) return existing.id;
+
+  const now = Date.now();
+  const res = await db.runAsync(
+    `INSERT INTO exercises (name, primary_muscle, movement_pattern, equipment, category, is_compound, is_custom, source, external_id, difficulty, default_rest_seconds, tips, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 0, 'exercisedb', ?, 'beginner', ?, ?, ?, ?)`,
+    exercise.name, exercise.primaryMuscle, exercise.movementPattern, exercise.equipment,
+    exercise.category, exercise.isCompound ? 1 : 0, externalId,
+    exercise.defaultRestSeconds ?? 90, exercise.tips ?? '', now, now,
+  );
+  const id = res.lastInsertRowId as number;
+
+  // Secondary muscles
+  for (const muscle of exercise.secondaryMuscles ?? []) {
+    await db.runAsync(
+      'INSERT INTO exercise_secondary_muscles (exercise_id, muscle) VALUES (?, ?)',
+      id, muscle,
+    );
+  }
+
+  // Instructions
+  for (let i = 0; i < (exercise.instructions ?? []).length; i++) {
+    await db.runAsync(
+      'INSERT INTO exercise_instructions (exercise_id, step, text) VALUES (?, ?, ?)',
+      id, i + 1, exercise.instructions![i],
+    );
+  }
+
+  return id;
+}
+
 /* ------------------------------- templates ------------------------------- */
 export async function listTemplates(): Promise<WorkoutTemplate[]> {
   const db = await openDatabase();
