@@ -102,7 +102,13 @@ export default function OnboardingScreen() {
           {step === 0 && (
             <Animated.View entering={FadeIn.duration(300)} className="flex-1 justify-center">
               <View className="items-center mb-8">
-                <InitialsAvatar name={name || '?'} size={80} />
+                {name ? (
+                  <InitialsAvatar name={name} size={80} />
+                ) : (
+                  <View className="h-[80px] w-[80px] items-center justify-center rounded-full bg-primary/15">
+                    <Icon icon={Dumbbell} size={36} color="primary" />
+                  </View>
+                )}
               </View>
               <Heading className="text-center">Welcome to Incline</Heading>
               <Body className="mt-2 text-center text-muted-foreground">

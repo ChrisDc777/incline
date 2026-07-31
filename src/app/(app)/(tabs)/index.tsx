@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -45,6 +45,7 @@ export default function HomeScreen() {
   const [conflictOpen, setConflictOpen] = useState(false);
   const [pendingStart, setPendingStart] = useState<{ templateId: number | null; name: string } | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [today] = useState(() => formatFullDate(Date.now()));
 
   const doStart = async (templateId: number | null, name: string) => {
     setStarting(true);
@@ -98,14 +99,15 @@ export default function HomeScreen() {
 
   const name = profile?.name?.trim() || 'Athlete';
   const hasData = (stats?.totalSessions ?? 0) > 0;
-  const topPRs = (stats?.prs ?? []).slice(0, 3);
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const recentPRs = (stats?.prs ?? []).filter((pr) => pr.achievedAt >= sevenDaysAgo).slice(0, 3);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
         <Caption>{greeting()}</Caption>
-        <Hero className="mt-0.5">Let's train, {name.split(' ')[0]}</Hero>
-        <Body className="mt-1 text-muted-foreground">{formatFullDate(Date.now())}</Body>
+        <Hero className="mt-0.5">Let&apos;s train, {name.split(' ')[0]}</Hero>
+        <Body className="mt-1 text-muted-foreground">{today}</Body>
 
         <View className="mt-6 gap-3">
           {sugLoading ? (
@@ -114,7 +116,7 @@ export default function HomeScreen() {
             <Pressable onPress={() => router.push(`/workout/${suggested.id}`)}>
               <Card>
                 <View className="flex-row items-center justify-between">
-                  <Caption>Today's workout</Caption>
+                  <Caption>Today&apos;s workout</Caption>
                   <Caption>{suggested.estimatedMinutes} min</Caption>
                 </View>
                 <Body className="mt-2 font-semibold text-foreground">{suggested.name}</Body>
@@ -154,7 +156,7 @@ export default function HomeScreen() {
               />
             </View>
 
-            {topPRs.length > 0 ? (
+            {recentPRs.length > 0 ? (
               <View className="mt-8">
                 <SectionHeader
                   title="Personal records"
@@ -163,7 +165,7 @@ export default function HomeScreen() {
                   className="mb-3"
                 />
                 <View className="gap-2.5">
-                  {topPRs.map((pr) => (
+                  {recentPRs.map((pr) => (
                     <PRCard key={pr.exerciseId} pr={pr} unit={unit} />
                   ))}
                 </View>
@@ -196,7 +198,7 @@ export default function HomeScreen() {
               </View>
               <Body className="mt-4 text-center font-semibold text-foreground">Log your first workout</Body>
               <Caption className="mt-1 text-center">
-                Start today's workout or a quick session to begin tracking progress.
+                Start today&apos;s workout or a quick session to begin tracking progress.
               </Caption>
             </Card>
           </View>

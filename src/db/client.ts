@@ -83,23 +83,6 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
       );
     }
 
-    // Background import from ExerciseDB free API (runs once)
-    const imported = await database.getFirstAsync<{ value: string }>(
-      "SELECT value FROM schema_meta WHERE key = 'exercise_imported'",
-    );
-    if (!imported) {
-      import('./import-exercisedb').then(({ importExercisesFromDb }) =>
-        importExercisesFromDb().then(async () => {
-          try {
-            const db = await openDatabase();
-            await db.runAsync(
-              "INSERT INTO schema_meta (key, value) VALUES ('exercise_imported', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-            );
-          } catch { /* best effort */ }
-        }).catch(() => { /* background — ignore errors */ }),
-      ).catch(() => { /* module load failure — ignore */ });
-    }
-
     _db = database;
     return database;
   })();
