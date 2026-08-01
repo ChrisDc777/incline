@@ -7,7 +7,7 @@ import { Text } from '@/components/ui/text';
 import { SetRow } from './set-row';
 import { RestTimerPickerSheet } from './rest-timer-picker-sheet';
 import type { SetEntry, Unit } from '@/db/types';
-import { Plus, Clock } from 'lucide-react-native';
+import { Plus, Clock, Flame } from 'lucide-react-native';
 
 /**
  * One exercise within an active session: header (name + rest timer config) and
@@ -26,6 +26,7 @@ export function ExerciseBlock({
   onToggleComplete,
   onRemoveSet,
   onAddSet,
+  onAddWarmUp,
   className,
 }: {
   name: string;
@@ -40,6 +41,7 @@ export function ExerciseBlock({
   onToggleComplete: (setId: number) => void;
   onRemoveSet: (setId: number) => void;
   onAddSet: () => void;
+  onAddWarmUp: () => void;
   className?: string;
 }) {
   const [restPickerOpen, setRestPickerOpen] = useState(false);
@@ -92,6 +94,15 @@ export function ExerciseBlock({
         accessibilityLabel="Add set">
         <Icon icon={Plus} size={15} color="primary" />
         <Text className="text-sm font-medium text-primary">Add set</Text>
+      </Pressable>
+
+      <Pressable
+        onPress={onAddWarmUp}
+        className="mt-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-border/60 py-2"
+        accessibilityRole="button"
+        accessibilityLabel="Add warm-up set">
+        <Icon icon={Flame} size={15} color="warning" />
+        <Text className="text-sm font-medium text-warning">Warm-up (~50%)</Text>
       </Pressable>
 
       <RestTimerPickerSheet

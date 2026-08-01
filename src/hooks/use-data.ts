@@ -137,15 +137,18 @@ export function useWorkoutFeedLogs() {
     load(true);
   }, [load]);
 
+  const loadMore = useCallback(() => {
+    if (!loading && hasMore) load(false);
+  }, [loading, hasMore, load]);
+  const refresh = useCallback(() => load(true), [load]);
+
   return {
     items,
     loading,
     error,
     hasMore,
-    loadMore: () => {
-      if (!loading && hasMore) load(false);
-    },
-    refresh: () => load(true),
+    loadMore,
+    refresh,
   };
 }
 

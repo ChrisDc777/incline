@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Clock, Weight, Dumbbell, Calendar, Camera, Plus, Undo2 } from 'lucide-react-native';
+import { X, Clock, Weight, Dumbbell, Calendar, Camera, Plus, Flame, Undo2 } from 'lucide-react-native';
 import { DateTimePicker } from '@expo/ui/community/datetime-picker';
 import { Icon } from '@/components/common/icon';
 
@@ -18,6 +18,7 @@ import { useSettings } from '@/store/settings-store';
 import {
   addExerciseToWorkout,
   addSet,
+  addWarmUpSet,
   getWorkoutLog,
   removeSet,
   updateSet,
@@ -148,6 +149,12 @@ export default function EditWorkoutScreen() {
   const onAddSet = async (exerciseId: number) => {
     impact();
     await addSet(logId, exerciseId);
+    load();
+  };
+
+  const onAddWarmUp = async (exerciseId: number) => {
+    impact();
+    await addWarmUpSet(logId, exerciseId);
     load();
   };
 
@@ -434,6 +441,17 @@ export default function EditWorkoutScreen() {
                 accessibilityLabel={`Add set to ${g.exerciseName}`}>
                 <Icon icon={Plus} size={15} color="primary" />
                 <Body className="text-sm font-medium text-primary">Add set</Body>
+              </Pressable>
+
+              {/* Warm-up set */}
+              <Pressable
+                onPress={() => onAddWarmUp(g.exerciseId)}
+                style={({ pressed }) => (pressed ? { opacity: 0.6 } : undefined)}
+                className="mt-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-border/60 py-2"
+                accessibilityRole="button"
+                accessibilityLabel={`Add warm-up set to ${g.exerciseName}`}>
+                <Icon icon={Flame} size={15} color="warning" />
+                <Body className="text-sm font-medium text-warning">Warm-up (~50%)</Body>
               </Pressable>
             </View>
           ))}

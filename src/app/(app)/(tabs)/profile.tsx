@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import * as ImagePicker from 'expo-image-picker';
 import { documentDirectory, makeDirectoryAsync, copyAsync } from 'expo-file-system/legacy';
-import { Settings as SettingsIcon, Pencil, ChevronRight, Trash2, Info, Dumbbell, Flame, Layers, BarChart3, Ruler, Calendar, LogOut, Camera } from 'lucide-react-native';
+import { Settings as SettingsIcon, Pencil, ChevronRight, Trash2, Info, Dumbbell, Flame, Layers, BarChart3, Ruler, Calendar, LogOut, Camera, Calculator, Weight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '@/components/common/icon';
 
@@ -148,6 +148,18 @@ export default function ProfileScreen() {
           <Pressable onPress={() => router.push('/(app)/calendar' as any)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Calendar} size={20} color="primary" />
             <Body className="font-medium text-foreground">Calendar</Body>
+          </Pressable>
+        </View>
+
+        <Caption className="mt-8 mb-3">Tools</Caption>
+        <View className="flex-row gap-3">
+          <Pressable onPress={() => router.push('/(app)/calculator' as any)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={Calculator} size={20} color="primary" />
+            <Body className="font-medium text-foreground">1RM Calc</Body>
+          </Pressable>
+          <Pressable onPress={() => router.push('/(app)/plate-calculator' as any)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={Weight} size={20} color="primary" />
+            <Body className="font-medium text-foreground">Plates</Body>
           </Pressable>
         </View>
 

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { StatCard } from '@/components/common/stat-card';
 import { WorkoutFeedCard } from '@/components/workout/workout-feed-card';
+import { TemplatePickerSheet } from '@/components/workout/template-picker-sheet';
 import { CardSkeleton } from '@/components/common/skeleton';
 import { useProfile, useSuggestedTemplate, useProgressStats, useWorkoutFeedLogs } from '@/hooks/use-data';
 import { useActiveSession } from '@/hooks/use-active-session';
@@ -40,8 +41,10 @@ export default function HomeScreen() {
   const { session } = useActiveSession();
   const clear = useActiveWorkout((s) => s.clear);
   const feed = useWorkoutFeedLogs();
+  const refreshFeed = feed.refresh;
   const [starting, setStarting] = useState(false);
   const [conflictOpen, setConflictOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingStart, setPendingStart] = useState<{ templateId: number | null; name: string } | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [today] = useState(() => formatFullDate(Date.now()));
@@ -49,9 +52,13 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (didFocus.current) refetchProfile();
-      else didFocus.current = true;
-    }, [refetchProfile]),
+      if (didFocus.current) {
+        refetchProfile();
+        refreshFeed();
+      } else {
+        didFocus.current = true;
+      }
+    }, [refetchProfile, refreshFeed]),
   );
 
   const doStart = async (templateId: number | null, name: string) => {
@@ -77,13 +84,17 @@ export default function HomeScreen() {
     await doStart(id, name);
   };
 
-  const quickStart = async () => {
+  const quickStart = () => {
+    setPickerOpen(true);
+  };
+
+  const handleTemplateStart = (templateId: number | null, name: string) => {
     if (session) {
-      setPendingStart({ templateId: null, name: 'Quick Workout' });
+      setPendingStart({ templateId, name });
       setConflictOpen(true);
       return;
     }
-    await doStart(null, 'Quick Workout');
+    void doStart(templateId, name);
   };
 
   const resumeActive = () => {
@@ -210,6 +221,8 @@ export default function HomeScreen() {
         ItemSeparatorComponent={() => <View className="h-3" />}
         showsVerticalScrollIndicator={false}
       />
+
+      <TemplatePickerSheet open={pickerOpen} onOpenChange={setPickerOpen} onStart={handleTemplateStart} />
 
       <Dialog
         open={conflictOpen}
