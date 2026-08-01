@@ -87,15 +87,12 @@ export default function SignInScreen() {
     setResetStep('sending');
     setResetError('');
     try {
-      const result = await signIn.create({
+      await signIn.create({
         strategy: 'reset_password_email_code',
         identifier: resetEmail,
       });
-      if (result.status === 'needs_first_factor_verification') {
-        setResetStep('verify');
-      } else {
-        setResetStep('verify');
-      }
+      // For reset_password_email_code, the next step is always entering the emailed code.
+      setResetStep('verify');
     } catch (err: any) {
       setResetError(err?.errors?.[0]?.message ?? 'Could not send reset code. Check your email and try again.');
       setResetStep('idle');

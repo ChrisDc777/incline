@@ -346,7 +346,7 @@ export async function searchExercises(query: string, filters?: ExerciseFilters):
     else if (aliases.some((a) => a.includes(q))) { score = 70; matchedOn = 'alias'; }
     else if (muscles.some((m) => m.includes(q))) { score = 50; matchedOn = 'muscle'; }
     else if (ex.equipment.includes(q)) { score = 40; matchedOn = 'equipment'; }
-    else if (ex.movementPattern.includes(q) || ex.movementPattern.replace('_', ' ').includes(q)) { score = 30; matchedOn = 'pattern'; }
+    else if (ex.movementPattern && (ex.movementPattern.includes(q) || ex.movementPattern.replace('_', ' ').includes(q))) { score = 30; matchedOn = 'pattern'; }
     else if (isSubsequence(q, name)) { score = 20; matchedOn = 'name'; }
     else if (aliases.some((a) => isSubsequence(q, a))) { score = 18; matchedOn = 'alias'; }
     if (matchedOn) hits.push({ exercise: ex, score, matchedOn });
@@ -409,12 +409,12 @@ export async function ensureExerciseExists(
     name: string;
     primaryMuscle: MuscleGroup;
     secondaryMuscles?: MuscleGroup[];
-    movementPattern?: MovementPattern;
+    movementPattern?: MovementPattern | null;
     equipment: Equipment;
     category: Category;
     isCompound: boolean;
     instructions?: string[];
-    tips?: string;
+    tips?: string | null;
     defaultRestSeconds?: number;
   },
   externalId: string,
@@ -803,6 +803,30 @@ export async function addExerciseToWorkout(logId: number, exerciseId: number): P
   const res = await db.runAsync(
     `INSERT INTO set_entries (workout_log_id, exercise_id, set_index, weight, reps, completed, rest_seconds, created_at) VALUES (?, ?, ?, ?, ?, 0, NULL, ?)`,
     logId, exerciseId, setIndex, last[0]?.weight ?? 0, last[0]?.reps ?? 0, Date.now(),
+  );
+  await recomputeVolume(logId);
+  return res.lastInsertRowId as number;
+}
+
+/** Add a warm-up set at ~50% of the exercise's current working weight. */
+export async function addWarmUpSet(logId: number, exerciseId: number): Promise<number> {
+  const db = await openDatabase();
+  const heaviest = await db.getFirstAsync<SetRow>(
+    'SELECT * FROM set_entries WHERE workout_log_id = ? AND exercise_id = ? ORDER BY weight DESC LIMIT 1',
+    logId,
+    exerciseId,
+  );
+  const last = await db.getFirstAsync<SetRow>(
+    'SELECT * FROM set_entries WHERE workout_log_id = ? AND exercise_id = ? ORDER BY set_index DESC LIMIT 1',
+    logId,
+    exerciseId,
+  );
+  const workingWeight = heaviest?.weight ?? 0;
+  const warmUpWeight = Math.max(0, Math.round((workingWeight * 0.5) / 2.5) * 2.5);
+  const nextIndex = last ? last.set_index + 1 : 0;
+  const res = await db.runAsync(
+    `INSERT INTO set_entries (workout_log_id, exercise_id, set_index, weight, reps, completed, rest_seconds, created_at) VALUES (?, ?, ?, ?, ?, 0, NULL, ?)`,
+    logId, exerciseId, nextIndex, warmUpWeight, heaviest?.reps ?? 10, Date.now(),
   );
   await recomputeVolume(logId);
   return res.lastInsertRowId as number;

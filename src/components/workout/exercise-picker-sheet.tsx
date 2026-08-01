@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react-native';
 import { Sheet } from '@/components/ui/sheet';
 import { SearchBar } from '@/components/common/search-bar';
 import { CreateExerciseForm } from '@/components/exercise/create-exercise-form';
+import { MuscleBadge } from '@/components/exercise/muscle-badge';
 import { EmptyState } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/common/icon';
@@ -78,10 +79,10 @@ export function ExercisePickerSheet({
           equipment: ex.equipment,
           target_muscle: ex.primaryMuscle,
           secondary_muscles: ex.secondaryMuscles,
-          movement_pattern: ex.movementPattern,
+          movement_pattern: ex.movementPattern ?? 'isolation',
           category: ex.category,
           is_compound: ex.isCompound,
-          difficulty: ex.difficulty,
+          difficulty: ex.difficulty ?? 'intermediate',
           instructions: ex.instructions,
           gif_url: ex.imageUrl ?? '',
           created_at: new Date(ex.createdAt).toISOString(),
@@ -131,10 +132,10 @@ export function ExercisePickerSheet({
           equipment: hit.exercise.equipment,
           target_muscle: hit.exercise.primaryMuscle,
           secondary_muscles: hit.exercise.secondaryMuscles,
-          movement_pattern: hit.exercise.movementPattern,
+          movement_pattern: hit.exercise.movementPattern ?? 'isolation',
           category: hit.exercise.category,
           is_compound: hit.exercise.isCompound,
-          difficulty: hit.exercise.difficulty,
+          difficulty: hit.exercise.difficulty ?? 'intermediate',
           instructions: hit.exercise.instructions,
           gif_url: hit.exercise.imageUrl ?? '',
           created_at: new Date(hit.exercise.createdAt).toISOString(),
@@ -204,9 +205,10 @@ export function ExercisePickerSheet({
                       <View className="flex-row items-center gap-3 rounded-3xl bg-card p-4">
                         <View className="flex-1">
                           <Text className="text-sm font-semibold text-foreground">{item.name}</Text>
-                          <Text className="mt-0.5 text-xs text-muted-foreground">
-                            {item.target_muscle} · {item.equipment}
-                          </Text>
+                          <View className="mt-1 flex-row flex-wrap items-center gap-1.5">
+                            <MuscleBadge muscle={item.target_muscle} />
+                            <Text className="text-xs text-muted-foreground">{item.equipment}</Text>
+                          </View>
                         </View>
                       </View>
                     </View>

@@ -14,6 +14,7 @@ import { ExerciseBlock } from '@/components/workout/exercise-block';
 import { ExercisePickerSheet } from '@/components/workout/exercise-picker-sheet';
 import { RestTimer } from '@/components/workout/rest-timer';
 import { PlateCalculator } from '@/components/workout/plate-calculator';
+import { RestPresetBar } from '@/components/workout/rest-preset-bar';
 import { useRestTimer } from '@/hooks/use-rest-timer';
 import { useRestTimerSound } from '@/hooks/use-rest-timer-sound';
 import { useHaptics } from '@/hooks/use-haptics';
@@ -23,6 +24,7 @@ import { useToast } from '@/components/ui/toast';
 import {
   addExerciseToWorkout,
   addSet,
+  addWarmUpSet,
   discardWorkout,
   finishWorkout,
   getLastSetsForExercise,
@@ -149,6 +151,13 @@ export default function SessionScreen() {
   const onChangeRestSeconds = (exerciseId: number, seconds: number) => {
     setRestSecondsMap((prev) => ({ ...prev, [exerciseId]: seconds }));
   };
+  const applyRestToAll = (seconds: number) => {
+    const map: Record<number, number> = {};
+    for (const s of session?.sets ?? []) {
+      map[s.exerciseId] = seconds;
+    }
+    setRestSecondsMap(map);
+  };
   const onToggleComplete = async (setId: number) => {
     const target = session?.sets.find((x) => x.id === setId);
     const next = !target?.completed;
@@ -186,6 +195,7 @@ export default function SessionScreen() {
     reload();
   };
   const onAddSet = async (exerciseId: number) => { impact(); await addSet(logId, exerciseId); reload(); };
+  const onAddWarmUp = async (exerciseId: number) => { impact(); await addWarmUpSet(logId, exerciseId); reload(); };
   const onPickExercise = async (ex: Exercise) => {
     impact();
     await addExerciseToWorkout(logId, ex.id);
@@ -280,6 +290,13 @@ export default function SessionScreen() {
           Add exercise
         </Button>
 
+        {session.sets.length > 0 && (
+          <View className="mb-4 rounded-2xl bg-card p-3">
+            <Caption className="mb-2 text-muted-foreground">Set rest for all exercises</Caption>
+            <RestPresetBar onSelect={applyRestToAll} />
+          </View>
+        )}
+
         <Pressable
           onPress={() => setNotesOpen(!notesOpen)}
           className="mb-3 flex-row items-center gap-2 rounded-xl bg-card px-4 py-3">
@@ -347,6 +364,7 @@ export default function SessionScreen() {
                   onToggleComplete={onToggleComplete}
                   onRemoveSet={onRemoveSet}
                   onAddSet={() => onAddSet(g.exerciseId)}
+                  onAddWarmUp={() => onAddWarmUp(g.exerciseId)}
                 />
               </View>
             ))}
