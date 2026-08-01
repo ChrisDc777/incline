@@ -83,6 +83,14 @@ export async function seedFromSupabase(db: SQLiteDatabase): Promise<number> {
       );
     }
 
+    // Exercise image/GIF
+    if (ex.gif_url) {
+      await db.runAsync(
+        'INSERT INTO exercise_images (exercise_id, url, is_primary, sort_order) VALUES (?, ?, 1, 0)',
+        localId, ex.gif_url,
+      );
+    }
+
     inserted++;
   }
 

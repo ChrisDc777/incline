@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
 import { fetchExercisesFromSupabase, searchExercisesFromSupabase, type SupabaseExercise } from '@/lib/supabase';
-import { ensureExerciseExists } from '@/db/queries';
+import { ensureExerciseExists, listExercises, searchExercises } from '@/db/queries';
 import type { Exercise } from '@/db/types';
 
 /** Convert a Supabase exercise to the local Exercise type for workout logging. */
@@ -33,6 +33,7 @@ function toLocalExercise(ex: SupabaseExercise): Exercise {
     defaultRestSeconds: 90,
     instructions: ex.instructions ?? [],
     tips: '',
+    imageUrl: ex.gif_url ?? null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -66,7 +67,30 @@ export function ExercisePickerSheet({
       setOffset(data.length);
       setHasMore(data.length === BATCH);
     } catch {
-      setError('Could not load exercises. Check your connection.');
+      // Supabase unreachable — fall back to local SQLite exercises
+      try {
+        const local = await listExercises();
+        const localItems: SupabaseExercise[] = local.map((ex) => ({
+          id: ex.id,
+          external_id: ex.externalId ?? `local:${ex.id}`,
+          name: ex.name,
+          body_part: ex.primaryMuscle,
+          equipment: ex.equipment,
+          target_muscle: ex.primaryMuscle,
+          secondary_muscles: ex.secondaryMuscles,
+          movement_pattern: ex.movementPattern,
+          category: ex.category,
+          is_compound: ex.isCompound,
+          difficulty: ex.difficulty,
+          instructions: ex.instructions,
+          gif_url: ex.imageUrl ?? '',
+          created_at: new Date(ex.createdAt).toISOString(),
+        }));
+        setItems(localItems);
+        setHasMore(false);
+      } catch {
+        setError('Could not load exercises. Check your connection.');
+      }
     } finally {
       setLoading(false);
     }
@@ -96,7 +120,30 @@ export function ExercisePickerSheet({
       setItems(data);
       setHasMore(false);
     } catch {
-      setError('Search failed. Try again.');
+      // Supabase unreachable — search local SQLite
+      try {
+        const local = await searchExercises(q);
+        const localItems: SupabaseExercise[] = local.map((hit) => ({
+          id: hit.exercise.id,
+          external_id: hit.exercise.externalId ?? `local:${hit.exercise.id}`,
+          name: hit.exercise.name,
+          body_part: hit.exercise.primaryMuscle,
+          equipment: hit.exercise.equipment,
+          target_muscle: hit.exercise.primaryMuscle,
+          secondary_muscles: hit.exercise.secondaryMuscles,
+          movement_pattern: hit.exercise.movementPattern,
+          category: hit.exercise.category,
+          is_compound: hit.exercise.isCompound,
+          difficulty: hit.exercise.difficulty,
+          instructions: hit.exercise.instructions,
+          gif_url: hit.exercise.imageUrl ?? '',
+          created_at: new Date(hit.exercise.createdAt).toISOString(),
+        }));
+        setItems(localItems);
+        setHasMore(false);
+      } catch {
+        setError('Search failed. Try again.');
+      }
     } finally {
       setLoading(false);
     }
