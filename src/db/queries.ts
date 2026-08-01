@@ -112,6 +112,7 @@ async function mapExercise(db: DB, row: ExerciseRow): Promise<Exercise> {
   const aliases = (await db.getAllAsync<AliasRow>('SELECT alias FROM exercise_aliases WHERE exercise_id = ? ORDER BY id', row.id)).map((r) => r.alias);
   const secondaryMuscles = (await db.getAllAsync<MuscleRow>('SELECT muscle FROM exercise_secondary_muscles WHERE exercise_id = ? ORDER BY id', row.id)).map((r) => r.muscle as MuscleGroup);
   const instructions = (await db.getAllAsync<InstructionRow>('SELECT step, text FROM exercise_instructions WHERE exercise_id = ? ORDER BY step', row.id)).map((r) => r.text);
+  const imgRow = await db.getFirstAsync<{ url: string }>('SELECT url FROM exercise_images WHERE exercise_id = ? AND is_primary = 1 LIMIT 1', row.id);
   return {
     id: row.id,
     name: row.name,
@@ -129,6 +130,7 @@ async function mapExercise(db: DB, row: ExerciseRow): Promise<Exercise> {
     defaultRestSeconds: row.default_rest_seconds,
     instructions,
     tips: row.tips,
+    imageUrl: imgRow?.url ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -578,6 +580,87 @@ export async function getExerciseHistory(exerciseId: number, limit = 10): Promis
      ORDER BY w.started_at DESC, s.set_index LIMIT ?`,
     exerciseId, limit,
   );
+}
+
+export interface ExercisePRSummary {
+  heaviestWeight: number;
+  best1RM: number;
+  bestSetVolume: number;
+  bestSessionVolume: number;
+  heaviestWeightAt: number;
+}
+
+export async function getExercisePRSummary(exerciseId: number): Promise<ExercisePRSummary> {
+  const db = await openDatabase();
+  const base = await db.getFirstAsync<{ max_weight: number; max_reps: number; best_set_vol: number }>(
+    `SELECT MAX(s.weight) as max_weight, MAX(s.reps) as max_reps, MAX(s.weight * s.reps) as best_set_vol
+     FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
+     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND s.completed = 1`,
+    exerciseId,
+  );
+  const maxWeight = base?.max_weight ?? 0;
+  const maxReps = base?.max_reps ?? 1;
+  const best1RM = estimated1RM(maxWeight, maxReps);
+  const bestSetVol = base?.best_set_vol ?? 0;
+
+  // Best session volume: max sum(weight*reps) per workout_log
+  const sessionVol = await db.getFirstAsync<{ vol: number }>(
+    `SELECT SUM(s.weight * s.reps) as vol
+     FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
+     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND s.completed = 1
+     GROUP BY w.id ORDER BY vol DESC LIMIT 1`,
+    exerciseId,
+  );
+
+  // When was heaviest weight achieved
+  const atMax = await db.getFirstAsync<{ created_at: number }>(
+    `SELECT s.created_at FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
+     WHERE s.exercise_id = ? AND s.completed = 1 AND w.ended_at IS NOT NULL AND s.weight = ?
+     ORDER BY s.created_at DESC LIMIT 1`,
+    exerciseId, maxWeight,
+  );
+
+  return {
+    heaviestWeight: maxWeight,
+    best1RM,
+    bestSetVolume: bestSetVol,
+    bestSessionVolume: sessionVol?.vol ?? 0,
+    heaviestWeightAt: atMax?.created_at ?? 0,
+  };
+}
+
+export interface RepRecord {
+  reps: number;
+  weight: number;
+}
+
+export async function getExerciseRepRecords(exerciseId: number): Promise<RepRecord[]> {
+  const db = await openDatabase();
+  const rows = await db.getAllAsync<{ reps: number; weight: number }>(
+    `SELECT s.reps, MAX(s.weight) as weight
+     FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
+     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND s.completed = 1 AND s.reps > 0
+     GROUP BY s.reps ORDER BY s.reps`,
+    exerciseId,
+  );
+  return rows;
+}
+
+export interface ProgressionPoint {
+  date: string;
+  weight: number;
+}
+
+export async function getExerciseProgression(exerciseId: number): Promise<ProgressionPoint[]> {
+  const db = await openDatabase();
+  const rows = await db.getAllAsync<{ w: string; weight: number }>(
+    `SELECT strftime('%Y-%m-%d', s.created_at / 1000, 'unixepoch') as w, MAX(s.weight) as weight
+     FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
+     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND s.completed = 1
+     GROUP BY w ORDER BY w`,
+    exerciseId,
+  );
+  return rows.map((r) => ({ date: r.w, weight: r.weight }));
 }
 
 export async function getActiveWorkout(): Promise<SessionWorkout | null> {

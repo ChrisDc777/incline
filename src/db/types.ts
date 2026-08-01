@@ -57,6 +57,7 @@ export interface Exercise {
   defaultRestSeconds: number;
   instructions: string[];
   tips: string;
+  imageUrl: string | null;
   createdAt: number;
   updatedAt: number;
 }

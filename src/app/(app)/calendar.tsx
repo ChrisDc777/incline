@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { getWorkoutDays } from '@/db/queries';
+import { useAppColorScheme } from '@/lib/use-color-scheme';
 
 const CELL = 16;
 const GAP = 4;
@@ -37,6 +38,7 @@ function getWeeks(end: Date, count: number): Date[][] {
 export default function CalendarScreen() {
   const [workoutDays, setWorkoutDays] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const isDark = useAppColorScheme() === 'dark';
 
   useEffect(() => {
     getWorkoutDays().then((days) => {
@@ -104,7 +106,7 @@ export default function CalendarScreen() {
                           width: CELL,
                           height: CELL,
                           borderRadius: 3,
-                          backgroundColor: hasWorkout ? '#16a34a' : '#262626',
+                          backgroundColor: hasWorkout ? '#16a34a' : isDark ? '#262626' : '#e5e7eb',
                           opacity: isFuture ? 0 : 1,
                         }}
                       />

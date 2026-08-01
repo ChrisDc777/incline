@@ -1,21 +1,26 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, View, Image, Pressable } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
-import { Dumbbell, Target, ListChecks, Lightbulb, History } from 'lucide-react-native';
+import { Dumbbell, Lightbulb, Pause, Play, Trophy } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { SegmentedControl } from '@/components/common/segmented-control';
 import { EmptyState, ErrorState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
-import { MuscleBadge } from '@/components/exercise/muscle-badge';
+import { Sparkline } from '@/components/progress/sparkline';
 import { useExercise, useExerciseHistory } from '@/hooks/use-data';
-import { getExerciseByExternalId } from '@/db/queries';
+import { getExerciseByExternalId, getExercisePRSummary, getExerciseRepRecords, getExerciseProgression, type ExercisePRSummary, type RepRecord, type ProgressionPoint } from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
-import { MUSCLE_LABELS, EQUIPMENT_LABELS, MOVEMENT_LABELS, CATEGORY_LABELS } from '@/lib/labels';
+import { MOVEMENT_LABELS } from '@/lib/labels';
 import { formatWeight, relativeTime } from '@/db/calc';
-import type { Exercise, ExerciseHistoryRow } from '@/db/types';
+import type { Exercise, ExerciseHistoryRow, Unit } from '@/db/types';
+
+const TABS = ['Summary', 'History', 'How to'] as const;
+type Tab = typeof TABS[number];
+const TAB_VALUES = TABS.map((t) => ({ value: t, label: t }));
 
 interface SessionGroup {
   workoutLogId: number;
@@ -28,8 +33,9 @@ export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { unit } = useSettings();
   const navigation = useNavigation();
+  const [tab, setTab] = useState<Tab>('Summary');
+  const [gifPaused, setGifPaused] = useState(false);
 
-  // Handle both local IDs and supabase:external_id format
   const isSupabaseId = typeof id === 'string' && id.startsWith('supabase:');
   const externalId = isSupabaseId ? id.replace('supabase:', '') : null;
   const localId = !isSupabaseId ? Number(id) : 0;
@@ -53,10 +59,21 @@ export default function ExerciseDetailScreen() {
   const error = isSupabaseId ? !supabaseExercise && !supabaseLoading : localError;
   const refetch = isSupabaseId ? () => {} : localRefetch;
   const exerciseId = exercise?.id ?? 0;
+
   const { data: history } = useExerciseHistory(exerciseId);
+  const [prSummary, setPrSummary] = useState<ExercisePRSummary | null>(null);
+  const [repRecords, setRepRecords] = useState<RepRecord[]>([]);
+  const [progression, setProgression] = useState<ProgressionPoint[]>([]);
+
+  useEffect(() => {
+    if (!exerciseId) return;
+    getExercisePRSummary(exerciseId).then(setPrSummary);
+    getExerciseRepRecords(exerciseId).then(setRepRecords);
+    getExerciseProgression(exerciseId).then(setProgression);
+  }, [exerciseId]);
 
   useLayoutEffect(() => {
-    navigation.setOptions({ headerShown: true, title: 'Exercise' });
+    navigation.setOptions({ headerShown: true, title: '' });
   }, [navigation]);
 
   const sessions = useMemo<SessionGroup[]>(() => {
@@ -72,97 +89,278 @@ export default function ExerciseDetailScreen() {
     return groups;
   }, [history]);
 
+  // Determine PRs for individual sets
+  const maxWeight = prSummary?.heaviestWeight ?? 0;
+  const max1RM = prSummary?.best1RM ?? 0;
+
   if (loading) return <ListSkeleton count={2} />;
   if (error || !exercise)
     return <ErrorState onRetry={refetch} title="Exercise not found" description="It may have been removed." />;
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-      <View className="flex-row items-center gap-3">
-        <View className="h-12 w-12 items-center justify-center rounded-3xl bg-primary/15">
-          <Icon icon={Dumbbell} size={22} color="primary" />
+    <View className="flex-1 bg-background">
+      {/* Exercise header */}
+      <View className="flex-row items-center gap-3 px-4 pt-2">
+        <View className="h-10 w-10 items-center justify-center rounded-2xl bg-primary/15">
+          <Icon icon={Dumbbell} size={20} color="primary" />
         </View>
         <View className="flex-1">
-          <Heading>{exercise.name}</Heading>
-          <Caption>
-            {EQUIPMENT_LABELS[exercise.equipment as keyof typeof EQUIPMENT_LABELS] ?? exercise.equipment} · {CATEGORY_LABELS[exercise.category as keyof typeof CATEGORY_LABELS] ?? exercise.category}
-          </Caption>
+          <Heading style={{ fontSize: 18 }}>{exercise.name}</Heading>
+          <Caption>Primary: {exercise.primaryMuscle}</Caption>
         </View>
       </View>
 
-      <View className="mt-4 flex-row flex-wrap gap-2">
+      {/* Tab selector */}
+      <View className="mt-3 px-4">
+        <SegmentedControl values={TAB_VALUES} value={tab} onChange={(v) => setTab(v)} />
+      </View>
+
+      {/* Tab content */}
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        {tab === 'Summary' && (
+          <SummaryTab
+            exercise={exercise}
+            prSummary={prSummary}
+            repRecords={repRecords}
+            progression={progression}
+            gifPaused={gifPaused}
+            setGifPaused={setGifPaused}
+            unit={unit}
+            maxWeight={maxWeight}
+            max1RM={max1RM}
+          />
+        )}
+        {tab === 'History' && (
+          <HistoryTab sessions={sessions} unit={unit} maxWeight={maxWeight} max1RM={max1RM} />
+        )}
+        {tab === 'How to' && (
+          <HowToTab exercise={exercise} gifPaused={gifPaused} setGifPaused={setGifPaused} />
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+/* ───────────── Summary Tab ───────────── */
+
+function SummaryTab({
+  exercise, prSummary, repRecords, progression, gifPaused, setGifPaused, unit, maxWeight, max1RM,
+}: {
+  exercise: Exercise;
+  prSummary: ExercisePRSummary | null;
+  repRecords: RepRecord[];
+  progression: ProgressionPoint[];
+  gifPaused: boolean;
+  setGifPaused: (v: boolean) => void;
+  unit: Unit;
+  maxWeight: number;
+  max1RM: number;
+}) {
+  return (
+    <View>
+      {/* Exercise GIF */}
+      {exercise.imageUrl ? (
+        <View className="mb-4 overflow-hidden rounded-2xl bg-card">
+          <Image source={{ uri: exercise.imageUrl }} style={{ width: '100%', height: 200, resizeMode: 'contain' }} />
+          <Pressable
+            onPress={() => setGifPaused(!gifPaused)}
+            className="absolute right-2 top-2 h-8 w-8 items-center justify-center rounded-full bg-black/50">
+            <Icon icon={gifPaused ? Play : Pause} size={16} color="white" />
+          </Pressable>
+        </View>
+      ) : null}
+
+      {/* Muscle info */}
+      <View className="mb-4 flex-row flex-wrap gap-2">
         <Badge variant="outline">{MOVEMENT_LABELS[exercise.movementPattern]}</Badge>
         {exercise.isCompound ? <Badge variant="default">Compound</Badge> : <Badge variant="secondary">Isolation</Badge>}
       </View>
 
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle>Muscles worked</CardTitle>
-          <Icon icon={Target} size={18} color="muted-foreground" />
-        </CardHeader>
-        <View className="flex-row flex-wrap gap-2">
-          <MuscleBadge muscle={exercise.primaryMuscle} />
-          {exercise.secondaryMuscles.map((m) => (
-            <Badge key={m} variant="secondary">
-              {MUSCLE_LABELS[m]}
-            </Badge>
-          ))}
-        </View>
-      </Card>
-
-      {exercise.instructions.length > 0 ? (
-        <Card className="mt-3">
+      {/* Progression chart */}
+      {progression.length > 1 ? (
+        <Card className="mb-4">
           <CardHeader>
-            <CardTitle>How to perform</CardTitle>
-            <Icon icon={ListChecks} size={18} color="muted-foreground" />
+            <CardTitle>Progression</CardTitle>
           </CardHeader>
-          <View className="gap-2.5">
-            {exercise.instructions.map((step, i) => (
-              <View key={i} className="flex-row gap-3">
-                <View className="h-6 w-6 items-center justify-center rounded-full bg-primary/15">
-                  <Caption className="text-primary">{i + 1}</Caption>
-                </View>
-                <Body className="flex-1 text-sm text-foreground">{step}</Body>
-              </View>
-            ))}
+          <View className="items-center">
+            <Sparkline
+              points={progression.map((p) => p.weight)}
+              width={280}
+              height={80}
+              color="#16a34a"
+            />
+          </View>
+          <View className="mt-2 flex-row justify-between px-2">
+            <Caption>{progression[0]?.date}</Caption>
+            <Caption>{progression[progression.length - 1]?.date}</Caption>
           </View>
         </Card>
       ) : null}
 
+      {/* Personal Records */}
+      {prSummary && prSummary.heaviestWeight > 0 ? (
+        <Card className="mb-4">
+          <CardHeader>
+            <Icon icon={Trophy} size={18} color="warning" />
+            <CardTitle>Personal Records</CardTitle>
+          </CardHeader>
+          <View className="gap-3">
+            <PRRow label="Heaviest Weight" value={formatWeight(prSummary.heaviestWeight, unit)} />
+            <PRRow label="Best 1RM" value={formatWeight(prSummary.best1RM, unit)} />
+            <PRRow label="Best Set Volume" value={`${formatWeight(prSummary.bestSetVolume, unit)}`} />
+            <PRRow label="Best Session Volume" value={`${formatWeight(prSummary.bestSessionVolume, unit)}`} />
+          </View>
+        </Card>
+      ) : null}
+
+      {/* Set Records by rep range */}
+      {repRecords.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Set Records</CardTitle>
+          </CardHeader>
+          <View className="flex-row border-b border-border pb-2 mb-2">
+            <Caption style={{ width: 60 }}>Reps</Caption>
+            <Caption>Personal Best</Caption>
+          </View>
+          {repRecords.map((r) => (
+            <View key={r.reps} className="flex-row py-1.5">
+              <Body style={{ width: 60 }} className="text-sm text-foreground">{r.reps}</Body>
+              <Body className="text-sm font-medium text-primary">{formatWeight(r.weight, unit)}</Body>
+            </View>
+          ))}
+        </Card>
+      ) : null}
+
+      {/* Tips */}
       {exercise.tips ? (
-        <Card className="mt-3 flex-row gap-3">
+        <Card className="mt-4 flex-row gap-3">
           <Icon icon={Lightbulb} size={20} color="warning" />
           <Body className="flex-1 text-sm text-foreground">{exercise.tips}</Body>
         </Card>
       ) : null}
+    </View>
+  );
+}
 
-      <View className="mt-6">
-        <View className="mb-3 flex-row items-center justify-between">
-          <CardTitle>Recent history</CardTitle>
-          <Icon icon={History} size={18} color="muted-foreground" />
-        </View>
-        {sessions.length > 0 ? (
-          <View className="gap-2.5">
-            {sessions.map((s) => (
-              <Card key={s.workoutLogId} className="flex-row items-center gap-3">
-                <View className="flex-1">
-                  <Body className="font-medium text-foreground">{s.workoutName}</Body>
-                  <Caption>{relativeTime(s.startedAt)}</Caption>
-                </View>
-                <View className="flex-row flex-wrap justify-end gap-1.5">
-                  {s.sets.map((set) => (
-                    <Badge key={set.setIndex} variant="outline">
-                      {formatWeight(set.weight, unit)} × {set.reps}
-                    </Badge>
-                  ))}
-                </View>
-              </Card>
-            ))}
+function PRRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="flex-row items-center justify-between">
+      <Body className="text-sm text-foreground">{label}</Body>
+      <Body className="text-sm font-semibold text-primary">{value}</Body>
+    </View>
+  );
+}
+
+/* ───────────── History Tab ───────────── */
+
+function HistoryTab({
+  sessions, unit, maxWeight, max1RM,
+}: {
+  sessions: SessionGroup[];
+  unit: Unit;
+  maxWeight: number;
+  max1RM: number;
+}) {
+  if (sessions.length === 0) {
+    return <EmptyState title="No history yet" description="Log this exercise in a workout to track your progress." />;
+  }
+
+  return (
+    <View className="gap-4">
+      {sessions.map((s) => (
+        <Card key={s.workoutLogId}>
+          <View className="mb-2">
+            <Body className="font-semibold text-foreground">{s.workoutName}</Body>
+            <Caption>{relativeTime(s.startedAt)}</Caption>
           </View>
-        ) : (
-          <EmptyState title="No history yet" description="Log this exercise in a workout to track your progress." />
-        )}
-      </View>
-    </ScrollView>
+          <View className="flex-row border-b border-border pb-2 mb-2">
+            <Caption style={{ width: 40 }}>SET</Caption>
+            <Caption>WEIGHT & REPS</Caption>
+          </View>
+          {s.sets.map((set) => {
+            const isWeightPR = set.weight === maxWeight && set.weight > 0;
+            const set1RM = estimated1RM(set.weight, set.reps);
+            const is1RMPR = Math.abs(set1RM - max1RM) < 0.1 && set1RM > 0;
+            return (
+              <View key={set.setIndex} className="flex-row items-center py-1.5">
+                <Body style={{ width: 40 }} className="text-sm text-foreground">{set.setIndex + 1}</Body>
+                <Body className="text-sm text-foreground">
+                  {formatWeight(set.weight, unit)} × {set.reps}
+                </Body>
+                {isWeightPR ? (
+                  <Badge variant="default" className="ml-2 bg-yellow-500">
+                    <Icon icon={Trophy} size={10} color="white" />
+                    <Caption className="ml-1 text-white">Weight</Caption>
+                  </Badge>
+                ) : null}
+                {is1RMPR && !isWeightPR ? (
+                  <Badge variant="default" className="ml-2 bg-yellow-500">
+                    <Icon icon={Trophy} size={10} color="white" />
+                    <Caption className="ml-1 text-white">1RM</Caption>
+                  </Badge>
+                ) : null}
+              </View>
+            );
+          })}
+        </Card>
+      ))}
+    </View>
+  );
+}
+
+function estimated1RM(weight: number, reps: number): number {
+  if (reps <= 0 || weight <= 0) return 0;
+  if (reps === 1) return weight;
+  return Math.round(weight * (1 + reps / 30));
+}
+
+/* ───────────── How to Tab ───────────── */
+
+function HowToTab({
+  exercise, gifPaused, setGifPaused,
+}: {
+  exercise: Exercise;
+  gifPaused: boolean;
+  setGifPaused: (v: boolean) => void;
+}) {
+  return (
+    <View>
+      {/* Exercise GIF */}
+      {exercise.imageUrl ? (
+        <View className="mb-4 overflow-hidden rounded-2xl bg-card">
+          <Image source={{ uri: exercise.imageUrl }} style={{ width: '100%', height: 220, resizeMode: 'contain' }} />
+          <Pressable
+            onPress={() => setGifPaused(!gifPaused)}
+            className="absolute right-2 top-2 h-8 w-8 items-center justify-center rounded-full bg-black/50">
+            <Icon icon={gifPaused ? Play : Pause} size={16} color="white" />
+          </Pressable>
+        </View>
+      ) : null}
+
+      <Heading style={{ fontSize: 18, marginBottom: 12 }}>{exercise.name}</Heading>
+
+      {exercise.instructions.length > 0 ? (
+        <View className="gap-4">
+          {exercise.instructions.map((step, i) => (
+            <View key={i} className="flex-row gap-3">
+              <View className="h-7 w-7 items-center justify-center rounded-full bg-primary/15">
+                <Caption className="text-primary font-semibold">{i + 1}</Caption>
+              </View>
+              <Body className="flex-1 text-sm text-foreground">{step}</Body>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <EmptyState title="No instructions" description="Instructions for this exercise are not available yet." />
+      )}
+
+      {exercise.tips ? (
+        <Card className="mt-6 flex-row gap-3">
+          <Icon icon={Lightbulb} size={20} color="warning" />
+          <Body className="flex-1 text-sm text-foreground">{exercise.tips}</Body>
+        </Card>
+      ) : null}
+    </View>
   );
 }
