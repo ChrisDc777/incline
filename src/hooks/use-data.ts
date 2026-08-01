@@ -16,11 +16,12 @@ import {
   listPrograms,
   listTemplateSummaries,
   listWorkoutLogs,
+  listWorkoutFeedLogs,
   searchExercises,
   type ExerciseFilters,
   type SessionWorkout,
 } from '@/db/queries';
-import type { Exercise, MuscleGroup, PR, Program, ProgressStats, SearchHit, UserProfile, WorkoutLog, WorkoutTemplate } from '@/db/types';
+import type { Exercise, FeedWorkoutLog, MuscleGroup, PR, Program, ProgressStats, SearchHit, UserProfile, WorkoutLog, WorkoutTemplate } from '@/db/types';
 import { useSettings } from '@/store/settings-store';
 
 /* ---- catalog ---- */
@@ -105,6 +106,46 @@ export function useWorkoutLogs() {
     refresh: () => load(true),
     prs: [] as PR[],
     muscleFocus: [] as MuscleGroup[],
+  };
+}
+
+export function useWorkoutFeedLogs() {
+  const [items, setItems] = useState<FeedWorkoutLog[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const offsetRef = useRef(0);
+
+  const load = useCallback(async (reset: boolean) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const offset = reset ? 0 : offsetRef.current;
+      const page = await listWorkoutFeedLogs(offset);
+      setItems((prev) => (reset ? page.items : [...prev, ...page.items]));
+      offsetRef.current = page.nextOffset ?? offset;
+      setHasMore(page.nextOffset !== null);
+    } catch (e) {
+      setError(e as Error);
+      if (reset) setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load(true);
+  }, [load]);
+
+  return {
+    items,
+    loading,
+    error,
+    hasMore,
+    loadMore: () => {
+      if (!loading && hasMore) load(false);
+    },
+    refresh: () => load(true),
   };
 }
 

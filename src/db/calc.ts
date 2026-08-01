@@ -102,6 +102,19 @@ export function formatFullDate(ms: number): string {
   });
 }
 
+export function formatFullDateTime(ms: number): string {
+  const d = new Date(ms);
+  return d.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }) + ' · ' + d.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 /** Clamp a number between min and max. */
 export function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));

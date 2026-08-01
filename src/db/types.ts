@@ -222,3 +222,15 @@ export interface WorkoutLogWithDetails extends WorkoutLog {
   sets: SetEntry[];
   template?: WorkoutTemplate;
 }
+
+export interface FeedExercise {
+  exerciseId: number;
+  exerciseName: string;
+  setCount: number;
+  imageUrl: string | null;
+}
+
+export interface FeedWorkoutLog extends WorkoutLog {
+  exercises: FeedExercise[];
+  prCount: number;
+}
