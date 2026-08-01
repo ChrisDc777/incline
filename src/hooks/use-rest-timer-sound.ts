@@ -1,30 +1,13 @@
 import { useCallback, useRef } from 'react';
-import { Audio } from 'expo-av';
+import { useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
-
-let soundLoaded = false;
-let sound: Audio.Sound | null = null;
-
-async function loadSound() {
-  if (soundLoaded) return;
-  try {
-    const { sound: loaded } = await Audio.Sound.createAsync(
-      require('../../assets/sounds/rest-complete.mp3'),
-      { shouldPlay: false }
-    );
-    sound = loaded;
-    soundLoaded = true;
-  } catch {
-    // Sound file not present — haptics-only mode
-    soundLoaded = true;
-  }
-}
 
 /**
  * Plays a sound + haptic notification when the rest timer finishes.
- * Falls back to haptics-only if no sound file is present at assets/sounds/rest-complete.mp3.
+ * Falls back to haptics-only if sound playback fails at runtime.
  */
 export function useRestTimerSound() {
+  const player = useAudioPlayer(require('../../assets/sounds/rest-complete.wav'));
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const play = useCallback(async () => {
@@ -46,15 +29,12 @@ export function useRestTimerSound() {
 
     // Try playing sound (non-blocking)
     try {
-      await loadSound();
-      if (sound) {
-        await sound.setPositionAsync(0);
-        await sound.playAsync();
-      }
+      player.seekTo(0);
+      player.play();
     } catch {
-      // No sound file — continue with haptics only
+      // Sound unavailable — continue with haptics only
     }
-  }, []);
+  }, [player]);
 
   const stop = useCallback(() => {
     if (intervalRef.current) {
@@ -62,9 +42,9 @@ export function useRestTimerSound() {
       intervalRef.current = null;
     }
     try {
-      sound?.stopAsync();
+      player.pause();
     } catch { /* ignore */ }
-  }, []);
+  }, [player]);
 
   return { play, stop };
 }
