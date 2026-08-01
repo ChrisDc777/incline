@@ -57,6 +57,12 @@ export default function OnboardingScreen() {
     }
   };
 
+  const skip = () => {
+    if (step < TOTAL_STEPS - 1) {
+      setStep(step + 1);
+    }
+  };
+
   const back = () => {
     if (step > 0) setStep(step - 1);
   };
@@ -78,7 +84,8 @@ export default function OnboardingScreen() {
       });
       setUnitStore(unit);
       router.replace('/(app)/(tabs)');
-    } catch {
+    } catch (err) {
+      console.error('ONBOARDING ERROR:', err);
       toast({ title: 'Something went wrong', variant: 'destructive' });
     } finally {
       setSaving(false);
@@ -221,9 +228,17 @@ export default function OnboardingScreen() {
               </Button>
             ) : null}
             {step < TOTAL_STEPS - 1 ? (
-              <Button className="flex-1" onPress={next} rightIcon={<Icon icon={ChevronRight} size={16} color="primary-foreground" />}>
-                Continue
-              </Button>
+              <>
+                {/* Show Skip on optional steps (1 = bodyweight, 3 = experience) */}
+                {(step === 1 || step === 3) && (
+                  <Button variant="ghost" onPress={skip}>
+                    Skip
+                  </Button>
+                )}
+                <Button className="flex-1" onPress={next} rightIcon={<Icon icon={ChevronRight} size={16} color="primary-foreground" />}>
+                  Continue
+                </Button>
+              </>
             ) : (
               <Button className="flex-1" variant="success" onPress={finish} disabled={saving}>
                 {saving ? 'Setting up…' : 'Get started'}

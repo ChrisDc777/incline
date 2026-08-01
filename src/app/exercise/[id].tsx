@@ -168,11 +168,15 @@ function SummaryTab({
             <Icon icon={gifPaused ? Play : Pause} size={16} color="white" />
           </Pressable>
         </View>
-      ) : null}
+      ) : (
+        <View className="mb-4 items-center justify-center rounded-2xl bg-card py-10">
+          <Icon icon={Dumbbell} size={40} color="muted-foreground" />
+        </View>
+      )}
 
       {/* Muscle info */}
       <View className="mb-4 flex-row flex-wrap gap-2">
-        <Badge variant="outline">{MOVEMENT_LABELS[exercise.movementPattern]}</Badge>
+        {exercise.movementPattern ? <Badge variant="outline">{MOVEMENT_LABELS[exercise.movementPattern]}</Badge> : null}
         {exercise.isCompound ? <Badge variant="default">Compound</Badge> : <Badge variant="secondary">Isolation</Badge>}
       </View>
 
@@ -336,7 +340,11 @@ function HowToTab({
             <Icon icon={gifPaused ? Play : Pause} size={16} color="white" />
           </Pressable>
         </View>
-      ) : null}
+      ) : (
+        <View className="mb-4 items-center justify-center rounded-2xl bg-card py-12">
+          <Icon icon={Dumbbell} size={40} color="muted-foreground" />
+        </View>
+      )}
 
       <Heading style={{ fontSize: 18, marginBottom: 12 }}>{exercise.name}</Heading>
 

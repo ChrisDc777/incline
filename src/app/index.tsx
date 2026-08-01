@@ -37,9 +37,11 @@ export default function Gate() {
     }
 
     // Signed in, profile exists, onboarding not completed → onboarding
-    if (!profile.onboardingCompleted && !inOnboarding) {
+    // But also skip onboarding if essential fields (name) are already filled
+    const needsOnboarding = !profile.onboardingCompleted && !profile.name;
+    if (needsOnboarding && !inOnboarding) {
       router.replace('/(onboarding)');
-    } else if (profile.onboardingCompleted && !inApp) {
+    } else if ((profile.onboardingCompleted || profile.name) && !inApp) {
       router.replace('/(app)/(tabs)');
     }
   }, [ready, authLoaded, isSignedIn, profileLoading, profile, segments, router]);

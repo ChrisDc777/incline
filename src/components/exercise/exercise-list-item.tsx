@@ -23,7 +23,7 @@ export function ExerciseListItem({ exercise, className }: { exercise: Exercise; 
       <View className="flex-1">
         <Text className="text-base font-semibold text-foreground">{exercise.name}</Text>
         <Text className="mt-0.5 text-xs text-muted-foreground">
-          {EQUIPMENT_LABELS[exercise.equipment as keyof typeof EQUIPMENT_LABELS] ?? exercise.equipment} · {MOVEMENT_LABELS[exercise.movementPattern as keyof typeof MOVEMENT_LABELS] ?? exercise.movementPattern}
+          {EQUIPMENT_LABELS[exercise.equipment as keyof typeof EQUIPMENT_LABELS] ?? exercise.equipment}{exercise.movementPattern ? ` · ${MOVEMENT_LABELS[exercise.movementPattern as keyof typeof MOVEMENT_LABELS] ?? exercise.movementPattern}` : ''}
         </Text>
       </View>
       <MuscleBadge muscle={exercise.primaryMuscle} />

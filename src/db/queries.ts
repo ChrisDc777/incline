@@ -32,16 +32,16 @@ interface ExerciseRow {
   id: number;
   name: string;
   primary_muscle: string;
-  movement_pattern: string;
+  movement_pattern: string | null;
   equipment: string;
   category: string;
   is_compound: number;
   is_custom: number;
   source: string;
   external_id: string | null;
-  difficulty: string;
+  difficulty: string | null;
   default_rest_seconds: number;
-  tips: string;
+  tips: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -119,7 +119,7 @@ async function mapExercise(db: DB, row: ExerciseRow): Promise<Exercise> {
     aliases,
     primaryMuscle: row.primary_muscle as MuscleGroup,
     secondaryMuscles,
-    movementPattern: row.movement_pattern as MovementPattern,
+    movementPattern: row.movement_pattern as MovementPattern | null,
     equipment: row.equipment as Equipment,
     category: row.category as Category,
     isCompound: !!row.is_compound,
@@ -264,7 +264,70 @@ export async function searchExercises(query: string, filters?: ExerciseFilters):
   if (where.length) sql += ' WHERE ' + where.join(' AND ');
   sql += ' ORDER BY name';
   const rows = await db.getAllAsync<ExerciseRow>(sql, ...args);
-  const exercises = await Promise.all(rows.map((r) => mapExercise(db, r)));
+
+  // Batch-load related data to avoid N+1 queries
+  const ids = rows.map((r) => r.id);
+  if (ids.length === 0) return [];
+
+  const placeholders = ids.map(() => '?').join(',');
+
+  const [aliasRows, muscleRows, instrRows, imgRows] = await Promise.all([
+    db.getAllAsync<{ exercise_id: number; alias: string }>(
+      `SELECT exercise_id, alias FROM exercise_aliases WHERE exercise_id IN (${placeholders}) ORDER BY id`, ...ids,
+    ),
+    db.getAllAsync<{ exercise_id: number; muscle: string }>(
+      `SELECT exercise_id, muscle FROM exercise_secondary_muscles WHERE exercise_id IN (${placeholders}) ORDER BY id`, ...ids,
+    ),
+    db.getAllAsync<{ exercise_id: number; text: string }>(
+      `SELECT exercise_id, text FROM exercise_instructions WHERE exercise_id IN (${placeholders}) ORDER BY step`, ...ids,
+    ),
+    db.getAllAsync<{ exercise_id: number; url: string }>(
+      `SELECT exercise_id, url FROM exercise_images WHERE exercise_id IN (${placeholders}) AND is_primary = 1`, ...ids,
+    ),
+  ]);
+
+  // Build lookup maps
+  const aliasMap = new Map<number, string[]>();
+  for (const r of aliasRows) {
+    if (!aliasMap.has(r.exercise_id)) aliasMap.set(r.exercise_id, []);
+    aliasMap.get(r.exercise_id)!.push(r.alias);
+  }
+  const muscleMap = new Map<number, MuscleGroup[]>();
+  for (const r of muscleRows) {
+    if (!muscleMap.has(r.exercise_id)) muscleMap.set(r.exercise_id, []);
+    muscleMap.get(r.exercise_id)!.push(r.muscle as MuscleGroup);
+  }
+  const instrMap = new Map<number, string[]>();
+  for (const r of instrRows) {
+    if (!instrMap.has(r.exercise_id)) instrMap.set(r.exercise_id, []);
+    instrMap.get(r.exercise_id)!.push(r.text);
+  }
+  const imgMap = new Map<number, string>();
+  for (const r of imgRows) imgMap.set(r.exercise_id, r.url);
+
+  // Assemble exercises
+  const exercises: Exercise[] = rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    aliases: aliasMap.get(row.id) ?? [],
+    primaryMuscle: row.primary_muscle as MuscleGroup,
+    secondaryMuscles: muscleMap.get(row.id) ?? [],
+    movementPattern: row.movement_pattern as MovementPattern | null,
+    equipment: row.equipment as Equipment,
+    category: row.category as Category,
+    isCompound: !!row.is_compound,
+    isCustom: !!row.is_custom,
+    source: row.source as 'seed' | 'exercisedb' | 'custom',
+    externalId: row.external_id,
+    difficulty: row.difficulty,
+    defaultRestSeconds: row.default_rest_seconds,
+    instructions: instrMap.get(row.id) ?? [],
+    tips: row.tips,
+    imageUrl: imgMap.get(row.id) ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
+
   if (!q) return exercises.map((exercise) => ({ exercise, score: 0, matchedOn: 'name' as const }));
 
   const hits: SearchHit[] = [];
@@ -345,7 +408,7 @@ export async function ensureExerciseExists(
     name: string;
     primaryMuscle: MuscleGroup;
     secondaryMuscles?: MuscleGroup[];
-    movementPattern: MovementPattern;
+    movementPattern?: MovementPattern;
     equipment: Equipment;
     category: Category;
     isCompound: boolean;
@@ -364,11 +427,11 @@ export async function ensureExerciseExists(
 
   const now = Date.now();
   const res = await db.runAsync(
-    `INSERT INTO exercises (name, primary_muscle, movement_pattern, equipment, category, is_compound, is_custom, source, external_id, difficulty, default_rest_seconds, tips, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 0, 'exercisedb', ?, 'beginner', ?, ?, ?, ?)`,
-    exercise.name, exercise.primaryMuscle, exercise.movementPattern, exercise.equipment,
+     `INSERT INTO exercises (name, primary_muscle, movement_pattern, equipment, category, is_compound, is_custom, source, external_id, difficulty, default_rest_seconds, tips, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 0, 'exercisedb', ?, 'intermediate', ?, '', ?, ?)`,
+    exercise.name, exercise.primaryMuscle, exercise.movementPattern ?? 'isolation', exercise.equipment,
     exercise.category, exercise.isCompound ? 1 : 0, externalId,
-    exercise.defaultRestSeconds ?? 90, exercise.tips ?? '', now, now,
+    exercise.defaultRestSeconds ?? 90, now, now,
   );
   const id = res.lastInsertRowId as number;
 
@@ -901,6 +964,16 @@ export async function getProfile(): Promise<UserProfile> {
 
 export async function saveProfile(patch: Partial<Pick<UserProfile, 'name' | 'goal' | 'bodyweight' | 'unit' | 'experienceLevel' | 'avatarUrl'>>): Promise<void> {
   const db = await openDatabase();
+  const existing = await db.getFirstAsync<{ id: number }>('SELECT id FROM user_profile WHERE id = 1');
+  if (!existing) {
+    // First time — insert a row
+    const now = Date.now();
+    await db.runAsync(
+      `INSERT INTO user_profile (id, name, goal, bodyweight, unit, experience_level, onboarding_completed, updated_at)
+       VALUES (1, '', 'build_muscle', NULL, 'metric', 'intermediate', 0, ?)`,
+      now,
+    );
+  }
   const sets: string[] = [];
   const args: (string | number | null)[] = [];
   if (patch.name !== undefined) { sets.push('name = ?'); args.push(patch.name); }
@@ -917,9 +990,21 @@ export async function saveProfile(patch: Partial<Pick<UserProfile, 'name' | 'goa
 }
 
 export async function completeOnboarding(patch: { name: string; goal: Goal; unit: Unit; experienceLevel?: ExperienceLevel; bodyweight?: number }): Promise<void> {
-  await saveProfile({ name: patch.name, goal: patch.goal, unit: patch.unit, experienceLevel: patch.experienceLevel, bodyweight: patch.bodyweight });
   const db = await openDatabase();
-  await db.runAsync('UPDATE user_profile SET onboarding_completed = 1, updated_at = ? WHERE id = 1', Date.now());
+  const now = Date.now();
+  const existing = await db.getFirstAsync<{ id: number }>('SELECT id FROM user_profile WHERE id = 1');
+  if (!existing) {
+    await db.runAsync(
+      `INSERT INTO user_profile (id, name, goal, bodyweight, unit, experience_level, onboarding_completed, updated_at)
+       VALUES (1, ?, ?, ?, ?, ?, 1, ?)`,
+      patch.name, patch.goal, patch.bodyweight ?? null, patch.unit, patch.experienceLevel ?? 'intermediate', now,
+    );
+  } else {
+    await db.runAsync(
+      `UPDATE user_profile SET name = ?, goal = ?, bodyweight = ?, unit = ?, experience_level = ?, onboarding_completed = 1, updated_at = ? WHERE id = 1`,
+      patch.name, patch.goal, patch.bodyweight ?? null, patch.unit, patch.experienceLevel ?? 'intermediate', now,
+    );
+  }
 }
 
 /* ------------------------------- maintenance ------------------------------- */
@@ -966,4 +1051,140 @@ export async function getWorkoutDays(): Promise<number[]> {
     `SELECT DISTINCT (started_at / 86400000) * 86400000 AS day FROM workout_logs WHERE ended_at IS NOT NULL ORDER BY day`,
   );
   return rows.map((r) => r.day);
+}
+
+/* ----------------------------- dev helpers ----------------------------- */
+
+/** Clear user logs, bodyweight, and profile — keeps exercise library and templates. */
+export async function resetUserData(): Promise<void> {
+  const db = await openDatabase();
+  await db.execAsync('DELETE FROM set_entries');
+  await db.execAsync('DELETE FROM workout_logs');
+  await db.execAsync('DELETE FROM bodyweight_entries');
+  await db.execAsync('DELETE FROM user_profile');
+}
+
+/**
+ * Seed sample data for testing: 2 templates + 2 completed workout logs.
+ * Returns template IDs for reference.
+ */
+export async function seedSampleData(): Promise<{ templateIds: number[] }> {
+  const db = await openDatabase();
+  const now = Date.now();
+  const DAY = 86_400_000;
+
+  // --- Find exercise IDs by name ---
+  const findId = async (name: string) => {
+    const row = await db.getFirstAsync<{ id: number }>(
+      'SELECT id FROM exercises WHERE name LIKE ? LIMIT 1',
+      `%${name}%`,
+    );
+    return row?.id ?? null;
+  };
+
+  // --- Template 1: Upper Body Push ---
+  const t1 = await db.runAsync(
+    `INSERT INTO workout_templates (name, description, category, difficulty, estimated_minutes, created_at, updated_at)
+     VALUES (?, ?, 'strength', 'intermediate', 45, ?, ?)`,
+    'Upper Body Push', 'Bench, OHP, triceps', now, now,
+  );
+  const t1Id = t1.lastInsertRowId as number;
+
+  const benchId = await findId('Bench Press');
+  const ohpId = await findId('Overhead Press');
+  const triId = await findId('Tricep Pushdown');
+  const latId = await findId('Lateral Raise');
+
+  const pushExercises = [
+    { id: benchId, order: 0, sets: 4, repsMin: 6, repsMax: 10, rest: 120 },
+    { id: ohpId, order: 1, sets: 3, repsMin: 8, repsMax: 12, rest: 90 },
+    { id: latId, order: 2, sets: 3, repsMin: 12, repsMax: 15, rest: 60 },
+    { id: triId, order: 3, sets: 3, repsMin: 10, repsMax: 15, rest: 60 },
+  ].filter((e) => e.id);
+
+  for (const ex of pushExercises) {
+    await db.runAsync(
+      `INSERT INTO template_exercises (template_id, exercise_id, sort_order, target_sets, target_reps_min, target_reps_max, rest_seconds, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, '')`,
+      t1Id, ex.id, ex.order, ex.sets, ex.repsMin, ex.repsMax, ex.rest,
+    );
+  }
+
+  // --- Template 2: Lower Body ---
+  const t2 = await db.runAsync(
+    `INSERT INTO workout_templates (name, description, category, difficulty, estimated_minutes, created_at, updated_at)
+     VALUES (?, ?, 'strength', 'intermediate', 50, ?, ?)`,
+    'Lower Body', 'Squat, RDL, leg press', now, now,
+  );
+  const t2Id = t2.lastInsertRowId as number;
+
+  const squatId = await findId('Squat');
+  const rdlId = await findId('Romanian Deadlift');
+  const legExtId = await findId('Leg Extension');
+  const legCurlId = await findId('Leg Curl');
+  const calfId = await findId('Calf Raise');
+
+  const lowerExercises = [
+    { id: squatId, order: 0, sets: 4, repsMin: 6, repsMax: 10, rest: 150 },
+    { id: rdlId, order: 1, sets: 3, repsMin: 8, repsMax: 12, rest: 120 },
+    { id: legExtId, order: 2, sets: 3, repsMin: 12, repsMax: 15, rest: 60 },
+    { id: legCurlId, order: 3, sets: 3, repsMin: 10, repsMax: 15, rest: 60 },
+    { id: calfId, order: 4, sets: 4, repsMin: 12, repsMax: 20, rest: 45 },
+  ].filter((e) => e.id);
+
+  for (const ex of lowerExercises) {
+    await db.runAsync(
+      `INSERT INTO template_exercises (template_id, exercise_id, sort_order, target_sets, target_reps_min, target_reps_max, rest_seconds, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, '')`,
+      t2Id, ex.id, ex.order, ex.sets, ex.repsMin, ex.repsMax, ex.rest,
+    );
+  }
+
+  // --- Sample completed workout logs (last 3 days) ---
+  const sampleSessions = [
+    { templateId: t1Id, name: 'Upper Body Push', daysAgo: 2, exercises: [
+      { name: 'Bench Press', sets: [{ w: 80, r: 8 }, { w: 80, r: 7 }, { w: 75, r: 9 }, { w: 75, r: 8 }] },
+      { name: 'Overhead Press', sets: [{ w: 40, r: 10 }, { w: 40, r: 9 }, { w: 40, r: 8 }] },
+    ]},
+    { templateId: t2Id, name: 'Lower Body', daysAgo: 1, exercises: [
+      { name: 'Squat', sets: [{ w: 100, r: 6 }, { w: 100, r: 5 }, { w: 90, r: 8 }, { w: 90, r: 7 }] },
+      { name: 'Romanian Deadlift', sets: [{ w: 80, r: 10 }, { w: 80, r: 9 }, { w: 80, r: 8 }] },
+    ]},
+  ];
+
+  for (const sess of sampleSessions) {
+    const started = now - sess.daysAgo * DAY + 10 * 3600_000; // 10am
+    const ended = started + 50 * 60_000; // 50 min workout
+    const log = await db.runAsync(
+      `INSERT INTO workout_logs (template_id, name, started_at, ended_at, duration_seconds, total_volume, unit, notes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 3000, 0, 'metric', '', ?, ?)`,
+      sess.templateId, sess.name, started, ended, started, now,
+    );
+    const logId = log.lastInsertRowId as number;
+
+    let totalVolume = 0;
+    for (const ex of sess.exercises) {
+      const exId = await findId(ex.name);
+      if (!exId) continue;
+      for (let i = 0; i < ex.sets.length; i++) {
+        const s = ex.sets[i];
+        totalVolume += s.w * s.r;
+        await db.runAsync(
+          `INSERT INTO set_entries (workout_log_id, exercise_id, set_index, weight, reps, completed, rest_seconds, created_at)
+           VALUES (?, ?, ?, ?, ?, 1, 90, ?)`,
+          logId, exId, i, s.w, s.r, started + i * 120_000,
+        );
+      }
+    }
+    await db.runAsync('UPDATE workout_logs SET total_volume = ? WHERE id = ?', totalVolume, logId);
+  }
+
+  // Create a user profile
+  await db.runAsync(
+    `INSERT OR REPLACE INTO user_profile (id, name, goal, bodyweight, unit, experience_level, onboarding_completed, updated_at)
+     VALUES (1, 'Chris', 'build_muscle', 85, 'metric', 'intermediate', 1, ?)`,
+    now,
+  );
+
+  return { templateIds: [t1Id, t2Id] };
 }

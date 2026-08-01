@@ -4,16 +4,17 @@ CREATE TABLE IF NOT EXISTS exercises (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   external_id TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
-  body_part TEXT NOT NULL,
+  body_part TEXT NOT NULL DEFAULT '',
   equipment TEXT NOT NULL,
   target_muscle TEXT NOT NULL,
   secondary_muscles TEXT[] DEFAULT '{}',
   movement_pattern TEXT NOT NULL DEFAULT 'isolation',
   category TEXT NOT NULL DEFAULT 'accessory',
   is_compound BOOLEAN NOT NULL DEFAULT false,
-  difficulty TEXT NOT NULL DEFAULT 'beginner',
+  difficulty TEXT NOT NULL DEFAULT 'intermediate',
   instructions TEXT[] DEFAULT '{}',
   gif_url TEXT DEFAULT '',
+  tips TEXT DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

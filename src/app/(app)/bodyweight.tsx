@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
+import { Sparkline } from '@/components/progress/sparkline';
 import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
 import { addBodyweightEntry, getBodyweightEntries, deleteBodyweightEntry } from '@/db/queries';
@@ -28,35 +29,15 @@ function MiniChart({ data, unit }: { data: Entry[]; unit: string }) {
   const weights = data.map((e) => e.weight);
   const min = Math.min(...weights);
   const max = Math.max(...weights);
-  const range = max - min || 1;
-  const chartHeight = 120;
-  const barWidth = Math.max(4, Math.min(20, 300 / data.length));
 
   return (
-    <View className="mt-3 rounded-xl bg-card p-4">
-      <View className="flex-row items-end justify-between" style={{ height: chartHeight }}>
-        {data.slice(0, 30).reverse().map((entry, i) => {
-          const height = ((entry.weight - min) / range) * (chartHeight - 20) + 10;
-          const isLast = i === 0;
-          return (
-            <View key={entry.id} className="items-center" style={{ width: barWidth + 4 }}>
-              <View
-                style={{
-                  width: barWidth,
-                  height,
-                  backgroundColor: isLast ? '#16a34a' : '#16a34a50',
-                  borderRadius: barWidth / 2,
-                }}
-              />
-            </View>
-          );
-        })}
-      </View>
+    <Card className="mt-3 p-4">
+      <Sparkline points={[...weights].reverse()} width={300} height={60} />
       <View className="mt-2 flex-row justify-between">
         <Caption>{min.toFixed(1)} {unit}</Caption>
         <Caption>{max.toFixed(1)} {unit}</Caption>
       </View>
-    </View>
+    </Card>
   );
 }
 

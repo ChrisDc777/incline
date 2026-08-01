@@ -173,6 +173,21 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+          {/* Dev tools — hidden in production */}
+          {__DEV__ && (
+            <View className="mt-4 gap-2 rounded-3xl border border-dashed border-border p-4">
+              <Caption className="mb-1 font-semibold">Dev Tools</Caption>
+              <Button variant="outline" size="sm" onPress={async () => {
+                const { resetUserData } = await import('@/db/queries');
+                await resetUserData();
+                Alert.alert('Done', 'Logs, bodyweight, and profile cleared. Templates kept.');
+                router.replace('/(onboarding)');
+              }}>
+                Clear Logs &amp; Reset Profile
+              </Button>
+            </View>
+          )}
+
           <Pressable onPress={async () => { await signOut(); router.replace('/(auth)/sign-in' as any); }} className="flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={LogOut} size={20} color="destructive" />
             <Body className="flex-1 font-medium text-foreground">Sign out</Body>

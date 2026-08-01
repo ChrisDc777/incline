@@ -74,6 +74,35 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
           await database.execAsync('ALTER TABLE user_profile ADD COLUMN avatar_url TEXT');
         } catch { /* column may already exist */ }
       }
+      // v4 → v5: Rebuild exercises table with nullable columns for ExerciseGymGifsDB.
+      // SQLite can't ALTER column nullability, so we drop + recreate.
+      if (current < 5) {
+        await database.execAsync('DELETE FROM exercise_images');
+        await database.execAsync('DELETE FROM exercise_instructions');
+        await database.execAsync('DELETE FROM exercise_secondary_muscles');
+        await database.execAsync('DELETE FROM exercise_aliases');
+        await database.execAsync('DELETE FROM exercises');
+        await database.execAsync("DELETE FROM schema_meta WHERE key = 'seeded'");
+        await database.execAsync("DELETE FROM schema_meta WHERE key = 'supabase_seeded'");
+        // Recreate with correct schema
+        await database.execAsync(`CREATE TABLE IF NOT EXISTS exercises (
+          id INTEGER PRIMARY KEY,
+          name TEXT NOT NULL,
+          primary_muscle TEXT NOT NULL,
+          movement_pattern TEXT,
+          equipment TEXT NOT NULL,
+          category TEXT NOT NULL,
+          is_compound INTEGER NOT NULL DEFAULT 0,
+          is_custom INTEGER NOT NULL DEFAULT 0,
+          source TEXT NOT NULL DEFAULT 'seed',
+          external_id TEXT,
+          difficulty TEXT,
+          default_rest_seconds INTEGER NOT NULL DEFAULT 90,
+          tips TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        )`);
+      }
       await database.runAsync(
         "INSERT INTO schema_meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         String(SCHEMA_VERSION),
@@ -90,20 +119,9 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
       );
     }
 
-    // Sync Supabase exercises into local SQLite for offline use
-    const supabaseSeeded = await database.getFirstAsync<{ value: string }>(
-      "SELECT value FROM schema_meta WHERE key = 'supabase_seeded'",
-    );
-    if (!supabaseSeeded) {
-      const count = await seedFromSupabase(database);
-      if (count > 0) {
-        await database.runAsync(
-          "INSERT INTO schema_meta (key, value) VALUES ('supabase_seeded', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-        );
-      }
-      // If count === 0 (Supabase unreachable), we'll retry next launch.
-      // Only mark as seeded if we actually got data, so it retries.
-    }
+    // Sync Supabase exercises into local SQLite for offline use.
+    // Runs on every launch — idempotent, backfills missing images/instructions for existing exercises.
+    await seedFromSupabase(database);
 
     _db = database;
     return database;
