@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
 import { ExerciseListItem } from '@/components/exercise/exercise-list-item';
 import { useSearchExercises } from '@/hooks/use-data';
+import { useDebounce } from '@/hooks/use-debounce';
 import { MUSCLE_LABELS } from '@/lib/labels';
 import type { MuscleGroup } from '@/db/types';
 
@@ -22,8 +23,9 @@ const MUSCLE_OPTIONS: FilterOption<MuscleGroup>[] = (
 export default function ExercisesScreen() {
   const [query, setQuery] = useState('');
   const [muscle, setMuscle] = useState<MuscleGroup | null>(null);
+  const debouncedQuery = useDebounce(query);
 
-  const exercises = useSearchExercises(query, muscle ? { muscle } : undefined);
+  const exercises = useSearchExercises(debouncedQuery, muscle ? { muscle } : undefined);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
