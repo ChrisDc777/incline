@@ -8,6 +8,7 @@ import type {
   Exercise,
   ExerciseHistoryRow,
   ExperienceLevel,
+  FeedWorkoutLog,
   Goal,
   MovementPattern,
   MuscleDistribution,
@@ -726,6 +727,31 @@ export async function getExerciseProgression(exerciseId: number): Promise<Progre
   return rows.map((r) => ({ date: r.w, weight: r.weight }));
 }
 
+export interface MuscleSplit {
+  muscle: MuscleGroup;
+  percentage: number;
+}
+
+/** Calculate the muscle group distribution for a completed workout (by completed set count). */
+export async function getWorkoutMuscleSplit(logId: number): Promise<MuscleSplit[]> {
+  const db = await openDatabase();
+  const rows = await db.getAllAsync<{ primary_muscle: string; count: number }>(
+    `SELECT e.primary_muscle, COUNT(s.id) as count
+     FROM set_entries s
+     JOIN exercises e ON e.id = s.exercise_id
+     WHERE s.workout_log_id = ? AND s.completed = 1
+     GROUP BY e.primary_muscle
+     ORDER BY count DESC`,
+    logId,
+  );
+  const total = rows.reduce((sum, r) => sum + r.count, 0);
+  if (total === 0) return [];
+  return rows.map((r) => ({
+    muscle: r.primary_muscle as MuscleGroup,
+    percentage: Math.round((r.count / total) * 100),
+  }));
+}
+
 export async function getActiveWorkout(): Promise<SessionWorkout | null> {
   const db = await openDatabase();
   const log = await db.getFirstAsync<LogRow>('SELECT * FROM workout_logs WHERE ended_at IS NULL ORDER BY started_at DESC LIMIT 1');
@@ -830,6 +856,21 @@ export async function updateWorkoutNotes(logId: number, notes: string): Promise<
   await db.runAsync('UPDATE workout_logs SET notes = ?, updated_at = ? WHERE id = ?', notes, Date.now(), logId);
 }
 
+export async function updateWorkoutLogStartedAt(logId: number, startedAt: number): Promise<void> {
+  const db = await openDatabase();
+  await db.runAsync('UPDATE workout_logs SET started_at = ?, updated_at = ? WHERE id = ?', startedAt, Date.now(), logId);
+}
+
+export async function updateWorkoutDuration(logId: number, seconds: number): Promise<void> {
+  const db = await openDatabase();
+  const log = await db.getFirstAsync<LogRow>('SELECT started_at FROM workout_logs WHERE id = ?', logId);
+  if (!log) return;
+  await db.runAsync(
+    'UPDATE workout_logs SET duration_seconds = ?, ended_at = ?, updated_at = ? WHERE id = ?',
+    seconds, log.started_at + seconds * 1000, Date.now(), logId,
+  );
+}
+
 export async function finishWorkout(logId: number): Promise<void> {
   const db = await openDatabase();
   const log = await db.getFirstAsync<LogRow>('SELECT * FROM workout_logs WHERE id = ?', logId);
@@ -854,6 +895,100 @@ export async function listWorkoutLogs(offset = 0, limit = PAGINATION.pageSize): 
     offset,
   );
   const items = rows.map(mapLog);
+  const nextOffset = items.length === limit ? offset + limit : null;
+  return { items, nextOffset };
+}
+
+/** Enriched workout logs for the home feed: includes exercise summaries and PR count. */
+export async function listWorkoutFeedLogs(offset = 0, limit = PAGINATION.pageSize): Promise<Paginated<FeedWorkoutLog>> {
+  const db = await openDatabase();
+  const rows = await db.getAllAsync<LogRow>(
+    'SELECT * FROM workout_logs WHERE ended_at IS NOT NULL ORDER BY started_at DESC LIMIT ? OFFSET ?',
+    limit,
+    offset,
+  );
+  if (rows.length === 0) return { items: [], nextOffset: null };
+
+  const logIds = rows.map((r) => r.id);
+  const placeholders = logIds.map(() => '?').join(',');
+
+  // Batch-load all sets for these logs
+  const allSets = await db.getAllAsync<SetRow & { exercise_name: string }>(
+    `SELECT s.*, e.name as exercise_name FROM set_entries s
+     JOIN exercises e ON e.id = s.exercise_id
+     WHERE s.workout_log_id IN (${placeholders})
+     ORDER BY s.workout_log_id, s.exercise_id, s.set_index`,
+    ...logIds,
+  );
+
+  // Batch-load primary images for all exercises referenced
+  const exerciseIds = [...new Set(allSets.map((s) => s.exercise_id))];
+  const imgPlaceholders = exerciseIds.map(() => '?').join(',');
+  const imgRows = exerciseIds.length > 0
+    ? await db.getAllAsync<{ exercise_id: number; url: string }>(
+        `SELECT exercise_id, url FROM exercise_images WHERE exercise_id IN (${imgPlaceholders}) AND is_primary = 1`,
+        ...exerciseIds,
+      )
+    : [];
+  const imgMap = new Map<number, string>();
+  for (const r of imgRows) imgMap.set(r.exercise_id, r.url);
+
+  // Build per-log exercise summaries
+  const exerciseMap = new Map<number, Map<number, { exerciseId: number; exerciseName: string; setCount: number; imageUrl: string | null }>>();
+  for (const s of allSets) {
+    if (!exerciseMap.has(s.workout_log_id)) exerciseMap.set(s.workout_log_id, new Map());
+    const exMap = exerciseMap.get(s.workout_log_id)!;
+    const existing = exMap.get(s.exercise_id);
+    if (existing) {
+      existing.setCount++;
+    } else {
+      exMap.set(s.exercise_id, {
+        exerciseId: s.exercise_id,
+        exerciseName: s.exercise_name,
+        setCount: 1,
+        imageUrl: imgMap.get(s.exercise_id) ?? null,
+      });
+    }
+  }
+
+  // Count PRs per log: for each completed set, check if it's the best ever for that exercise
+  const prCounts = new Map<number, number>();
+  for (const logId of logIds) {
+    prCounts.set(logId, 0);
+  }
+  // Get best weight per exercise across all time
+  const bestWeights = await db.getAllAsync<{ exercise_id: number; max_weight: number }>(
+    `SELECT exercise_id, MAX(weight) as max_weight FROM set_entries
+     WHERE completed = 1 GROUP BY exercise_id`,
+  );
+  const bestWeightMap = new Map<number, number>();
+  for (const bw of bestWeights) bestWeightMap.set(bw.exercise_id, bw.max_weight);
+
+  // For each log, count exercises where max weight equals all-time max
+  for (const logId of logIds) {
+    const logSets = allSets.filter((s) => s.workout_log_id === logId && s.completed);
+    const exerciseMaxWeights = new Map<number, number>();
+    for (const s of logSets) {
+      const prev = exerciseMaxWeights.get(s.exercise_id) ?? 0;
+      if (s.weight > prev) exerciseMaxWeights.set(s.exercise_id, s.weight);
+    }
+    let prCount = 0;
+    for (const [exId, maxW] of exerciseMaxWeights) {
+      if (bestWeightMap.get(exId) === maxW && maxW > 0) prCount++;
+    }
+    prCounts.set(logId, prCount);
+  }
+
+  const items: FeedWorkoutLog[] = rows.map((r) => {
+    const log = mapLog(r);
+    const exMap = exerciseMap.get(r.id);
+    return {
+      ...log,
+      exercises: exMap ? [...exMap.values()] : [],
+      prCount: prCounts.get(r.id) ?? 0,
+    };
+  });
+
   const nextOffset = items.length === limit ? offset + limit : null;
   return { items, nextOffset };
 }

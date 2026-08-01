@@ -31,7 +31,7 @@ export function SetRow({
   unit: Unit;
   onChangeWeight: (v: number) => void;
   onChangeReps: (v: number) => void;
-  onToggleComplete: () => void;
+  onToggleComplete?: () => void;
   onRemove?: () => void;
 }) {
   const hasPrevious = previousWeight !== undefined && previousWeight > 0;
@@ -60,18 +60,28 @@ export function SetRow({
 
       <View className="flex-1" />
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={completed ? 'Mark incomplete' : 'Complete set'}
-        accessibilityState={{ checked: completed }}
-        onPress={onToggleComplete}
-        hitSlop={8}
-        className={cn(
-          'h-12 w-12 items-center justify-center rounded-full',
-          completed ? 'bg-success' : 'border-2 border-border',
-        )}>
-        <Icon icon={Check} size={20} color="success-foreground" />
-      </Pressable>
+      {onToggleComplete ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={completed ? 'Mark incomplete' : 'Complete set'}
+          accessibilityState={{ checked: completed }}
+          onPress={onToggleComplete}
+          hitSlop={8}
+          className={cn(
+            'h-12 w-12 items-center justify-center rounded-full',
+            completed ? 'bg-success' : 'border-2 border-border',
+          )}>
+          <Icon icon={Check} size={20} color="success-foreground" />
+        </Pressable>
+      ) : (
+        <View
+          className={cn(
+            'h-12 w-12 items-center justify-center rounded-full',
+            completed ? 'bg-success' : 'border-2 border-border',
+          )}>
+          {completed ? <Icon icon={Check} size={20} color="success-foreground" /> : null}
+        </View>
+      )}
 
       {onRemove ? (
         <Pressable
