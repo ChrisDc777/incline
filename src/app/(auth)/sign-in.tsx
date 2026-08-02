@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, TextInput, Pressable, Image, Modal } from 'react-native';
+import { Platform, View, TextInput, Pressable, Image, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useSignIn, useSSO } from '@clerk/clerk-expo';
@@ -33,6 +33,7 @@ export default function SignInScreen() {
   const [resetError, setResetError] = React.useState('');
 
   React.useEffect(() => {
+    if (Platform.OS === 'web') return;
     void WebBrowser.warmUpAsync();
     return () => { void WebBrowser.coolDownAsync(); };
   }, []);

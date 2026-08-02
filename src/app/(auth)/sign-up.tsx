@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, TextInput, Pressable, Image } from 'react-native';
+import { Platform, View, TextInput, Pressable, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useSignUp, useSSO } from '@clerk/clerk-expo';
@@ -25,6 +25,7 @@ export default function SignUpScreen() {
   const [googleLoading, setGoogleLoading] = React.useState(false);
 
   React.useEffect(() => {
+    if (Platform.OS === 'web') return;
     void WebBrowser.warmUpAsync();
     return () => { void WebBrowser.coolDownAsync(); };
   }, []);
