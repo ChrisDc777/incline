@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,25 +11,48 @@ import { StatCard } from '@/components/common/stat-card';
 import { SectionHeader } from '@/components/common/section-header';
 import { EmptyState, ErrorState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
-import { BarChart } from '@/components/progress/bar-chart';
-import { WeeklyDistribution } from '@/components/progress/weekly-distribution';
+import { SegmentedControl } from '@/components/common/segmented-control';
+import { VolumeChart } from '@/components/progress/volume-chart';
+import { MuscleDonut } from '@/components/progress/muscle-donut';
+import { TrendChip } from '@/components/progress/trend-chip';
 import { PRCard } from '@/components/progress/pr-card';
 import { HistoryRow } from '@/components/progress/history-row';
-import { useProgressStats, useWorkoutLogs } from '@/hooks/use-data';
+import { usePeriodStats, useWorkoutLogs } from '@/hooks/use-data';
 import { useSettings } from '@/store/settings-store';
 import { formatVolume } from '@/db/calc';
+import type { ProgressRange } from '@/db/types';
+
+const RANGES: { value: ProgressRange; label: string }[] = [
+  { value: '1m', label: '1M' },
+  { value: '3m', label: '3M' },
+  { value: '6m', label: '6M' },
+  { value: 'all', label: 'All' },
+];
 
 function weekLabel(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
+function monthLabel(key: string): string {
+  const [y, m] = key.split('-').map(Number);
+  const d = new Date(y, m - 1, 1);
+  return d.toLocaleDateString(undefined, { month: 'short' });
+}
+
 export default function ProgressScreen() {
   const { unit } = useSettings();
-  const { data: stats, loading: statsLoading, error: statsError, refetch } = useProgressStats();
+  const [range, setRange] = useState<ProgressRange>('1m');
+  const { data: stats, loading, error, refetch } = usePeriodStats(range);
   const history = useWorkoutLogs();
 
-  const volumeData = (stats?.weeklyVolume ?? []).map((w) => ({ label: weekLabel(w.weekStart), value: w.volume }));
+  const volumeData = useMemo(() => {
+    if (!stats) return [];
+    if (range === '6m' || range === 'all') {
+      return stats.monthlyVolume.map((w) => ({ label: monthLabel(w.month), value: w.volume }));
+    }
+    return stats.weeklyVolume.map((w) => ({ label: weekLabel(w.weekStart), value: w.volume }));
+  }, [stats, range]);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
@@ -47,46 +71,53 @@ export default function ProgressScreen() {
               <Caption className="mt-1">Your training history at a glance.</Caption>
             </View>
 
-            {statsLoading ? (
+            <SegmentedControl value={range} onChange={setRange} values={RANGES} />
+
+            {loading && !stats ? (
               <View className="flex-row gap-3">
                 <ListSkeleton count={1} />
               </View>
-            ) : statsError ? (
+            ) : error ? (
               <ErrorState onRetry={refetch} />
             ) : stats ? (
               <>
                 <View className="flex-row gap-3">
-                  <StatCard label="Sessions" value={stats.totalSessions} icon={<Icon icon={Dumbbell} size={16} color="primary" />} accent />
-                  <StatCard label="Total volume" value={formatVolume(stats.totalVolume, unit)} icon={<Icon icon={Layers} size={16} color="info" />} />
+                  <StatCard label="Sessions" value={stats.sessions} icon={<Icon icon={Dumbbell} size={16} color="primary" />} accent />
+                  <StatCard label="Volume" value={formatVolume(stats.totalVolume, unit)} icon={<Icon icon={Layers} size={16} color="info" />} />
                   <StatCard label="Streak" value={`${stats.streak}w`} icon={<Icon icon={Flame} size={16} color="warning" />} />
                 </View>
+
+                {stats.trend ? (
+                  <View className="flex-row flex-wrap gap-2">
+                    <TrendChip label="vs previous" delta={stats.trend.volumeDelta} />
+                    <TrendChip label="sessions" delta={stats.trend.sessionsDelta} />
+                  </View>
+                ) : null}
 
                 <Card>
                   <CardHeader>
                     <View>
-                      <CardTitle>Weekly volume</CardTitle>
-                      <CardDescription>Last 8 weeks</CardDescription>
+                      <CardTitle>Volume</CardTitle>
+                      <CardDescription>{range === 'all' ? 'All time' : `Last ${range}`}</CardDescription>
                     </View>
                     <Icon icon={TrendingUp} size={18} color="muted-foreground" />
                   </CardHeader>
-                  <View className="items-center">
-                    <BarChart data={volumeData} formatValue={(v) => formatVolume(v, unit)} />
-                  </View>
+                  <VolumeChart data={volumeData} unit={unit} />
                 </Card>
 
                 <Card>
                   <CardHeader>
                     <CardTitle>Muscle focus</CardTitle>
-                    <CardDescription>Set distribution this period</CardDescription>
+                    <CardDescription>Set share this period</CardDescription>
                   </CardHeader>
-                  <WeeklyDistribution data={stats.muscleDistribution} unit={unit} className="mt-2" />
+                  <MuscleDonut data={stats.muscleDistribution} unit={unit} className="mt-2" />
                 </Card>
 
                 <View>
-                  <SectionHeader title="Personal records" className="mb-3" />
+                  <SectionHeader title="Records" className="mb-3" />
                   {stats.prs.length > 0 ? (
                     <View className="gap-2.5">
-                      {stats.prs.map((pr) => (
+                      {stats.prs.slice(0, 5).map((pr) => (
                         <PRCard key={pr.exerciseId} pr={pr} unit={unit} />
                       ))}
                     </View>

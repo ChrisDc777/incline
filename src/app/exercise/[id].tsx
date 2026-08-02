@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { SegmentedControl } from '@/components/common/segmented-control';
 import { EmptyState, ErrorState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
-import { Sparkline } from '@/components/progress/sparkline';
+import { ProgressionChart } from '@/components/progress/progression-chart';
 import { useExercise, useExerciseHistory } from '@/hooks/use-data';
 import { getExerciseByExternalId, getExercisePRSummary, getExerciseRepRecords, getExerciseProgression, type ExercisePRSummary, type RepRecord, type ProgressionPoint } from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
@@ -186,15 +186,11 @@ function SummaryTab({
           <CardHeader>
             <CardTitle>Progression</CardTitle>
           </CardHeader>
-          <View className="items-center">
-            <Sparkline
-              points={progression.map((p) => p.weight)}
-              width={280}
-              height={80}
-              color="#16a34a"
-            />
-          </View>
-          <View className="mt-2 flex-row justify-between px-2">
+          <ProgressionChart
+            points={progression.map((p) => ({ label: p.date.slice(5), weight: p.weight }))}
+            unit={unit}
+          />
+          <View className="mt-1 flex-row justify-between px-2">
             <Caption>{progression[0]?.date}</Caption>
             <Caption>{progression[progression.length - 1]?.date}</Caption>
           </View>
