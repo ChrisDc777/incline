@@ -51,18 +51,21 @@ export function ActiveSessionBar({
   }, [refetch]);
 
   const displayName = name ?? 'Workout';
-  const barBg = isDark ? 'bg-[#1c1c1e]' : 'bg-card';
+  const barBg = isDark ? 'bg-[#2c2c2e]' : 'bg-card';
   const textColor = isDark ? 'text-white' : 'text-foreground';
   const subTextColor = isDark ? 'text-gray-400' : 'text-muted-foreground';
   const rippleColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
+  const iconBg = isDark ? 'bg-[#3a3a3c]' : 'bg-muted';
 
   return (
-    <View className={cn('mx-4 mb-2 flex-row items-center rounded-full px-2 py-2 shadow-lg', barBg, className)}>
+    <View
+      style={{ marginHorizontal: 16, marginBottom: 8, borderRadius: 9999 }}
+      className={cn('flex-row items-center px-2 py-2 shadow-lg border border-border/50', barBg, className)}>
       <Pressable
         onPress={() => router.push(`/session/${logId}`)}
         accessibilityRole="button"
         accessibilityLabel="Open workout"
-        className="h-10 w-10 items-center justify-center rounded-xl"
+        className={cn('h-10 w-10 items-center justify-center rounded-full', iconBg)}
         android_ripple={{ color: rippleColor }}>
         <Icon icon={ChevronUp} size={22} color={isDark ? 'white' : '#16a34a'} />
       </Pressable>
@@ -87,7 +90,7 @@ export function ActiveSessionBar({
           onPress={onDiscard}
           accessibilityRole="button"
           accessibilityLabel="Discard workout"
-          className="h-10 w-10 items-center justify-center rounded-xl"
+          className={cn('h-10 w-10 items-center justify-center rounded-full', iconBg)}
           android_ripple={{ color: rippleColor }}>
           <Icon icon={Trash2} size={20} color="#ff3b30" />
         </Pressable>

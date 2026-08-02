@@ -63,7 +63,7 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
   const inactiveColor = isDark ? '#8e8e93' : '#8e8e93';
 
   return (
-    <View className={cn('border-t', tabBarBg, borderCol)}>
+    <View className={cn('border-t', tabBarBg, borderCol, session && 'pt-1.5')}>
       {session ? (
         <ActiveSessionBar logId={session.id} name={session.name} startedAt={session.startedAt} nextExercise={nextExercise} refetch={refetch} onDiscard={() => setDiscardOpen(true)} />
       ) : null}
