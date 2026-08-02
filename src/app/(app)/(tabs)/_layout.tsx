@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppTabBar } from '@/components/common/app-tab-bar';
+import { ActiveSessionBar } from '@/components/workout/active-session-bar';
 import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useActiveSession } from '@/hooks/use-active-session';
@@ -10,10 +13,14 @@ import { useActiveWorkout } from '@/store/active-workout-store';
 
 export default function TabsLayout() {
   const router = useRouter();
-  const { session, refetch } = useActiveSession();
+  const insets = useSafeAreaInsets();
+  const { session, refetch, nextExercise } = useActiveSession();
   const clear = useActiveWorkout((s) => s.clear);
   const [prompted, setPrompted] = useState(false);
   const [open, setOpen] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
+
+  const tabBarHeight = 52 + insets.bottom;
 
   // On cold start with an unfinished session, prompt to resume or discard.
   // Only show for sessions older than 5s (not a fresh start that's still animating).
@@ -39,6 +46,14 @@ export default function TabsLayout() {
       refetch();
     }
   };
+  const handleDiscard = async () => {
+    setDiscardOpen(false);
+    if (session) {
+      await discardWorkout(session.id);
+      clear();
+      refetch();
+    }
+  };
 
   return (
     <>
@@ -48,6 +63,21 @@ export default function TabsLayout() {
         <Tabs.Screen name="progress" options={{ title: 'Progress' }} />
         <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
       </Tabs>
+
+      {session ? (
+        <View
+          pointerEvents="box-none"
+          style={{ position: 'absolute', left: 0, right: 0, bottom: tabBarHeight, zIndex: 50 }}>
+          <ActiveSessionBar
+            logId={session.id}
+            name={session.name}
+            startedAt={session.startedAt}
+            nextExercise={nextExercise}
+            refetch={refetch}
+            onDiscard={() => setDiscardOpen(true)}
+          />
+        </View>
+      ) : null}
 
       <Dialog
         open={open}
@@ -60,6 +90,19 @@ export default function TabsLayout() {
               Discard
             </Button>
             <Button onPress={resume}>Resume</Button>
+          </>
+        }
+      />
+
+      <Dialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title="Discard workout?"
+        description="This session and all logged sets will be permanently deleted."
+        footer={
+          <>
+            <Button variant="outline" onPress={() => setDiscardOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onPress={handleDiscard}>Discard</Button>
           </>
         }
       />

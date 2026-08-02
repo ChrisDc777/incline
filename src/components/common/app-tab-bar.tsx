@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Pressable, useColorScheme, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, Dumbbell, BarChart3, User } from 'lucide-react-native';
@@ -7,12 +6,6 @@ import type { LucideIcon } from 'lucide-react-native';
 import { cn } from '@/lib/cn';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/common/icon';
-import { Dialog } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { useActiveSession } from '@/hooks/use-active-session';
-import { ActiveSessionBar } from '@/components/workout/active-session-bar';
-import { discardWorkout } from '@/db/queries';
-import { useActiveWorkout } from '@/store/active-workout-store';
 
 const ICONS: Record<string, LucideIcon> = {
   index: Home,
@@ -38,35 +31,22 @@ interface TabBarProps {
 }
 
 /**
- * Custom premium tab bar. Renders the active-session mini-bar above the tabs
- * whenever a workout is in progress.
+ * Custom premium tab bar. The active-session pill is rendered separately by
+ * the tabs layout as a floating overlay, so it is not part of the tab bar's
+ * background.
  */
 export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
-  const { session, refetch, nextExercise } = useActiveSession();
-  const clear = useActiveWorkout((s) => s.clear);
-  const [discardOpen, setDiscardOpen] = useState(false);
-
-  const handleDiscard = async () => {
-    if (!session) return;
-    setDiscardOpen(false);
-    await discardWorkout(session.id);
-    clear();
-    refetch();
-  };
 
   const tabBarBg = isDark ? 'bg-[#1c1c1e]' : 'bg-card';
   const borderCol = isDark ? 'border-[#2c2c2e]' : 'border-border';
   const activeColor = '#16a34a';
-  const inactiveColor = isDark ? '#8e8e93' : '#8e8e93';
+  const inactiveColor = '#8e8e93';
 
   return (
-    <View className={cn('border-t', tabBarBg, borderCol, session && 'pt-1.5')}>
-      {session ? (
-        <ActiveSessionBar logId={session.id} name={session.name} startedAt={session.startedAt} nextExercise={nextExercise} refetch={refetch} onDiscard={() => setDiscardOpen(true)} />
-      ) : null}
+    <View className={cn('border-t', tabBarBg, borderCol)}>
       <View className="flex-row" style={{ paddingBottom: insets.bottom, paddingTop: 6, height: 52 + insets.bottom }}>
         {state.routes.map((route, i) => {
           const focused = state.index === i;
@@ -93,19 +73,6 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
           );
         })}
       </View>
-
-      <Dialog
-        open={discardOpen}
-        onOpenChange={setDiscardOpen}
-        title="Discard workout?"
-        description="This session and all logged sets will be permanently deleted."
-        footer={
-          <>
-            <Button variant="outline" onPress={() => setDiscardOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onPress={handleDiscard}>Discard</Button>
-          </>
-        }
-      />
     </View>
   );
 }
