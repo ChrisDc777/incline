@@ -47,7 +47,7 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
 
   return (
     <View className={cn('border-t', tabBarBg, borderCol)}>
-      <View className="flex-row" style={{ paddingBottom: insets.bottom, paddingTop: 6, height: 52 + insets.bottom }}>
+      <View className="flex-row" style={{ paddingBottom: insets.bottom, paddingTop: 8, height: 64 + insets.bottom }}>
         {state.routes.map((route, i) => {
           const focused = state.index === i;
           const TabIcon = ICONS[route.name] ?? Home;
@@ -64,9 +64,9 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
               accessibilityRole="button"
               accessibilityState={{ selected: focused }}
               accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
-              className="flex-1 items-center py-1.5">
-              <Icon icon={TabIcon} size={22} color={focused ? activeColor : inactiveColor} />
-              <Text className={cn('mt-1 text-[10px]', focused ? 'font-semibold' : '')} style={{ color: focused ? activeColor : inactiveColor }}>
+              className="flex-1 items-center py-2">
+              <Icon icon={TabIcon} size={26} color={focused ? activeColor : inactiveColor} />
+              <Text className={cn('mt-1.5 text-xs', focused ? 'font-semibold' : '')} style={{ color: focused ? activeColor : inactiveColor }}>
                 {label}
               </Text>
             </Pressable>

@@ -6,7 +6,7 @@ import { ChevronUp, Trash2 } from 'lucide-react-native';
 import { cn } from '@/lib/cn';
 import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
-import { formatClock } from '@/db/calc';
+import { formatDuration } from '@/db/calc';
 
 /**
  * Floating session bar shown above the tab bar when a workout is in progress.
@@ -60,27 +60,30 @@ export function ActiveSessionBar({
   return (
     <View
       style={{ marginHorizontal: 16, marginBottom: 8, borderRadius: 9999 }}
-      className={cn('flex-row items-center px-2 py-2 shadow-lg border border-border/50', barBg, className)}>
+      className={cn('flex-row items-center px-3 py-3 shadow-lg border border-border/50', barBg, className)}>
       <Pressable
         onPress={() => router.push(`/session/${logId}`)}
         accessibilityRole="button"
         accessibilityLabel="Open workout"
-        className={cn('h-10 w-10 items-center justify-center rounded-full', iconBg)}
+        className={cn('h-14 w-14 items-center justify-center rounded-full', iconBg)}
         android_ripple={{ color: rippleColor }}>
-        <Icon icon={ChevronUp} size={22} color={isDark ? 'white' : '#16a34a'} />
+        <Icon icon={ChevronUp} size={30} color={isDark ? 'white' : '#16a34a'} />
       </Pressable>
 
       <Pressable
         onPress={() => router.push(`/session/${logId}`)}
-        className="flex-1 flex-row items-center gap-2.5 px-1"
+        className="flex-1 flex-row items-center px-2"
         android_ripple={{ color: rippleColor }}>
-        <View className="h-2.5 w-2.5 rounded-full bg-success" />
         <View className="flex-1">
-          <Text className={cn('text-sm font-semibold', textColor)}>
-            {displayName} {startedAt ? formatClock(elapsed) : ''}
-          </Text>
+          <View className="flex-row items-center gap-2">
+            <View className="h-3 w-3 rounded-full bg-success" />
+            <Text className={cn('text-base font-semibold', textColor)}>{displayName}</Text>
+            {startedAt ? (
+              <Text className={cn('text-base', subTextColor)}>{formatDuration(elapsed)}</Text>
+            ) : null}
+          </View>
           {nextExercise ? (
-            <Text className={cn('text-xs', subTextColor)} numberOfLines={1}>{nextExercise}</Text>
+            <Text className={cn('text-base', subTextColor)} numberOfLines={1}>{nextExercise}</Text>
           ) : null}
         </View>
       </Pressable>
@@ -90,9 +93,9 @@ export function ActiveSessionBar({
           onPress={onDiscard}
           accessibilityRole="button"
           accessibilityLabel="Discard workout"
-          className={cn('h-10 w-10 items-center justify-center rounded-full', iconBg)}
+          className={cn('h-14 w-14 items-center justify-center rounded-full', iconBg)}
           android_ripple={{ color: rippleColor }}>
-          <Icon icon={Trash2} size={20} color="#ff3b30" />
+          <Icon icon={Trash2} size={28} color="#ff3b30" />
         </Pressable>
       ) : null}
     </View>

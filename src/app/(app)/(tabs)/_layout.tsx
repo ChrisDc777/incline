@@ -20,7 +20,7 @@ export default function TabsLayout() {
   const [open, setOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
 
-  const tabBarHeight = 52 + insets.bottom;
+  const tabBarHeight = 64 + insets.bottom;
 
   // On cold start with an unfinished session, prompt to resume or discard.
   // Only show for sessions older than 5s (not a fresh start that's still animating).
