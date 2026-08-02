@@ -51,14 +51,14 @@ export default function SessionScreen() {
   const { toast } = useToast();
   const { impact } = useHaptics();
   const clear = useActiveWorkout((s) => s.clear);
-  const { unit } = useSettings();
+  const { unit, setUnit, restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets } = useSettings();
   const rest = useRestTimer();
   const restSound = useRestTimerSound();
 
   // Play sound when rest timer finishes
   useEffect(() => {
-    if (rest.justFinished) restSound.play();
-  }, [rest.justFinished, restSound]);
+    if (rest.justFinished && restSoundEnabled) restSound.play();
+  }, [rest.justFinished, restSound, restSoundEnabled]);
 
   const [session, setSession] = useState<SessionWorkout | null>(null);
   const [lastSetsMap, setLastSetsMap] = useState<Record<number, SetEntry[]>>({});
@@ -164,7 +164,7 @@ export default function SessionScreen() {
     await updateSet(setId, { completed: next, restSeconds: next ? (restSecondsMap[target?.exerciseId ?? 0] ?? 0) : null });
     reload();
     impact();
-    if (next) {
+    if (next && autoStartRest) {
       const exRest = restSecondsMap[target?.exerciseId ?? 0] ?? 0;
       if (exRest > 0) rest.start(exRest);
     }
@@ -199,6 +199,7 @@ export default function SessionScreen() {
   const onPickExercise = async (ex: Exercise) => {
     impact();
     await addExerciseToWorkout(logId, ex.id);
+    setRestSecondsMap((prev) => ({ ...prev, [ex.id]: prev[ex.id] ?? defaultRestSeconds }));
     setPickerOpen(false);
     reload();
   };
@@ -275,10 +276,18 @@ export default function SessionScreen() {
             <Caption className="mt-0.5 text-amber-500">Paused</Caption>
           ) : null}
         </Pressable>
-        <View className="flex-1 items-center">
-          <Caption>Volume</Caption>
+        <Pressable
+          onPress={() => {
+            const next = unit === 'metric' ? 'imperial' : 'metric';
+            setUnit(next);
+            toast({ title: `Units: ${next === 'metric' ? 'kg' : 'lb'}`, description: 'Weight display updated for this workout.' });
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Toggle units, currently ${unit === 'metric' ? 'kg' : 'lb'}`}
+          className="flex-1 items-center">
+          <Caption>Volume · {unit === 'metric' ? 'kg' : 'lb'}</Caption>
           <Body className="mt-0.5 font-semibold text-foreground">{formatVolume(totalVolume, unit)}</Body>
-        </View>
+        </Pressable>
         <View className="flex-1 items-center">
           <Caption>Sets</Caption>
           <Body className="mt-0.5 font-semibold text-foreground">{completedSets}/{totalSets}</Body>
@@ -355,7 +364,7 @@ export default function SessionScreen() {
                   name={g.exerciseName}
                   exerciseId={g.exerciseId}
                   sets={g.sets}
-                  unit={session.unit}
+                  unit={unit}
                   lastSets={lastSetsMap[g.exerciseId] ?? []}
                   restSeconds={restSecondsMap[g.exerciseId] ?? 0}
                   onChangeRestSeconds={(s) => onChangeRestSeconds(g.exerciseId, s)}
@@ -365,6 +374,7 @@ export default function SessionScreen() {
                   onRemoveSet={onRemoveSet}
                   onAddSet={() => onAddSet(g.exerciseId)}
                   onAddWarmUp={() => onAddWarmUp(g.exerciseId)}
+                  showWarmUpSets={showWarmUpSets}
                 />
               </View>
             ))}

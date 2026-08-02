@@ -157,6 +157,14 @@ export interface Settings {
   unit: Unit;
   themeMode: ThemeMode;
   hapticsEnabled: boolean;
+  /** Play sound + haptic when the rest timer finishes. */
+  restSoundEnabled: boolean;
+  /** Auto-start the rest timer when a set is marked complete. */
+  autoStartRest: boolean;
+  /** Default rest between sets when adding an exercise to a session. */
+  defaultRestSeconds: number;
+  /** Show the warm-up set button in the session screen. */
+  showWarmUpSets: boolean;
 }
 
 /* ---- Query result shapes ---- */
