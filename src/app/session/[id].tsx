@@ -27,15 +27,17 @@ import {
   addWarmUpSet,
   discardWorkout,
   finishWorkout,
+  getExercisePRSummary,
   getLastSetsForExercise,
   getWorkoutLog,
   removeSet,
   updateSet,
   updateWorkoutNotes,
+  type ExercisePRSummary,
   type SessionWorkout,
 } from '@/db/queries';
 import { openDatabase } from '@/db/client';
-import { formatClock, formatVolume } from '@/db/calc';
+import { estimated1RM, formatClock, formatVolume, formatWeight } from '@/db/calc';
 import type { Exercise, SetEntry } from '@/db/types';
 
 interface Group {
@@ -49,7 +51,7 @@ export default function SessionScreen() {
   const logId = Number(id);
   const router = useRouter();
   const { toast } = useToast();
-  const { impact } = useHaptics();
+  const { impact, notify } = useHaptics();
   const clear = useActiveWorkout((s) => s.clear);
   const { unit, setUnit, restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets } = useSettings();
   const rest = useRestTimer();
@@ -62,7 +64,11 @@ export default function SessionScreen() {
 
   const [session, setSession] = useState<SessionWorkout | null>(null);
   const [lastSetsMap, setLastSetsMap] = useState<Record<number, SetEntry[]>>({});
+  const [prMap, setPrMap] = useState<Record<number, ExercisePRSummary>>({});
   const [loading, setLoading] = useState(true);
+  const scrollRef = useRef<ScrollView>(null);
+  const groupRefs = useRef<(View | null)[]>([]);
+  const prevActiveGroupRef = useRef<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
@@ -84,8 +90,15 @@ export default function SessionScreen() {
     if (s) {
       const exIds = [...new Set(s.sets.map((x) => x.exerciseId))];
       const map: Record<number, SetEntry[]> = {};
-      await Promise.all(exIds.map(async (eid) => { map[eid] = await getLastSetsForExercise(eid); }));
+      const prs: Record<number, ExercisePRSummary> = {};
+      await Promise.all(
+        exIds.map(async (eid) => {
+          map[eid] = await getLastSetsForExercise(eid);
+          prs[eid] = await getExercisePRSummary(eid);
+        }),
+      );
       setLastSetsMap(map);
+      setPrMap(prs);
     }
     setSession(s);
     if (s) setNotes(s.notes ?? '');
@@ -145,6 +158,33 @@ export default function SessionScreen() {
     g.sets.push(s);
   }
 
+  // The exercise the user should be working on: first group that still has an
+  // unfinished set, else the last group.
+  const activeGroupIndex = (() => {
+    if (groups.length === 0) return -1;
+    const idx = groups.findIndex((g) => g.sets.some((s) => !s.completed));
+    return idx === -1 ? groups.length - 1 : idx;
+  })();
+
+  // Auto-scroll to the current exercise when the active group advances.
+  useEffect(() => {
+    if (loading || !session || activeGroupIndex < 0) return;
+    if (prevActiveGroupRef.current === activeGroupIndex) return;
+    prevActiveGroupRef.current = activeGroupIndex;
+    const t = setTimeout(() => {
+      const target = groupRefs.current[activeGroupIndex];
+      const scroller = scrollRef.current;
+      const node = scroller?.getNativeScrollRef?.();
+      if (!target || !scroller || !node) return;
+      target.measureLayout(
+        node,
+        (x, y) => scroller.scrollTo({ y: Math.max(0, y - 140), animated: true }),
+        () => {},
+      );
+    }, 120);
+    return () => clearTimeout(t);
+  }, [session, activeGroupIndex, loading]);
+
   const reload = () => load();
   const onChangeWeight = async (setId: number, v: number) => { await updateSet(setId, { weight: v }); reload(); };
   const onChangeReps = async (setId: number, v: number) => { await updateSet(setId, { reps: v }); reload(); };
@@ -164,9 +204,26 @@ export default function SessionScreen() {
     await updateSet(setId, { completed: next, restSeconds: next ? (restSecondsMap[target?.exerciseId ?? 0] ?? 0) : null });
     reload();
     impact();
-    if (next && autoStartRest) {
-      const exRest = restSecondsMap[target?.exerciseId ?? 0] ?? 0;
-      if (exRest > 0) rest.start(exRest);
+    if (next && target) {
+      // Celebrate a personal record: heavier weight, better e1RM, or bigger
+      // set volume than the best ever logged for this exercise.
+      const pr = prMap[target.exerciseId];
+      if (pr) {
+        const vol = target.weight * target.reps;
+        const e1rm = estimated1RM(target.weight, target.reps);
+        if (vol > 0 && (target.weight > pr.heaviestWeight || e1rm > pr.best1RM || vol > pr.bestSetVolume)) {
+          notify();
+          toast({
+            title: 'New PR!',
+            description: `${target.exerciseName} · ${formatWeight(target.weight, unit)} × ${target.reps}`,
+            variant: 'success',
+          });
+        }
+      }
+      if (autoStartRest) {
+        const exRest = restSecondsMap[target.exerciseId] ?? 0;
+        if (exRest > 0) rest.start(exRest);
+      }
     }
   };
   const onRemoveSet = async (setId: number) => {
@@ -295,6 +352,7 @@ export default function SessionScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 160 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -362,7 +420,7 @@ export default function SessionScreen() {
         ) : (
           <View className="gap-5">
             {groups.map((g, i) => (
-              <View key={g.exerciseId}>
+              <View key={g.exerciseId} ref={(el) => { groupRefs.current[i] = el; }}>
                 {i > 0 && <View className="mb-5 h-px bg-border/40" />}
                 <ExerciseBlock
                   name={g.exerciseName}

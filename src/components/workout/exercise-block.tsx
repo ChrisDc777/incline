@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { cn } from '@/lib/cn';
 import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
-import { SetRow } from './set-row';
+import { SetRow, type SetRowHandle } from './set-row';
 import { RestTimerPickerSheet } from './rest-timer-picker-sheet';
 import type { SetEntry, Unit } from '@/db/types';
 import { Plus, Clock, Flame } from 'lucide-react-native';
@@ -47,6 +47,7 @@ export function ExerciseBlock({
   className?: string;
 }) {
   const [restPickerOpen, setRestPickerOpen] = useState(false);
+  const rowRefs = useRef<(SetRowHandle | null)[]>([]);
   const completedCount = sets.filter((s) => s.completed).length;
 
   return (
@@ -74,6 +75,7 @@ export function ExerciseBlock({
         {sets.map((s, i) => (
           <SetRow
             key={s.id}
+            ref={(el) => { rowRefs.current[i] = el; }}
             index={i}
             weight={s.weight}
             reps={s.reps}
@@ -85,6 +87,7 @@ export function ExerciseBlock({
             onChangeReps={(v) => onChangeReps(s.id, v)}
             onToggleComplete={() => onToggleComplete(s.id)}
             onRemove={sets.length > 1 ? () => onRemoveSet(s.id) : undefined}
+            onSubmitReps={i + 1 < sets.length ? () => rowRefs.current[i + 1]?.focusWeight() : undefined}
           />
         ))}
       </View>

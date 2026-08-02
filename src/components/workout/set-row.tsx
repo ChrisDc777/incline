@@ -1,15 +1,22 @@
+import { useImperativeHandle, useRef, type Ref } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { cn } from '@/lib/cn';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/common/icon';
 import { Check, X } from 'lucide-react-native';
-import { NumberStepper } from './number-stepper';
+import { NumberStepper, type NumberStepperHandle } from './number-stepper';
 import { formatWeight } from '@/db/calc';
 import type { Unit } from '@/db/types';
 
+export interface SetRowHandle {
+  /** Focus the weight input of this row. */
+  focusWeight: () => void;
+}
+
 /** A single set row: index, previous, weight, reps, and a complete toggle. */
 export function SetRow({
+  ref,
   index,
   weight,
   reps,
@@ -21,7 +28,9 @@ export function SetRow({
   onChangeReps,
   onToggleComplete,
   onRemove,
+  onSubmitReps,
 }: {
+  ref?: Ref<SetRowHandle>;
   index: number;
   weight: number;
   reps: number;
@@ -33,7 +42,14 @@ export function SetRow({
   onChangeReps: (v: number) => void;
   onToggleComplete?: () => void;
   onRemove?: () => void;
+  /** Called when the reps field is submitted (advance to next row). */
+  onSubmitReps?: () => void;
 }) {
+  const weightRef = useRef<NumberStepperHandle>(null);
+  const repsRef = useRef<NumberStepperHandle>(null);
+
+  useImperativeHandle(ref, () => ({ focusWeight: () => weightRef.current?.focus() }), []);
+
   const hasPrevious = previousWeight !== undefined && previousWeight > 0;
   return (
     <View
@@ -55,8 +71,23 @@ export function SetRow({
         )}
       </View>
 
-      <NumberStepper value={weight} onChange={onChangeWeight} step={2.5} suffix={unit === 'metric' ? 'kg' : 'lb'} decimals={1} />
-      <NumberStepper value={reps} onChange={onChangeReps} step={1} suffix="reps" />
+      <NumberStepper
+        ref={weightRef}
+        value={weight}
+        onChange={onChangeWeight}
+        step={2.5}
+        suffix={unit === 'metric' ? 'kg' : 'lb'}
+        decimals={1}
+        onSubmitNext={() => repsRef.current?.focus()}
+      />
+      <NumberStepper
+        ref={repsRef}
+        value={reps}
+        onChange={onChangeReps}
+        step={1}
+        suffix="reps"
+        onSubmitNext={onSubmitReps}
+      />
 
       <View className="flex-1" />
 

@@ -1,15 +1,22 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 import { cn } from '@/lib/cn';
 import { Text } from '@/components/ui/text';
 import { clamp } from '@/db/calc';
 
+export interface NumberStepperHandle {
+  /** Enter edit mode and focus the input. */
+  focus: () => void;
+}
+
 /**
  * Clean inline-editable number field. Tap the value to type a new number;
- * commits on blur/submit. No +/- buttons.
+ * commits on blur/submit. No +/- buttons. When `onSubmitNext` is provided the
+ * return key acts as "next" (Android), letting users flow from field to field.
  */
 export function NumberStepper({
+  ref,
   value,
   onChange,
   step = 2.5,
@@ -17,8 +24,10 @@ export function NumberStepper({
   max = 1000,
   suffix,
   decimals = 0,
+  onSubmitNext,
   className,
 }: {
+  ref?: Ref<NumberStepperHandle>;
   value: number;
   onChange: (v: number) => void;
   step?: number;
@@ -26,12 +35,15 @@ export function NumberStepper({
   max?: number;
   suffix?: string;
   decimals?: number;
+  onSubmitNext?: () => void;
   className?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value));
   const inputRef = useRef<TextInput>(null);
   const committedRef = useRef(false);
+
+  useImperativeHandle(ref, () => ({ focus: () => setEditing(true) }), []);
 
   useEffect(() => {
     if (!editing) setDraft(value === 0 && decimals === 0 ? '' : String(value));
@@ -64,9 +76,9 @@ export function NumberStepper({
           value={draft}
           onChangeText={(t) => { committedRef.current = false; setDraft(t); }}
           onBlur={commit}
-          onSubmitEditing={commit}
+          onSubmitEditing={() => { commit(); onSubmitNext?.(); }}
           keyboardType="decimal-pad"
-          returnKeyType="done"
+          returnKeyType={onSubmitNext ? 'next' : 'done'}
           style={{ includeFontPadding: false }}
           className="h-9 min-w-[60px] rounded-lg bg-muted/60 px-2 text-center text-base font-semibold text-foreground"
         />
