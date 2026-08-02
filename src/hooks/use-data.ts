@@ -8,6 +8,7 @@ import {
   getExerciseHistory,
   getProgram,
   getProfile,
+  getPeriodStats,
   getProgressStats,
   getSuggestedTemplate,
   getTemplate,
@@ -21,7 +22,7 @@ import {
   type ExerciseFilters,
   type SessionWorkout,
 } from '@/db/queries';
-import type { Exercise, FeedWorkoutLog, MuscleGroup, PR, Program, ProgressStats, SearchHit, UserProfile, WorkoutLog, WorkoutTemplate } from '@/db/types';
+import type { Exercise, FeedWorkoutLog, MuscleGroup, PR, PeriodStats, ProgressRange, Program, ProgressStats, SearchHit, UserProfile, WorkoutLog, WorkoutTemplate } from '@/db/types';
 import { useSettings } from '@/store/settings-store';
 
 /* ---- catalog ---- */
@@ -61,6 +62,9 @@ export function useProgram(id: number) {
 /* ---- progress & profile ---- */
 export function useProgressStats(weeks = 8) {
   return useAsync<ProgressStats>(() => getProgressStats(weeks), [weeks]);
+}
+export function usePeriodStats(range: ProgressRange) {
+  return useAsync<PeriodStats>(() => getPeriodStats(range), [range]);
 }
 export function useProfile() {
   return useAsync<UserProfile>(() => getProfile(), []);

@@ -3,13 +3,13 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, TrendingDown, TrendingUp, Minus } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
+import { LineChart } from 'react-native-gifted-charts';
 
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
-import { Sparkline } from '@/components/progress/sparkline';
 import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
 import { addBodyweightEntry, getBodyweightEntries, deleteBodyweightEntry } from '@/db/queries';
@@ -22,20 +22,31 @@ interface Entry {
   recordedAt: number;
 }
 
-/** Simple dot-based line chart — no external chart library needed. */
+/** Bodyweight trend line chart. */
 function MiniChart({ data, unit }: { data: Entry[]; unit: string }) {
   if (data.length < 2) return null;
-
-  const weights = data.map((e) => e.weight);
-  const min = Math.min(...weights);
-  const max = Math.max(...weights);
-
+  const points = [...data].reverse();
   return (
     <Card className="mt-3 p-4">
-      <Sparkline points={[...weights].reverse()} width={300} height={60} />
+      <LineChart
+        data={points.map((e) => ({ value: e.weight, label: new Date(e.recordedAt).toLocaleDateString(undefined, { month: 'short' }) }))}
+        height={120}
+        width={300}
+        thickness={2}
+        color="#16a34a"
+        areaChart
+        startFillColor="rgba(22,163,74,0.25)"
+        endFillColor="rgba(22,163,74,0.02)"
+        hideDataPoints={points.length > 15}
+        adjustToWidth
+        yAxisTextStyle={{ fontSize: 10, color: '#71717a' }}
+        xAxisLabelTextStyle={{ fontSize: 9, color: '#9ca3af' }}
+        yAxisLabelWidth={40}
+        rulesColor="#f4f4f5"
+      />
       <View className="mt-2 flex-row justify-between">
-        <Caption>{min.toFixed(1)} {unit}</Caption>
-        <Caption>{max.toFixed(1)} {unit}</Caption>
+        <Caption>{Math.min(...points.map((e) => e.weight)).toFixed(1)} {unit}</Caption>
+        <Caption>{Math.max(...points.map((e) => e.weight)).toFixed(1)} {unit}</Caption>
       </View>
     </Card>
   );

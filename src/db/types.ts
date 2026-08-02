@@ -193,6 +193,19 @@ export interface MuscleDistribution {
   volume: number;
 }
 
+export type ProgressRange = '1m' | '3m' | '6m' | 'all';
+
+export interface MonthlyVolume {
+  month: string;
+  volume: number;
+  sessions: number;
+}
+
+export interface Trend {
+  volumeDelta: number;
+  sessionsDelta: number;
+}
+
 export interface ProgressStats {
   totalSessions: number;
   totalVolume: number;
@@ -202,6 +215,19 @@ export interface ProgressStats {
   muscleDistribution: MuscleDistribution[];
   prs: PR[];
   lastSessionAt: number | null;
+}
+
+export interface PeriodStats {
+  range: ProgressRange;
+  sessions: number;
+  totalVolume: number;
+  totalSets: number;
+  streak: number;
+  weeklyVolume: WeeklyVolume[];
+  monthlyVolume: MonthlyVolume[];
+  muscleDistribution: MuscleDistribution[];
+  prs: PR[];
+  trend: Trend | null;
 }
 
 export interface SearchHit {
