@@ -67,7 +67,7 @@ export function NumberStepper({
           onSubmitEditing={commit}
           keyboardType="decimal-pad"
           returnKeyType="done"
-          textAlignVertical="center"
+          style={{ includeFontPadding: false }}
           className="h-9 min-w-[60px] rounded-lg bg-muted/60 px-2 text-center text-base font-semibold text-foreground"
         />
       ) : (

@@ -8,6 +8,7 @@ export function Sheet({
   onOpenChange,
   title,
   snapPoints = ['45%', '75%'],
+  index = 0,
   scroll = false,
   dynamicSizing = true,
   children,
@@ -16,6 +17,7 @@ export function Sheet({
   onOpenChange: (open: boolean) => void;
   title?: string;
   snapPoints?: (string | number)[];
+  index?: number;
   scroll?: boolean;
   dynamicSizing?: boolean;
   children: ReactNode;
@@ -39,7 +41,7 @@ export function Sheet({
   return (
     <BottomSheetModal
       ref={sheetRef}
-      index={-1}
+      index={index}
       snapPoints={snapPoints}
       enableDynamicSizing={dynamicSizing}
       enablePanDownToClose
