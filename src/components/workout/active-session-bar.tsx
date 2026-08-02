@@ -51,7 +51,6 @@ export function ActiveSessionBar({
   }, [refetch]);
 
   const displayName = name ?? 'Workout';
-  const barBg = isDark ? 'bg-[#2c2c2e]' : 'bg-card';
   const textColor = isDark ? 'text-white' : 'text-foreground';
   const subTextColor = isDark ? 'text-gray-400' : 'text-muted-foreground';
   const rippleColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
@@ -60,7 +59,7 @@ export function ActiveSessionBar({
   return (
     <View
       style={{ marginHorizontal: 16, marginBottom: 8, borderRadius: 9999 }}
-      className={cn('flex-row items-center px-2 py-2 shadow-lg border border-border/50', barBg, className)}>
+      className={cn('flex-row items-center px-2 py-2 shadow-lg border border-border/50 bg-transparent', className)}>
       <Pressable
         onPress={() => router.push(`/session/${logId}`)}
         accessibilityRole="button"

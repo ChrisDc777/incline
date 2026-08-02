@@ -8,7 +8,7 @@ export function Sheet({
   onOpenChange,
   title,
   snapPoints = ['45%', '75%'],
-  index = 0,
+  index = -1,
   scroll = false,
   dynamicSizing = true,
   children,

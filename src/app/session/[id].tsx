@@ -438,7 +438,7 @@ export default function SessionScreen() {
         }
       />
 
-      <Sheet open={timerSheetOpen} onOpenChange={setTimerSheetOpen} title="Workout Timer" snapPoints={['25%', '75%']} dynamicSizing={false}>
+      <Sheet open={timerSheetOpen} onOpenChange={setTimerSheetOpen} title="Workout Timer" snapPoints={['25%', '75%']} index={0} dynamicSizing={false}>
         <View className="items-center gap-3 py-2">
           <Body className="text-sm text-muted-foreground">Elapsed time</Body>
           <Body className="text-5xl font-bold tracking-tight text-foreground">{formatClock(elapsed)}</Body>
