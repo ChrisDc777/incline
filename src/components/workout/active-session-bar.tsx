@@ -57,7 +57,7 @@ export function ActiveSessionBar({
   const rippleColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
 
   return (
-    <View className={cn('mx-4 mb-2 flex-row items-center rounded-2xl px-2 py-2 shadow-lg', barBg, className)}>
+    <View className={cn('mx-4 mb-2 flex-row items-center rounded-full px-2 py-2 shadow-lg', barBg, className)}>
       <Pressable
         onPress={() => router.push(`/session/${logId}`)}
         accessibilityRole="button"

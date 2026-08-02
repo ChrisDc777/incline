@@ -4,7 +4,7 @@ import { formatClock } from '@/db/calc';
 import { Text } from '@/components/ui/text';
 
 /**
- * Compact rest-timer bar shown at the bottom of the session screen.
+ * Compact rest-timer pill floating above the bottom of the session screen.
  * Displays: [-15] [time] [+15] [Skip]
  */
 export function RestTimer({
@@ -21,13 +21,13 @@ export function RestTimer({
   const done = remaining <= 0 && total > 0;
 
   return (
-    <View className="absolute inset-x-0 bottom-0 z-30 border-t border-border bg-background px-4 py-3 pb-6">
-      <View className="flex-row items-center justify-between">
+    <View className="absolute inset-x-0 bottom-0 z-30 px-4 pb-5">
+      <View className="flex-row items-center justify-between rounded-full border border-border bg-background px-2 py-2 shadow-lg">
         <Pressable
           onPress={() => onAdd(-15)}
           accessibilityRole="button"
           accessibilityLabel="Subtract 15 seconds"
-          className="h-11 w-14 items-center justify-center rounded-xl bg-muted">
+          className="h-11 w-14 items-center justify-center rounded-full bg-muted">
           <Text className="text-lg font-semibold text-foreground">-15</Text>
         </Pressable>
 
@@ -44,7 +44,7 @@ export function RestTimer({
           onPress={() => onAdd(15)}
           accessibilityRole="button"
           accessibilityLabel="Add 15 seconds"
-          className="h-11 w-14 items-center justify-center rounded-xl bg-muted">
+          className="h-11 w-14 items-center justify-center rounded-full bg-muted">
           <Text className="text-lg font-semibold text-foreground">+15</Text>
         </Pressable>
 
@@ -52,7 +52,7 @@ export function RestTimer({
           onPress={onSkip}
           accessibilityRole="button"
           accessibilityLabel="Skip rest"
-          className="h-11 items-center justify-center rounded-xl bg-primary px-4">
+          className="h-11 items-center justify-center rounded-full bg-primary px-4">
           <Text className="text-sm font-semibold text-primary-foreground">Skip</Text>
         </Pressable>
       </View>

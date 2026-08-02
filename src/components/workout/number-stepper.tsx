@@ -37,6 +37,14 @@ export function NumberStepper({
     if (!editing) setDraft(value === 0 && decimals === 0 ? '' : String(value));
   }, [value, editing, decimals]);
 
+  // Focus after the TextInput has been laid out so the keyboard doesn't cause
+  // the surrounding ScrollView to re-flow / jump on Android.
+  useEffect(() => {
+    if (!editing) return;
+    const t = setTimeout(() => inputRef.current?.focus(), 80);
+    return () => clearTimeout(t);
+  }, [editing]);
+
   const commit = () => {
     if (committedRef.current) return;
     committedRef.current = true;
@@ -53,13 +61,13 @@ export function NumberStepper({
       {editing ? (
         <TextInput
           ref={inputRef}
-          autoFocus
           value={draft}
           onChangeText={(t) => { committedRef.current = false; setDraft(t); }}
           onBlur={commit}
           onSubmitEditing={commit}
           keyboardType="decimal-pad"
           returnKeyType="done"
+          textAlignVertical="center"
           className="h-9 min-w-[60px] rounded-lg bg-muted/60 px-2 text-center text-base font-semibold text-foreground"
         />
       ) : (
