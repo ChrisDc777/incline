@@ -18,21 +18,20 @@ export default function Root({ children }: PropsWithChildren) {
           html, body {
             margin: 0;
             padding: 0;
-            min-height: 100vh;
-            min-height: 100dvh;
-            overflow: hidden;
+            width: 100%;
+            height: 100%;
             background: #1a1a1a;
-          }
-          #root {
-            max-width: 430px;
-            margin: 0 auto;
-            min-height: 100vh;
-            min-height: 100dvh;
-            position: relative;
             overflow: hidden;
           }
           @media (prefers-color-scheme: light) {
             html, body { background: #fff; }
+          }
+          #root {
+            width: 100%;
+            max-width: 430px;
+            height: 100%;
+            margin: 0 auto;
+            overflow: hidden;
           }
         `}} />
       </head>

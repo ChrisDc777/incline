@@ -129,7 +129,7 @@ export default function SignInScreen() {
         <View className="mb-8 items-center">
           <Image
             source={require('../../../assets/images/icon.png')}
-            className="mb-4 h-20 w-20 rounded-2xl"
+            style={{ width: 80, height: 80, borderRadius: 16 }}
             resizeMode="contain"
           />
           <Heading className="text-center">Incline</Heading>
