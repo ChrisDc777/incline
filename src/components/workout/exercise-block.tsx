@@ -27,6 +27,7 @@ export function ExerciseBlock({
   onRemoveSet,
   onAddSet,
   onAddWarmUp,
+  showWarmUpSets = true,
   className,
 }: {
   name: string;
@@ -42,6 +43,7 @@ export function ExerciseBlock({
   onRemoveSet: (setId: number) => void;
   onAddSet: () => void;
   onAddWarmUp: () => void;
+  showWarmUpSets?: boolean;
   className?: string;
 }) {
   const [restPickerOpen, setRestPickerOpen] = useState(false);
@@ -96,14 +98,16 @@ export function ExerciseBlock({
         <Text className="text-sm font-medium text-primary">Add set</Text>
       </Pressable>
 
-      <Pressable
-        onPress={onAddWarmUp}
-        className="mt-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-border/60 py-2"
-        accessibilityRole="button"
-        accessibilityLabel="Add warm-up set">
-        <Icon icon={Flame} size={15} color="warning" />
-        <Text className="text-sm font-medium text-warning">Warm-up (~50%)</Text>
-      </Pressable>
+      {showWarmUpSets ? (
+        <Pressable
+          onPress={onAddWarmUp}
+          className="mt-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-border/60 py-2"
+          accessibilityRole="button"
+          accessibilityLabel="Add warm-up set">
+          <Icon icon={Flame} size={15} color="warning" />
+          <Text className="text-sm font-medium text-warning">Warm-up (~50%)</Text>
+        </Pressable>
+      ) : null}
 
       <RestTimerPickerSheet
         open={restPickerOpen}
