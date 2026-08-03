@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, View } from 'react-native';
+import { FlatList, LayoutChangeEvent, Pressable, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronRight, Flame, Moon } from 'lucide-react-native';
@@ -20,6 +20,18 @@ const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
+
+// Every month grid reserves a fixed slot so FlatList can compute exact item
+// offsets (getItemLayout). Height = title (36) + up to 6 day rows (60 each) + margin (24).
+const MONTH_HEIGHT = 420;
+const DAY_CELL_HEIGHT = 60;
+const BOTTOM_PADDING = 40;
+const VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 10 };
+
+interface MonthItem {
+  year: number;
+  month: number;
+}
 
 function toDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -72,7 +84,7 @@ function MonthGrid({
             <View key={rowIdx} className="flex-row">
               {row.map((day, colIdx) => {
                 if (day === null) {
-                  return <View key={`blank-${colIdx}`} className="flex-1 items-center py-2.5" />;
+                  return <View key={`blank-${colIdx}`} style={{ height: DAY_CELL_HEIGHT }} className="flex-1 items-center" />;
                 }
 
                 const date = new Date(year, month, day);
@@ -87,7 +99,8 @@ function MonthGrid({
                     onPress={() => {
                       if (!isFuture) onDayPress(date.getTime());
                     }}
-                    className="flex-1 items-center py-2.5"
+                    style={{ height: DAY_CELL_HEIGHT }}
+                    className="flex-1 items-center justify-center"
                     android_ripple={{ color: 'rgba(255,255,255,0.08)' }}>
                     <View
                       className={cn(
@@ -164,15 +177,14 @@ export default function CalendarScreen() {
   // Day summary sheet
   const [selectedDay, setSelectedDay] = useState<{ date: Date; workouts: WorkoutLog[] } | null>(null);
 
-  // Infinite list of months: from the earliest workout month (or 24 months back)
-  // through the current month. Tracks scroll position to update the header title.
-  const [months, setMonths] = useState<{ year: number; month: number }[]>([]);
-  const monthOffsets = useRef<number[]>([]);
-  const scrollRef = useRef<ScrollView>(null);
+  // Virtualized list of months: from 5 years back through the current month.
+  const [months, setMonths] = useState<MonthItem[]>([]);
+  const listRef = useRef<FlatList<MonthItem>>(null);
+  const viewportHeightRef = useRef(0);
+  const didInitScrollRef = useRef(false);
   const [visibleIndex, setVisibleIndex] = useState(-1);
 
   const loadData = useCallback(async () => {
-    setLoading(true);
     try {
       const days = await getWorkoutDays();
       setWorkoutDaySet(new Set(days.map((d) => toDateKey(new Date(d)))));
@@ -193,7 +205,7 @@ export default function CalendarScreen() {
       // so there's always history to scroll back through.
       const fiveYearsBack = now - 5 * 365 * 86400000;
       const startDate = days.length > 0 ? new Date(Math.min(days[0], fiveYearsBack)) : new Date(fiveYearsBack);
-      const list: { year: number; month: number }[] = [];
+      const list: MonthItem[] = [];
       let y = startDate.getFullYear();
       let m = startDate.getMonth();
       while (y < today.getFullYear() || (y === today.getFullYear() && m <= today.getMonth())) {
@@ -220,34 +232,45 @@ export default function CalendarScreen() {
     router.push(`/summary/${id}`);
   }, [router]);
 
-  const goToToday = useCallback(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
-  }, []);
-
-  const handleMonthLayout = useCallback((index: number, event: LayoutChangeEvent) => {
-    monthOffsets.current[index] = event.nativeEvent.layout.y;
-  }, []);
-
-  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const y = event.nativeEvent.contentOffset.y;
-    const offsets = monthOffsets.current;
-    let idx = 0;
-    for (let i = 0; i < offsets.length; i++) {
-      if (offsets[i] !== undefined && offsets[i] <= y) idx = i;
-    }
-    if (idx !== visibleIndex) setVisibleIndex(idx);
-  }, [visibleIndex]);
-
-  // Scroll to the current month (end of the list) once the content has laid out.
-  // Using onContentSizeChange guarantees offsets/height are ready, unlike a fixed
-  // timeout that races onLayout.
-  const didInitScroll = useRef(false);
-  const handleContentSizeChange = useCallback(() => {
-    if (!didInitScroll.current && months.length > 0) {
-      didInitScroll.current = true;
-      scrollRef.current?.scrollToEnd({ animated: false });
-    }
+  // Pin the current month (end of the list) to the bottom of the viewport.
+  const scrollToBottom = useCallback((animated: boolean) => {
+    if (months.length === 0 || viewportHeightRef.current === 0) return;
+    const total = months.length * MONTH_HEIGHT + BOTTOM_PADDING;
+    const target = Math.max(0, total - viewportHeightRef.current);
+    listRef.current?.scrollToOffset({ offset: target, animated });
   }, [months.length]);
+
+  const tryInitScroll = useCallback(() => {
+    if (didInitScrollRef.current) return;
+    if (months.length === 0 || viewportHeightRef.current === 0) return;
+    didInitScrollRef.current = true;
+    scrollToBottom(false);
+  }, [months.length, scrollToBottom]);
+
+  const handleLayout = useCallback((e: LayoutChangeEvent) => {
+    viewportHeightRef.current = e.nativeEvent.layout.height;
+    tryInitScroll();
+  }, [tryInitScroll]);
+
+  useEffect(() => { tryInitScroll(); }, [tryInitScroll]);
+
+  const goToToday = useCallback(() => {
+    scrollToBottom(true);
+  }, [scrollToBottom]);
+
+  const getItemLayout = useCallback((_: ArrayLike<MonthItem> | null | undefined, index: number) => ({
+    length: MONTH_HEIGHT,
+    offset: MONTH_HEIGHT * index,
+    index,
+  }), []);
+
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    if (viewableItems.length === 0) return;
+    const first = viewableItems[0];
+    if (first.index != null) setVisibleIndex(first.index);
+  }, []);
+
+  const viewabilityConfig = VIEWABILITY_CONFIG;
 
   const visible = months[visibleIndex] ?? months[months.length - 1] ?? { year: today.getFullYear(), month: today.getMonth() };
   const visibleLabel = `${MONTH_NAMES[visible.month]} ${visible.year}`;
@@ -285,32 +308,39 @@ export default function CalendarScreen() {
         ))}
       </View>
 
-      {/* Calendar scroll */}
-      <ScrollView
-        ref={scrollRef}
-        showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        onContentSizeChange={handleContentSizeChange}
-        scrollEventThrottle={32}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
-        {loading ? (
-          <View className="items-center py-10">
-            <Caption>Loading calendar...</Caption>
-          </View>
-        ) : (
-          months.map(({ year, month }, index) => (
-            <View key={`${year}-${month}`} onLayout={(e) => handleMonthLayout(index, e)}>
+      {/* Calendar scroll (virtualized) */}
+      {loading && months.length === 0 ? (
+        <View className="flex-1 items-center justify-center">
+          <Caption>Loading calendar...</Caption>
+        </View>
+      ) : (
+        <FlatList
+          ref={listRef}
+          data={months}
+          keyExtractor={(m) => `${m.year}-${m.month}`}
+          renderItem={({ item }) => (
+            <View style={{ height: MONTH_HEIGHT }}>
               <MonthGrid
-                year={year}
-                month={month}
+                year={item.year}
+                month={item.month}
                 workoutDays={workoutDaySet}
                 onDayPress={handleDayPress}
                 today={today}
               />
             </View>
-          ))
-        )}
-      </ScrollView>
+          )}
+          getItemLayout={getItemLayout}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          onLayout={handleLayout}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: BOTTOM_PADDING }}
+        />
+      )}
 
       {/* Day workout summary sheet */}
       <Sheet

@@ -781,6 +781,36 @@ export async function getWorkoutLog(id: number): Promise<SessionWorkout | null> 
   return { ...mapLog(log), sets: await getSessionSets(log.id) };
 }
 
+/**
+ * Default rest seconds for each exercise in a session, keyed by exercise id.
+ * Prefers the workout template's configured rest; falls back to the exercise's
+ * own default. Used to pre-fill the per-exercise rest timer at session start.
+ */
+export async function getRestDefaultsForSession(logId: number): Promise<Record<number, number>> {
+  const db = await openDatabase();
+  const log = await db.getFirstAsync<{ template_id: number | null }>('SELECT template_id FROM workout_logs WHERE id = ?', logId);
+  const exRows = await db.getAllAsync<{ exercise_id: number }>('SELECT DISTINCT exercise_id FROM set_entries WHERE workout_log_id = ?', logId);
+  const ids = exRows.map((e) => e.exercise_id);
+  if (ids.length === 0) return {};
+  const map: Record<number, number> = {};
+  if (log?.template_id != null) {
+    const teRows = await db.getAllAsync<{ exercise_id: number; rest_seconds: number }>(
+      'SELECT exercise_id, rest_seconds FROM template_exercises WHERE template_id = ?',
+      log.template_id,
+    );
+    for (const te of teRows) map[te.exercise_id] = te.rest_seconds;
+  }
+  const placeholders = ids.map(() => '?').join(',');
+  const exDefaults = await db.getAllAsync<{ id: number; default_rest_seconds: number }>(
+    `SELECT id, default_rest_seconds FROM exercises WHERE id IN (${placeholders})`,
+    ...ids,
+  );
+  for (const ex of exDefaults) {
+    if (map[ex.id] === undefined) map[ex.id] = ex.default_rest_seconds;
+  }
+  return map;
+}
+
 /** Start a new session. Pre-fills set rows from the template, carrying over the
  * most recent values logged for each exercise. Returns the new workout_log id. */
 export async function startWorkout(templateId: number | null, name: string): Promise<number> {
