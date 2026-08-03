@@ -1344,6 +1344,37 @@ export async function getWorkoutDays(): Promise<number[]> {
   return rows.map((r) => r.day);
 }
 
+/** Returns completed workout logs within a date range (start/end in ms). */
+export async function getWorkoutsByDateRange(startMs: number, endMs: number): Promise<WorkoutLog[]> {
+  const db = await openDatabase();
+  const rows = await db.getAllAsync<LogRow>(
+    `SELECT * FROM workout_logs WHERE ended_at IS NOT NULL AND started_at >= ? AND started_at < ? ORDER BY started_at`,
+    startMs, endMs,
+  );
+  return rows.map(mapLog);
+}
+
+/** Returns completed workout logs for a specific day (given epoch ms for the day start). */
+export async function getWorkoutsForDay(dayMs: number): Promise<WorkoutLog[]> {
+  const db = await openDatabase();
+  const nextDay = dayMs + 86400000;
+  const rows = await db.getAllAsync<LogRow>(
+    `SELECT * FROM workout_logs WHERE ended_at IS NOT NULL AND started_at >= ? AND started_at < ? ORDER BY started_at`,
+    dayMs, nextDay,
+  );
+  return rows.map(mapLog);
+}
+
+/** Returns the number of completed workout days in a date range. */
+export async function getWorkoutCountInRange(startMs: number, endMs: number): Promise<number> {
+  const db = await openDatabase();
+  const row = await db.getFirstAsync<{ c: number }>(
+    `SELECT COUNT(DISTINCT (started_at / 86400000) * 86400000) as c FROM workout_logs WHERE ended_at IS NOT NULL AND started_at >= ? AND started_at < ?`,
+    startMs, endMs,
+  );
+  return row?.c ?? 0;
+}
+
 /* ----------------------------- dev helpers ----------------------------- */
 
 /** Clear user logs, bodyweight, and profile — keeps exercise library and templates. */
