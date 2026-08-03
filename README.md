@@ -1,86 +1,111 @@
 # Incline
 
-A minimal workout tracker built with React Native and Expo. Log sets, track progress, and build consistency — no account required.
+A workout tracker built with React Native + Expo. Log sets with per-exercise rest timers, follow multi-week programs, and watch your volume and personal records grow.
+
+> **Status:** pre-alpha. Local-first and single-device (SQLite); there is **no cloud sync yet** and accounts are required to use the app.
 
 ## Features
 
-- **Workout logging** — Pick exercises, log weight/reps per set, complete sets with a tap
-- **Rest timer** — Countdown timer with preset durations and manual +/- controls
-- **Workout templates** — Save and reuse workout structures (exercises, sets, reps, rest)
-- **Programs** — Multi-week training programs with day-by-day scheduling
-- **Progress tracking** — Volume over time, streaks, personal bests, exercise history
-- **Exercise catalog** — 100+ exercises with muscle groups, equipment, and step-by-step instructions
-- **Offline-first** — Everything stored locally in SQLite, works without internet
-- **Dark mode** — System-aware light/dark theme with green accent
-- **Haptic feedback** — Tactile responses on set completion and key actions
+- **Accounts** — Email sign-up / sign-in via Clerk (mandatory)
+- **Workout logging** — Live session screen with weight/reps per set, warm-up sets, previous-session carry-over, one-tap complete, undo, and an auto-advancing keyboard flow
+- **Rest timer** — Per-exercise countdown with presets, ±15s, skip, and a completion sound + haptic
+- **Templates** — Save reusable workouts and start one in a tap; Home suggests a routine
+- **Programs** — Multi-week programs with a day-by-day grid (view-only today; builder planned — see ROADMAP)
+- **Progress & insights** — Volume over time, streaks, estimated 1RM, personal records, muscle split, PR calls
+- **Bodyweight tracking** — Trend chart with optional goal
+- **Exercise library** — Large catalog with muscles, equipment, and instructions (Supabase-backed, with a bundled fallback catalog)
+- **Home feed** — Recent workout history with stats and a "no workouts yet" first-run state
+- **Tools** — Plate calculator (bar type + include-bar toggle), 1RM / bodyweight calculators, calendar
+- **Preferences** — kg/lb unit toggle, dark/light/system theme, haptics, warm-up sets, auto-start rest, default rest duration
+- **Offline-first** — Everything is stored locally in SQLite; works without internet
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
 | Framework | Expo SDK 57, React Native 0.86 |
-| Navigation | Expo Router v57 (file-based) |
+| Navigation | Expo Router (file-based) |
 | Styling | NativeWind v4 (TailwindCSS) |
-| Database | expo-sqlite (SQLite) |
-| State | Zustand |
+| Database | expo-sqlite (local) |
+| Auth | Clerk (`@clerk/clerk-expo`) |
+| Remote data | Supabase (exercise library) |
+| State | Zustand (persisted) |
 | Icons | Lucide React Native |
 | Animations | React Native Reanimated |
-| Fonts | Inter (via @expo-google-fonts) |
+| Charts | react-native-gifted-charts |
+| Lists | FlashList |
+| Fonts | Inter (`@expo-google-fonts`) |
 
 ## Getting Started
+
+Prerequisites: Node 20+, an Expo account for running on a device.
 
 ```bash
 # Install dependencies
 npm install
 
+# Copy and fill in the environment variables
+cp .env.example .env.local
+
 # Start the dev server
 npx expo start
 
-# Run on Android
+# Run on Android / iOS
 npx expo start --android
-
-# Run on iOS
 npx expo start --ios
 ```
+
+### Environment variables
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes | Clerk publishable key (auth is mandatory) |
+| `EXPO_PUBLIC_SUPABASE_URL` | No | Supabase project URL for the exercise library |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | No | Supabase anon key for the exercise library |
+| `EXPO_PUBLIC_EXERCISEDB_API_KEY` / `_HOST` | No | Only needed for the one-time exercise import script |
+
+If the Supabase variables are missing, the app falls back to the bundled local exercise catalog.
 
 ## Project Structure
 
 ```
 src/
 ├── app/                    # Expo Router file-based routes
-│   ├── (app)/              # Main tabbed layout
+│   ├── (auth)/             # Sign-in / sign-up
+│   ├── (onboarding)/       # First-run setup (name, bodyweight, goal, level)
+│   ├── (app)/              # Authenticated area
 │   │   ├── (tabs)/         # Home, Workouts, Progress, Profile
-│   │   ├── template/[id]   # Template editor
-│   │   └── program/[id]    # Program detail
-│   ├── (onboarding)/       # First-run setup
+│   │   ├── settings/       # App settings
+│   │   ├── program/[id]    # Program detail (view-only)
+│   │   └── plate-calculator/, bodyweight/, calendar/, calculator/
 │   ├── session/[id]        # Active workout session
 │   ├── summary/[id]        # Post-workout summary
-│   ├── workout/[id]        # Workout preview
-│   └── exercise/           # Exercise browser
+│   ├── workout/[id]        # Workout preview / template detail
+│   ├── edit-workout/[id]   # Edit a logged workout
+│   └── exercise/[id]       # Exercise detail
 ├── components/
-│   ├── common/             # Shared components (Avatar, Text, TabBar)
-│   ├── ui/                 # Primitives (Button, Card, Dialog, Input)
-│   ├── workout/            # Session-specific (SetRow, RestTimer, NumberStepper)
-│   ├── progress/           # Charts and progress rings
-│   └── exercise/           # Exercise detail cards
+│   ├── common/             # Shared components (Text, TabBar, Screen, states)
+│   ├── ui/                 # Primitives (Button, Card, Dialog, Sheet, Input…)
+│   ├── workout/            # Session-specific (SetRow, RestTimer, NumberStepper…)
+│   ├── progress/           # Charts, PR cards, muscle donut
+│   └── exercise/           # Exercise list items, create form
 ├── db/                     # SQLite schema, queries, types, helpers
 ├── hooks/                  # Custom hooks (rest timer, haptics, data fetching)
 ├── store/                  # Zustand stores (settings, active workout)
-├── constants/              # Rest presets, exercise seed data
-└── lib/                    # Utilities (cn, icon-color resolver)
+├── lib/                    # Utilities (cn, icon-color, plate-calculator, env)
+└── auth/                   # Clerk token cache (secure store)
 ```
 
 ## Database
 
-Local SQLite database with the following tables:
+Local SQLite database (all user data lives on-device):
 
-- **exercises** — Exercise catalog with muscles, equipment, instructions
-- **workout_templates** — User-created workout templates
-- **template_exercises** — Exercises within a template (sets, reps, rest)
-- **programs** — Multi-week training programs
-- **workout_logs** — Completed workout sessions
-- **set_entries** — Individual sets (weight, reps, completed)
-- **user_profile** — Name, goal, bodyweight, unit preference
+- `exercises`, `exercise_aliases`, `exercise_secondary_muscles`, `exercise_instructions`, `exercise_images`
+- `workout_templates`, `template_exercises`
+- `programs`, `program_workouts`
+- `workout_logs`, `set_entries`
+- `user_profile`, `bodyweight_entries`
+- `kv` (persisted app settings), `schema_meta` (schema version + seed tracking)
 
 ## Scripts
 

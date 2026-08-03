@@ -149,14 +149,16 @@ export default function HomeScreen() {
           </Pressable>
         ) : null}
 
-        <Button
-          variant="outline"
-          size="lg"
-          leftIcon={<Icon icon={Plus} size={18} color="primary" />}
-          onPress={quickStart}
-          disabled={starting}>
-          Quick start
-        </Button>
+        {hasData ? (
+          <Button
+            variant="outline"
+            size="lg"
+            leftIcon={<Icon icon={Plus} size={18} color="primary" />}
+            onPress={quickStart}
+            disabled={starting}>
+            Quick start
+          </Button>
+        ) : null}
       </View>
 
       {hasData ? (
@@ -177,10 +179,25 @@ export default function HomeScreen() {
             <View className="h-14 w-14 items-center justify-center rounded-3xl bg-primary/15">
               <Icon icon={Dumbbell} size={26} color="primary" />
             </View>
-            <Body className="mt-4 text-center font-semibold text-foreground">Log your first workout</Body>
+            <Body className="mt-4 text-center font-semibold text-foreground">No workouts yet 🏋️</Body>
             <Caption className="mt-1 text-center">
-              Start today&apos;s workout or a quick session to begin tracking progress.
+              Finish your first session and your history, streaks, and progress will all show up here.
             </Caption>
+            <View className="mt-5 w-full gap-2">
+              <Button
+                leftIcon={<Icon icon={Plus} size={16} color="primary-foreground" />}
+                onPress={() => setPickerOpen(true)}
+                disabled={starting}>
+                Choose a template
+              </Button>
+              <Button
+                variant="outline"
+                leftIcon={<Icon icon={Play} size={16} color="primary" />}
+                onPress={() => handleTemplateStart(null, 'Quick Workout')}
+                disabled={starting}>
+                Start empty workout
+              </Button>
+            </View>
           </Card>
         </View>
       )}
