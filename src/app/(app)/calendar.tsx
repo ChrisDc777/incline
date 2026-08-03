@@ -1,20 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, ChevronRight, Flame, Moon } from 'lucide-react-native';
+import { ChevronRight, Flame, Moon } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
-import { Heading, Body, Caption } from '@/components/common/text';
+import { Body, Caption } from '@/components/common/text';
 import { Text } from '@/components/ui/text';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Sheet } from '@/components/ui/sheet';
 import { getWorkoutDays, getWorkoutsForDay, getStreak } from '@/db/queries';
+import { formatDuration, formatVolume } from '@/db/calc';
+import { useSettings } from '@/store/settings-store';
 import { cn } from '@/lib/cn';
-import type { WorkoutLog } from '@/db/types';
-
-type ViewMode = 'month';
+import type { Unit, WorkoutLog } from '@/db/types';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = [
@@ -26,33 +25,12 @@ function toDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function startOfMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
-}
-
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
 }
 
 function getFirstDayOfWeek(year: number, month: number): number {
   return new Date(year, month, 1).getDay();
-}
-
-function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
-function formatDuration(seconds: number): string {
-  if (seconds <= 0) return '0 min';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.round((seconds % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m} min`;
-}
-
-function formatVolume(v: number): string {
-  if (v >= 1000) return `${(v / 1000).toFixed(1)}k`;
-  return `${Math.round(v)}`;
 }
 
 /** A single month grid in the calendar. */
@@ -85,15 +63,6 @@ function MonthGrid({
       <Body className="mb-3 px-1 text-base font-semibold text-foreground">
         {MONTH_NAMES[month]} {year}
       </Body>
-
-      {/* Day-of-week header */}
-      <View className="flex-row border-b border-border pb-2">
-        {DAY_LABELS.map((label) => (
-          <View key={label} className="flex-1 items-center">
-            <Caption className="text-xs">{label}</Caption>
-          </View>
-        ))}
-      </View>
 
       {/* Day grid */}
       <View className="mt-1">
@@ -152,7 +121,7 @@ function MonthGrid({
 }
 
 /** Workout summary shown in the bottom sheet when a day is tapped. */
-function DaySummary({ workouts, unit }: { workouts: WorkoutLog[]; unit: string }) {
+function DaySummary({ workouts, unit, onPressWorkout }: { workouts: WorkoutLog[]; unit: Unit; onPressWorkout: (id: number) => void }) {
   if (workouts.length === 0) {
     return (
       <View className="items-center py-8">
@@ -164,16 +133,18 @@ function DaySummary({ workouts, unit }: { workouts: WorkoutLog[]; unit: string }
   return (
     <View className="gap-3 py-2">
       {workouts.map((w) => (
-        <Card key={w.id} className="p-4">
-          <View className="flex-row items-center justify-between">
-            <Body className="text-base font-semibold text-foreground">{w.name}</Body>
-            <Caption>{formatDuration(w.durationSeconds)}</Caption>
-          </View>
-          <View className="mt-2 flex-row gap-4">
-            <Caption>{formatVolume(w.totalVolume)} {unit}</Caption>
-            <Caption>{new Date(w.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</Caption>
-          </View>
-        </Card>
+        <Pressable key={w.id} onPress={() => onPressWorkout(w.id)} android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Card className="p-4">
+            <View className="flex-row items-center justify-between">
+              <Body className="text-base font-semibold text-foreground">{w.name}</Body>
+              <Caption>{formatDuration(w.durationSeconds)}</Caption>
+            </View>
+            <View className="mt-2 flex-row gap-4">
+              <Caption>{formatVolume(w.totalVolume, unit)}</Caption>
+              <Caption>{new Date(w.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</Caption>
+            </View>
+          </Card>
+        </Pressable>
       ))}
     </View>
   );
@@ -182,6 +153,7 @@ function DaySummary({ workouts, unit }: { workouts: WorkoutLog[]; unit: string }
 export default function CalendarScreen() {
   const router = useRouter();
   const today = useMemo(() => new Date(), []);
+  const { unit } = useSettings();
   const [now] = useState(() => Date.now());
 
   const [workoutDaySet, setWorkoutDaySet] = useState<Set<string>>(new Set());
@@ -189,11 +161,15 @@ export default function CalendarScreen() {
   const [streak, setStreak] = useState(0);
   const [restDays, setRestDays] = useState(0);
 
-  // Month navigation state
-  const [visibleMonth, setVisibleMonth] = useState({ year: today.getFullYear(), month: today.getMonth() });
-
   // Day summary sheet
   const [selectedDay, setSelectedDay] = useState<{ date: Date; workouts: WorkoutLog[] } | null>(null);
+
+  // Infinite list of months: from the earliest workout month (or 24 months back)
+  // through the current month. Tracks scroll position to update the header title.
+  const [months, setMonths] = useState<{ year: number; month: number }[]>([]);
+  const monthOffsets = useRef<number[]>([]);
+  const scrollRef = useRef<ScrollView>(null);
+  const [visibleIndex, setVisibleIndex] = useState(-1);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -212,10 +188,23 @@ export default function CalendarScreen() {
       } else {
         setRestDays(0);
       }
+
+      // Build month list from first workout month (or 24 months back) → current month
+      const startDate = days.length > 0 ? new Date(days[0]) : new Date(now - 24 * 30 * 86400000);
+      const list: { year: number; month: number }[] = [];
+      let y = startDate.getFullYear();
+      let m = startDate.getMonth();
+      while (y < today.getFullYear() || (y === today.getFullYear() && m <= today.getMonth())) {
+        list.push({ year: y, month: m });
+        m++;
+        if (m > 11) { m = 0; y++; }
+      }
+      setMonths(list);
+      setVisibleIndex(list.length - 1);
     } finally {
       setLoading(false);
     }
-  }, [now]);
+  }, [now, today]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -224,56 +213,52 @@ export default function CalendarScreen() {
     setSelectedDay({ date: new Date(dayMs), workouts });
   }, []);
 
-  const goToPrevMonth = () => {
-    setVisibleMonth((prev) => {
-      const m = prev.month - 1;
-      if (m < 0) return { year: prev.year - 1, month: 11 };
-      return { year: prev.year, month: m };
-    });
-  };
+  const openWorkout = useCallback((id: number) => {
+    setSelectedDay(null);
+    router.push(`/summary/${id}`);
+  }, [router]);
 
-  const goToNextMonth = () => {
-    setVisibleMonth((prev) => {
-      const m = prev.month + 1;
-      if (m > 11) return { year: prev.year + 1, month: 0 };
-      return { year: prev.year, month: m };
-    });
-  };
+  const goToToday = useCallback(() => {
+    const end = monthOffsets.current.length - 1;
+    scrollRef.current?.scrollTo({ y: Math.max(0, monthOffsets.current[end] ?? 0), animated: true });
+  }, []);
 
-  const goToToday = () => {
-    setVisibleMonth({ year: today.getFullYear(), month: today.getMonth() });
-  };
+  const handleMonthLayout = useCallback((index: number, event: LayoutChangeEvent) => {
+    monthOffsets.current[index] = event.nativeEvent.layout.y;
+  }, []);
 
-  // Generate months to show: current month and 2 months back
-  const monthsToShow = useMemo(() => {
-    const months: { year: number; month: number }[] = [];
-    let y = visibleMonth.year;
-    let m = visibleMonth.month;
-    // Go back 2 months from visible
-    for (let i = 0; i < 2; i++) {
-      m--;
-      if (m < 0) { m = 11; y--; }
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = event.nativeEvent.contentOffset.y;
+    const offsets = monthOffsets.current;
+    let idx = 0;
+    for (let i = 0; i < offsets.length; i++) {
+      if (offsets[i] !== undefined && offsets[i] <= y) idx = i;
     }
-    // Show 3 months (2 back + current visible)
-    for (let i = 0; i < 3; i++) {
-      months.push({ year: y, month: m });
-      m++;
-      if (m > 11) { m = 0; y++; }
+    if (idx !== visibleIndex) setVisibleIndex(idx);
+  }, [visibleIndex]);
+
+  // Scroll to the current month once the list has rendered
+  useEffect(() => {
+    if (months.length > 0 && loading === false) {
+      const timer = setTimeout(() => {
+        const end = monthOffsets.current.length - 1;
+        const target = monthOffsets.current[end];
+        if (target !== undefined) scrollRef.current?.scrollTo({ y: target, animated: false });
+      }, 50);
+      return () => clearTimeout(timer);
     }
-    return months;
-  }, [visibleMonth]);
+  }, [months, loading]);
+
+  const visible = months[visibleIndex] ?? months[months.length - 1] ?? { year: today.getFullYear(), month: today.getMonth() };
+  const visibleLabel = `${MONTH_NAMES[visible.month]} ${visible.year}`;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-5 pt-4 pb-2">
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Icon icon={ChevronLeft} size={24} color="foreground" />
-        </Pressable>
+        <View style={{ width: 24 }} />
         <Pressable onPress={goToToday} className="flex-row items-center gap-1">
-          <Body className="text-lg font-semibold text-foreground">
-            {MONTH_NAMES[visibleMonth.month]}
-          </Body>
+          <Body className="text-lg font-semibold text-foreground">{visibleLabel}</Body>
           <Icon icon={ChevronRight} size={16} color="muted-foreground" />
         </Pressable>
         <View style={{ width: 24 }} />
@@ -291,35 +276,37 @@ export default function CalendarScreen() {
         </View>
       </View>
 
-      {/* Month navigation */}
-      <View className="mt-3 flex-row items-center justify-between px-5">
-        <Button variant="ghost" size="sm" onPress={goToPrevMonth}>
-          <Icon icon={ChevronLeft} size={18} color="foreground" />
-        </Button>
-        <Pressable onPress={goToToday}>
-          <Caption className="font-medium text-primary">Today</Caption>
-        </Pressable>
-        <Button variant="ghost" size="sm" onPress={goToNextMonth}>
-          <Icon icon={ChevronRight} size={18} color="foreground" />
-        </Button>
+      {/* Day-of-week header pinned */}
+      <View className="mx-4 mt-3 flex-row border-b border-border pb-2">
+        {DAY_LABELS.map((label) => (
+          <View key={label} className="flex-1 items-center">
+            <Caption className="text-xs">{label}</Caption>
+          </View>
+        ))}
       </View>
 
       {/* Calendar scroll */}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={32}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
         {loading ? (
           <View className="items-center py-10">
             <Caption>Loading calendar...</Caption>
           </View>
         ) : (
-          monthsToShow.map(({ year, month }) => (
-            <MonthGrid
-              key={`${year}-${month}`}
-              year={year}
-              month={month}
-              workoutDays={workoutDaySet}
-              onDayPress={handleDayPress}
-              today={today}
-            />
+          months.map(({ year, month }, index) => (
+            <View key={`${year}-${month}`} onLayout={(e) => handleMonthLayout(index, e)}>
+              <MonthGrid
+                year={year}
+                month={month}
+                workoutDays={workoutDaySet}
+                onDayPress={handleDayPress}
+                today={today}
+              />
+            </View>
           ))
         )}
       </ScrollView>
@@ -330,7 +317,7 @@ export default function CalendarScreen() {
         onOpenChange={(open) => { if (!open) setSelectedDay(null); }}
         title={selectedDay ? selectedDay.date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''}
         snapPoints={['40%', '60%']}>
-        <DaySummary workouts={selectedDay?.workouts ?? []} unit="kg" />
+        <DaySummary workouts={selectedDay?.workouts ?? []} unit={unit} onPressWorkout={openWorkout} />
       </Sheet>
     </SafeAreaView>
   );

@@ -1335,13 +1335,22 @@ export async function deleteBodyweightEntry(id: number): Promise<void> {
   await db.runAsync('DELETE FROM bodyweight_entries WHERE id = ?', id);
 }
 
-/** Returns distinct date strings (YYYY-MM-DD) for days with completed workouts. */
+/** Returns timestamps of local-midnight for each distinct day with completed workouts. */
 export async function getWorkoutDays(): Promise<number[]> {
   const db = await openDatabase();
-  const rows = await db.getAllAsync<{ day: number }>(
-    `SELECT DISTINCT (started_at / 86400000) * 86400000 AS day FROM workout_logs WHERE ended_at IS NOT NULL ORDER BY day`,
+  const rows = await db.getAllAsync<{ started_at: number }>(
+    'SELECT started_at FROM workout_logs WHERE ended_at IS NOT NULL ORDER BY started_at',
   );
-  return rows.map((r) => r.day);
+  const seen = new Set<string>();
+  const days: number[] = [];
+  for (const r of rows) {
+    const d = new Date(r.started_at);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    days.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime());
+  }
+  return days;
 }
 
 /** Returns completed workout logs within a date range (start/end in ms). */

@@ -273,7 +273,7 @@ export default function HomeScreen() {
         ListFooterComponent={feed.loading && feed.items.length > 0 ? <View className="px-4 py-4"><CardSkeleton /></View> : null}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingTop: 24, paddingBottom: 32 }}
         ItemSeparatorComponent={() => <View className="h-3" />}
         showsVerticalScrollIndicator={false}
       />
