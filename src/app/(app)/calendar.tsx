@@ -189,8 +189,10 @@ export default function CalendarScreen() {
         setRestDays(0);
       }
 
-      // Build month list from first workout month (or 36 months back) → current month
-      const startDate = days.length > 0 ? new Date(days[0]) : new Date(now - 36 * 30 * 86400000);
+      // Build month list from a fixed far-back point (5 years) → current month,
+      // so there's always history to scroll back through.
+      const fiveYearsBack = now - 5 * 365 * 86400000;
+      const startDate = days.length > 0 ? new Date(Math.min(days[0], fiveYearsBack)) : new Date(fiveYearsBack);
       const list: { year: number; month: number }[] = [];
       let y = startDate.getFullYear();
       let m = startDate.getMonth();

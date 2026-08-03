@@ -1,20 +1,16 @@
-import { useEffect } from 'react';
-import { Pressable } from 'react-native';
-import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { Switch as NativeSwitch } from 'react-native';
 
-import { cn } from '@/lib/cn';
 import { useAppColorScheme } from '@/lib/use-color-scheme';
-
-const TRACK_W = 48;
-const THUMB_W = 24;
-const PADDING = 2;
-const TRAVEL = TRACK_W - THUMB_W - PADDING * 2;
 
 const PRIMARY_LIGHT = '#16a34a';
 const PRIMARY_DARK = '#22c55e';
-const MUTED_LIGHT = '#f4f4f5';
-const MUTED_DARK = '#27272a';
+const TRACK_OFF_LIGHT = '#e4e4e7';
+const TRACK_OFF_DARK = '#27272a';
 
+/**
+ * Native platform switch. Immediate response, no custom animation —
+ * delegates to the OS rendering for a snappy, native feel.
+ */
 export function Switch({
   value,
   onValueChange,
@@ -27,50 +23,17 @@ export function Switch({
   accessibilityLabel?: string;
 }) {
   const isDark = useAppColorScheme() === 'dark';
-  const progress = useSharedValue(value ? 1 : 0);
-
-  useEffect(() => {
-    progress.value = withSpring(value ? 1 : 0, { damping: 22, stiffness: 320 });
-  }, [value, progress]);
-
-  const trackStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(
-      progress.value,
-      [0, 1],
-      [isDark ? MUTED_DARK : MUTED_LIGHT, isDark ? PRIMARY_DARK : PRIMARY_LIGHT],
-    ),
-  }));
-
-  const thumbStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: progress.value * TRAVEL }],
-  }));
-
   return (
-    <Pressable
-      accessibilityRole="switch"
-      accessibilityState={{ checked: value }}
-      accessibilityLabel={accessibilityLabel}
+    <NativeSwitch
+      value={value}
+      onValueChange={onValueChange}
       disabled={disabled}
-      onPress={() => onValueChange(!value)}
-      className={cn('h-7 w-12 p-0.5', disabled && 'opacity-50')}>
-      <Animated.View style={[trackStyle, { flex: 1, borderRadius: 999 }]}>
-        <Animated.View
-          style={[
-            thumbStyle,
-            {
-              height: THUMB_W,
-              width: THUMB_W,
-              borderRadius: 999,
-              backgroundColor: 'white',
-              shadowColor: '#000',
-              shadowOpacity: 0.2,
-              shadowRadius: 3,
-              shadowOffset: { width: 0, height: 1 },
-              elevation: 3,
-            },
-          ]}
-        />
-      </Animated.View>
-    </Pressable>
+      accessibilityLabel={accessibilityLabel}
+      trackColor={{
+        true: isDark ? PRIMARY_DARK : PRIMARY_LIGHT,
+        false: isDark ? TRACK_OFF_DARK : TRACK_OFF_LIGHT,
+      }}
+      thumbColor="#ffffff"
+    />
   );
 }
