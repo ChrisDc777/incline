@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, LayoutChangeEvent, Pressable, View, type ViewToken } from 'react-native';
+import { ActivityIndicator, FlatList, LayoutChangeEvent, Pressable, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronRight, Flame, Moon } from 'lucide-react-native';
@@ -99,8 +99,9 @@ const MonthGrid = memo(function MonthGrid({
                     className="flex-1 items-center justify-center"
                     android_ripple={{ color: 'rgba(255,255,255,0.08)' }}>
                     <View
+                      style={{ width: 32, height: 32, borderRadius: 16, overflow: 'hidden' }}
                       className={cn(
-                        'h-8 w-8 items-center justify-center rounded-full',
+                        'items-center justify-center',
                         isToday && 'bg-blue-500',
                         hasWorkout && !isToday && 'bg-primary/20',
                       )}>
@@ -116,7 +117,7 @@ const MonthGrid = memo(function MonthGrid({
                       </Text>
                     </View>
                     {hasWorkout && !isToday ? (
-                      <View className="mt-0.5 h-1 w-1 rounded-full bg-primary" />
+                      <View className="mt-0.5 bg-primary" style={{ width: 6, height: 6, borderRadius: 3 }} />
                     ) : null}
                   </Pressable>
                 );
@@ -137,6 +138,7 @@ export default function CalendarScreen() {
   const [workoutDaySet, setWorkoutDaySet] = useState<Set<string>>(new Set());
   const [streak, setStreak] = useState(0);
   const [restDays, setRestDays] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   // Months are built synchronously (5 years back → current) so the calendar is
   // instantly interactive; workout dots + stats fill in once the DB query lands.
@@ -158,28 +160,30 @@ export default function CalendarScreen() {
   const didInitScrollRef = useRef(false);
   const [visibleIndex, setVisibleIndex] = useState(months.length - 1);
 
-  const loadData = useCallback(async () => {
-    try {
-      const days = await getWorkoutDays();
-      setWorkoutDaySet(new Set(days.map((d) => toDateKey(new Date(d)))));
+  useEffect(() => {
+    (async () => {
+      try {
+        const days = await getWorkoutDays();
+        setWorkoutDaySet(new Set(days.map((d) => toDateKey(new Date(d)))));
 
-      const s = await getStreak();
-      setStreak(s);
+        const s = await getStreak();
+        setStreak(s);
 
-      // Compute rest days: total days from first workout to today minus workout days
-      if (days.length > 0) {
-        const firstDay = days[0];
-        const totalDays = Math.floor((now - firstDay) / 86400000) + 1;
-        setRestDays(totalDays - days.length);
-      } else {
-        setRestDays(0);
+        // Compute rest days: total days from first workout to today minus workout days
+        if (days.length > 0) {
+          const firstDay = days[0];
+          const totalDays = Math.floor((now - firstDay) / 86400000) + 1;
+          setRestDays(totalDays - days.length);
+        } else {
+          setRestDays(0);
+        }
+      } catch {
+        // Leave the calendar usable even if stats fail to load.
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      // Leave the calendar usable even if stats fail to load.
-    }
+    })();
   }, [now]);
-
-  useEffect(() => { loadData(); }, [loadData]);
 
   const handleDayPress = useCallback((dayMs: number) => {
     router.push({ pathname: '/(app)/day/[ms]', params: { ms: String(dayMs) } });
@@ -247,7 +251,9 @@ export default function CalendarScreen() {
           <Body className="text-lg font-semibold text-foreground">{visibleLabel}</Body>
           <Icon icon={ChevronRight} size={16} color="muted-foreground" />
         </Pressable>
-        <View style={{ width: 24 }} />
+        <View className="w-6 items-center">
+          {loading ? <ActivityIndicator size="small" color="#16a34a" /> : null}
+        </View>
       </View>
 
       {/* Stats row */}
