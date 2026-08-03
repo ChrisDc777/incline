@@ -1,6 +1,7 @@
 import { openDatabase } from './client';
 import { estimated1RM, isoDate, startOfWeek } from './calc';
 import { PAGINATION } from '@/constants/config';
+import type { SQLiteDatabase } from 'expo-sqlite';
 import type {
   Category,
   Difficulty,
@@ -403,6 +404,15 @@ export async function updateExerciseDefaultRest(exerciseId: number, seconds: num
   await db.runAsync('UPDATE exercises SET default_rest_seconds = ?, updated_at = ? WHERE id = ?', seconds, Date.now(), exerciseId);
 }
 
+export async function getExerciseDefaultRest(exerciseId: number): Promise<number> {
+  const db = await openDatabase();
+  const row = await db.getFirstAsync<{ default_rest_seconds: number }>(
+    'SELECT default_rest_seconds FROM exercises WHERE id = ?',
+    exerciseId,
+  );
+  return row?.default_rest_seconds ?? 0;
+}
+
 /**
  * Ensure an exercise exists in local SQLite by external_id.
  * If it exists, return its local id. If not, insert it and return the new id.
@@ -494,6 +504,8 @@ export interface TemplateSummary {
   template: WorkoutTemplate;
   exerciseCount: number;
   muscleFocus: MuscleGroup[];
+  /** First few exercise names (for previews). */
+  exerciseNames: string[];
 }
 
 export async function listTemplateSummaries(): Promise<TemplateSummary[]> {
@@ -506,7 +518,16 @@ export async function listTemplateSummaries(): Promise<TemplateSummary[]> {
       'SELECT DISTINCT e.primary_muscle FROM template_exercises te JOIN exercises e ON e.id = te.exercise_id WHERE te.template_id = ?',
       t.id,
     );
-    out.push({ template: mapTemplate(t, []), exerciseCount: countRow?.c ?? 0, muscleFocus: muscleRows.map((r) => r.primary_muscle as MuscleGroup) });
+    const exerciseRows = await db.getAllAsync<{ name: string }>(
+      'SELECT e.name FROM template_exercises te JOIN exercises e ON e.id = te.exercise_id WHERE te.template_id = ? ORDER BY te.sort_order LIMIT 4',
+      t.id,
+    );
+    out.push({
+      template: mapTemplate(t, []),
+      exerciseCount: countRow?.c ?? 0,
+      muscleFocus: muscleRows.map((r) => r.primary_muscle as MuscleGroup),
+      exerciseNames: exerciseRows.map((r) => r.name),
+    });
   }
   return out;
 }
@@ -770,6 +791,36 @@ export async function getWorkoutLog(id: number): Promise<SessionWorkout | null> 
   return { ...mapLog(log), sets: await getSessionSets(log.id) };
 }
 
+/**
+ * Default rest seconds for each exercise in a session, keyed by exercise id.
+ * Prefers the workout template's configured rest; falls back to the exercise's
+ * own default. Used to pre-fill the per-exercise rest timer at session start.
+ */
+export async function getRestDefaultsForSession(logId: number): Promise<Record<number, number>> {
+  const db = await openDatabase();
+  const log = await db.getFirstAsync<{ template_id: number | null }>('SELECT template_id FROM workout_logs WHERE id = ?', logId);
+  const exRows = await db.getAllAsync<{ exercise_id: number }>('SELECT DISTINCT exercise_id FROM set_entries WHERE workout_log_id = ?', logId);
+  const ids = exRows.map((e) => e.exercise_id);
+  if (ids.length === 0) return {};
+  const map: Record<number, number> = {};
+  if (log?.template_id != null) {
+    const teRows = await db.getAllAsync<{ exercise_id: number; rest_seconds: number }>(
+      'SELECT exercise_id, rest_seconds FROM template_exercises WHERE template_id = ?',
+      log.template_id,
+    );
+    for (const te of teRows) map[te.exercise_id] = te.rest_seconds;
+  }
+  const placeholders = ids.map(() => '?').join(',');
+  const exDefaults = await db.getAllAsync<{ id: number; default_rest_seconds: number }>(
+    `SELECT id, default_rest_seconds FROM exercises WHERE id IN (${placeholders})`,
+    ...ids,
+  );
+  for (const ex of exDefaults) {
+    if (map[ex.id] === undefined) map[ex.id] = ex.default_rest_seconds;
+  }
+  return map;
+}
+
 /** Start a new session. Pre-fills set rows from the template, carrying over the
  * most recent values logged for each exercise. Returns the new workout_log id. */
 export async function startWorkout(templateId: number | null, name: string): Promise<number> {
@@ -936,7 +987,24 @@ export async function listWorkoutFeedLogs(offset = 0, limit = PAGINATION.pageSiz
     offset,
   );
   if (rows.length === 0) return { items: [], nextOffset: null };
+  const items = await enrichWorkoutFeed(db, rows);
+  const nextOffset = items.length === limit ? offset + limit : null;
+  return { items, nextOffset };
+}
 
+/** Enriched completed workouts for a single day (day-start in ms), newest first. */
+export async function getWorkoutFeedForDay(dayMs: number): Promise<FeedWorkoutLog[]> {
+  const db = await openDatabase();
+  const rows = await db.getAllAsync<LogRow>(
+    `SELECT * FROM workout_logs WHERE ended_at IS NOT NULL AND started_at >= ? AND started_at < ? ORDER BY started_at DESC`,
+    dayMs, dayMs + 86_400_000,
+  );
+  if (rows.length === 0) return [];
+  return enrichWorkoutFeed(db, rows);
+}
+
+/** Batch-load sets, images, and PR counts for a set of completed workout logs. */
+async function enrichWorkoutFeed(db: SQLiteDatabase, rows: LogRow[]): Promise<FeedWorkoutLog[]> {
   const logIds = rows.map((r) => r.id);
   const placeholders = logIds.map(() => '?').join(',');
 
@@ -1007,7 +1075,7 @@ export async function listWorkoutFeedLogs(offset = 0, limit = PAGINATION.pageSiz
     prCounts.set(logId, prCount);
   }
 
-  const items: FeedWorkoutLog[] = rows.map((r) => {
+  return rows.map((r) => {
     const log = mapLog(r);
     const exMap = exerciseMap.get(r.id);
     return {
@@ -1016,9 +1084,6 @@ export async function listWorkoutFeedLogs(offset = 0, limit = PAGINATION.pageSiz
       prCount: prCounts.get(r.id) ?? 0,
     };
   });
-
-  const nextOffset = items.length === limit ? offset + limit : null;
-  return { items, nextOffset };
 }
 
 /** Consecutive weeks (ending this week) that contain at least one session. */
@@ -1324,13 +1389,53 @@ export async function deleteBodyweightEntry(id: number): Promise<void> {
   await db.runAsync('DELETE FROM bodyweight_entries WHERE id = ?', id);
 }
 
-/** Returns distinct date strings (YYYY-MM-DD) for days with completed workouts. */
+/** Returns timestamps of local-midnight for each distinct day with completed workouts. */
 export async function getWorkoutDays(): Promise<number[]> {
   const db = await openDatabase();
-  const rows = await db.getAllAsync<{ day: number }>(
-    `SELECT DISTINCT (started_at / 86400000) * 86400000 AS day FROM workout_logs WHERE ended_at IS NOT NULL ORDER BY day`,
+  const rows = await db.getAllAsync<{ started_at: number }>(
+    'SELECT started_at FROM workout_logs WHERE ended_at IS NOT NULL ORDER BY started_at',
   );
-  return rows.map((r) => r.day);
+  const seen = new Set<string>();
+  const days: number[] = [];
+  for (const r of rows) {
+    const d = new Date(r.started_at);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    days.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime());
+  }
+  return days;
+}
+
+/** Returns completed workout logs within a date range (start/end in ms). */
+export async function getWorkoutsByDateRange(startMs: number, endMs: number): Promise<WorkoutLog[]> {
+  const db = await openDatabase();
+  const rows = await db.getAllAsync<LogRow>(
+    `SELECT * FROM workout_logs WHERE ended_at IS NOT NULL AND started_at >= ? AND started_at < ? ORDER BY started_at`,
+    startMs, endMs,
+  );
+  return rows.map(mapLog);
+}
+
+/** Returns completed workout logs for a specific day (given epoch ms for the day start). */
+export async function getWorkoutsForDay(dayMs: number): Promise<WorkoutLog[]> {
+  const db = await openDatabase();
+  const nextDay = dayMs + 86400000;
+  const rows = await db.getAllAsync<LogRow>(
+    `SELECT * FROM workout_logs WHERE ended_at IS NOT NULL AND started_at >= ? AND started_at < ? ORDER BY started_at`,
+    dayMs, nextDay,
+  );
+  return rows.map(mapLog);
+}
+
+/** Returns the number of completed workout days in a date range. */
+export async function getWorkoutCountInRange(startMs: number, endMs: number): Promise<number> {
+  const db = await openDatabase();
+  const row = await db.getFirstAsync<{ c: number }>(
+    `SELECT COUNT(DISTINCT (started_at / 86400000) * 86400000) as c FROM workout_logs WHERE ended_at IS NOT NULL AND started_at >= ? AND started_at < ?`,
+    startMs, endMs,
+  );
+  return row?.c ?? 0;
 }
 
 /* ----------------------------- dev helpers ----------------------------- */

@@ -1,7 +1,16 @@
-import { Pressable, View } from 'react-native';
+import { Switch as NativeSwitch } from 'react-native';
 
-import { cn } from '@/lib/cn';
+import { useAppColorScheme } from '@/lib/use-color-scheme';
 
+const PRIMARY_LIGHT = '#16a34a';
+const PRIMARY_DARK = '#22c55e';
+const TRACK_OFF_LIGHT = '#e4e4e7';
+const TRACK_OFF_DARK = '#27272a';
+
+/**
+ * Native platform switch. Immediate response, no custom animation —
+ * delegates to the OS rendering for a snappy, native feel.
+ */
 export function Switch({
   value,
   onValueChange,
@@ -13,20 +22,18 @@ export function Switch({
   disabled?: boolean;
   accessibilityLabel?: string;
 }) {
+  const isDark = useAppColorScheme() === 'dark';
   return (
-    <Pressable
-      accessibilityRole="switch"
-      accessibilityState={{ checked: value }}
-      accessibilityLabel={accessibilityLabel}
+    <NativeSwitch
+      value={value}
+      onValueChange={onValueChange}
       disabled={disabled}
-      onPress={() => onValueChange(!value)}
-      className={cn('h-7 w-12 rounded-full p-0.5', value ? 'bg-primary' : 'bg-muted', disabled && 'opacity-50')}>
-      <View
-        className={cn(
-          'h-6 w-6 rounded-full bg-white shadow-sm',
-          value ? 'ml-auto' : 'ml-0',
-        )}
-      />
-    </Pressable>
+      accessibilityLabel={accessibilityLabel}
+      trackColor={{
+        true: isDark ? PRIMARY_DARK : PRIMARY_LIGHT,
+        false: isDark ? TRACK_OFF_DARK : TRACK_OFF_LIGHT,
+      }}
+      thumbColor="#ffffff"
+    />
   );
 }

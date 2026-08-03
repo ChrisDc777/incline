@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, TrendingDown, TrendingUp, Minus } from 'lucide-react-native';
+import { Plus, ChevronDown, BarChart3 } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 import { LineChart } from 'react-native-gifted-charts';
 
 import { Heading, Body, Caption } from '@/components/common/text';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
 import { addBodyweightEntry, getBodyweightEntries, deleteBodyweightEntry } from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
+import { cn } from '@/lib/cn';
 
 interface Entry {
   id: number;
@@ -22,33 +23,102 @@ interface Entry {
   recordedAt: number;
 }
 
-/** Bodyweight trend line chart. */
+type TimeRange = '1m' | '3m' | '6m' | '1y' | 'all';
+
+const TIME_RANGES: { value: TimeRange; label: string }[] = [
+  { value: '1m', label: 'Last month' },
+  { value: '3m', label: 'Last 3 months' },
+  { value: '6m', label: 'Last 6 months' },
+  { value: '1y', label: 'Last year' },
+  { value: 'all', label: 'All time' },
+];
+
+function getRangeMs(range: TimeRange): number {
+  switch (range) {
+    case '1m': return 30 * 24 * 60 * 60 * 1000;
+    case '3m': return 90 * 24 * 60 * 60 * 1000;
+    case '6m': return 180 * 24 * 60 * 60 * 1000;
+    case '1y': return 365 * 24 * 60 * 60 * 1000;
+    case 'all': return Infinity;
+  }
+}
+
 function MiniChart({ data, unit }: { data: Entry[]; unit: string }) {
-  if (data.length < 2) return null;
+  if (data.length < 2) {
+    return (
+      <View className="mt-4 items-center justify-center rounded-2xl border border-border/60 bg-card px-4 py-10">
+        <Icon icon={BarChart3} size={36} color="muted-foreground" />
+        <Body className="mt-3 text-muted-foreground">No data in time period</Body>
+      </View>
+    );
+  }
+
   const points = [...data].reverse();
+  const minW = Math.min(...points.map((e) => e.weight));
+  const maxW = Math.max(...points.map((e) => e.weight));
+
   return (
-    <Card className="mt-3 p-4">
+    <View className="mt-4 rounded-2xl border border-border/60 bg-card p-4">
       <LineChart
-        data={points.map((e) => ({ value: e.weight, label: new Date(e.recordedAt).toLocaleDateString(undefined, { month: 'short' }) }))}
+        data={points.map((e) => ({
+          value: e.weight,
+          label: new Date(e.recordedAt).toLocaleDateString(undefined, { month: 'short' }),
+        }))}
         height={120}
         width={300}
         thickness={2}
-        color="#16a34a"
+        color="#3b82f6"
         areaChart
-        startFillColor="rgba(22,163,74,0.25)"
-        endFillColor="rgba(22,163,74,0.02)"
+        startFillColor="rgba(59,130,246,0.25)"
+        endFillColor="rgba(59,130,246,0.02)"
         hideDataPoints={points.length > 15}
         adjustToWidth
         yAxisTextStyle={{ fontSize: 10, color: '#71717a' }}
         xAxisLabelTextStyle={{ fontSize: 9, color: '#9ca3af' }}
         yAxisLabelWidth={40}
-        rulesColor="#f4f4f5"
+        rulesColor="#27272a"
       />
       <View className="mt-2 flex-row justify-between">
-        <Caption>{Math.min(...points.map((e) => e.weight)).toFixed(1)} {unit}</Caption>
-        <Caption>{Math.max(...points.map((e) => e.weight)).toFixed(1)} {unit}</Caption>
+        <Caption>{minW.toFixed(1)} {unit}</Caption>
+        <Caption>{maxW.toFixed(1)} {unit}</Caption>
       </View>
-    </Card>
+    </View>
+  );
+}
+
+function TimeRangeDropdown({ value, onChange }: { value: TimeRange; onChange: (v: TimeRange) => void }) {
+  const [open, setOpen] = useState(false);
+  const label = TIME_RANGES.find((r) => r.value === value)?.label ?? value;
+
+  return (
+    <>
+      <Pressable
+        onPress={() => setOpen(true)}
+        className="flex-row items-center gap-1"
+      >
+        <Text className="text-sm font-medium text-blue-500">{label}</Text>
+        <Icon icon={ChevronDown} size={14} color="blue-500" />
+      </Pressable>
+
+      <Dialog open={open} onOpenChange={setOpen} title="Time range">
+        <View className="gap-1 py-2">
+          {TIME_RANGES.map((r) => (
+            <Pressable
+              key={r.value}
+              onPress={() => { onChange(r.value); setOpen(false); }}
+              className={cn(
+                'rounded-xl px-4 py-3',
+                value === r.value ? 'bg-primary/15' : 'active:bg-muted',
+              )}
+            >
+              <Body className={cn(value === r.value ? 'font-semibold text-primary' : 'text-foreground')}>
+                {r.label}
+              </Body>
+            </Pressable>
+          ))}
+        </View>
+      </Dialog>
+    </>
   );
 }
 
@@ -58,22 +128,25 @@ export default function BodyweightScreen() {
   const { unit } = useSettings();
 
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [, setLoading] = useState(true);
+  const [timeRange, setTimeRange] = useState<TimeRange>('3m');
   const [addOpen, setAddOpen] = useState(false);
   const [weightInput, setWeightInput] = useState('');
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
-    const data = await getBodyweightEntries(90);
+    const data = await getBodyweightEntries(timeRange === 'all' ? 365 : 365);
     setEntries(data);
-    setLoading(false);
-  }, []);
+  }, [timeRange]);
 
   useEffect(() => { load(); }, [load]);
 
-  const latest = entries[0]?.weight ?? null;
-  const previous = entries[1]?.weight ?? null;
-  const diff = latest !== null && previous !== null ? latest - previous : null;
+  const [now] = useState(() => Date.now());
+  const filteredEntries = useMemo(() => {
+    return entries.filter((e) => {
+      if (timeRange === 'all') return true;
+      return e.recordedAt >= now - getRangeMs(timeRange);
+    });
+  }, [entries, timeRange, now]);
 
   const addEntry = async () => {
     const w = parseFloat(weightInput.replace(',', '.'));
@@ -100,65 +173,50 @@ export default function BodyweightScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        <View className="flex-row items-center justify-between">
-          <Heading>Bodyweight</Heading>
-          <Button size="sm" variant="outline" leftIcon={<Icon icon={Plus} size={14} color="primary" />} onPress={() => setAddOpen(true)}>
-            Log
-          </Button>
+      <View className="flex-row items-center justify-between px-5 pt-4 pb-2">
+        <Heading>Measurements</Heading>
+        <Button size="sm" variant="ghost" onPress={() => setAddOpen(true)}>
+          <Icon icon={Plus} size={22} color="foreground" />
+        </Button>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
+        <View className="mt-2 items-end">
+          <TimeRangeDropdown value={timeRange} onChange={setTimeRange} />
         </View>
 
-        {latest !== null && (
-          <Card className="mt-4 p-4">
-            <View className="flex-row items-center gap-4">
-              <View>
-                <Caption>Current</Caption>
-                <Body className="text-2xl font-bold text-foreground">{latest.toFixed(1)} {unit === 'metric' ? 'kg' : 'lb'}</Body>
-              </View>
-              {diff !== null && (
-                <View className="items-center">
-                  <Icon
-                    icon={diff > 0 ? TrendingUp : diff < 0 ? TrendingDown : Minus}
-                    size={20}
-                    color={diff > 0 ? 'warning' : diff < 0 ? 'success' : 'muted-foreground'}
-                  />
-                  <Caption className={diff > 0 ? 'text-warning' : diff < 0 ? 'text-success' : ''}>
-                    {diff > 0 ? '+' : ''}{diff.toFixed(1)}
-                  </Caption>
-                </View>
-              )}
-            </View>
-          </Card>
-        )}
+        <MiniChart data={filteredEntries} unit={unit === 'metric' ? 'kg' : 'lb'} />
 
-        <MiniChart data={entries} unit={unit === 'metric' ? 'kg' : 'lb'} />
+        <View className="mt-8">
+          <Body className="text-base text-muted-foreground">Weight History</Body>
 
-        <Card className="mt-5">
-          <CardHeader>
-            <CardTitle>History</CardTitle>
-          </CardHeader>
-          {entries.length === 0 ? (
-            <View className="items-center py-8">
-              <Caption>No entries yet. Tap Log to record your weight.</Caption>
+          {filteredEntries.length === 0 ? (
+            <View className="items-center py-10">
+              <Caption>No entries in this time period.</Caption>
             </View>
           ) : (
-            <View className="gap-1">
-              {entries.map((e) => (
+            <View className="mt-3">
+              {filteredEntries.map((e, i) => (
                 <Pressable
                   key={e.id}
                   onLongPress={() => setDeleteId(e.id)}
-                  className="flex-row items-center justify-between rounded-lg px-1 py-2"
+                  className="flex-row items-center justify-between border-b border-border/40 py-3.5"
                 >
-                  <View>
-                    <Body className="text-sm font-medium text-foreground">{e.weight.toFixed(1)} {e.unit}</Body>
-                    <Caption>{new Date(e.recordedAt).toLocaleDateString()}</Caption>
-                  </View>
-                  <Caption className="text-muted-foreground">Long press to delete</Caption>
+                  <Body className="text-sm text-foreground">
+                    {new Date(e.recordedAt).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </Body>
+                  <Body className="text-sm font-medium text-foreground">
+                    {e.weight.toFixed(1)} {e.unit}
+                  </Body>
                 </Pressable>
               ))}
             </View>
           )}
-        </Card>
+        </View>
       </ScrollView>
 
       <Dialog

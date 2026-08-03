@@ -84,7 +84,7 @@ export default function WorkoutPreviewScreen() {
 
   return (
     <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 16, paddingBottom: 180 }}>
-      <Caption>Workout template</Caption>
+      <Caption>Workout routine</Caption>
       <Heading className="mt-1">{template.name}</Heading>
       <Body className="mt-2 text-muted-foreground">{template.description}</Body>
 
@@ -129,7 +129,7 @@ export default function WorkoutPreviewScreen() {
           {starting ? 'Starting…' : 'Start workout'}
         </Button>
         <Button variant="outline" className="mt-2" onPress={() => router.push({ pathname: '/(app)/template/[id]' as any, params: { id: String(templateId) } })}>
-          Edit template
+          Edit routine
         </Button>
       </View>
 

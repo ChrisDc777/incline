@@ -21,7 +21,9 @@ export function RestTimer({
   const done = remaining <= 0 && total > 0;
 
   return (
-    <View className="absolute inset-x-0 bottom-0 z-30 border-t border-border bg-background px-4 py-3 pb-6">
+    <View
+      className="absolute inset-x-0 bottom-0 z-30 border-t border-border bg-background px-4 py-3 pb-6"
+      style={{ elevation: 12 }}>
       <View className="flex-row items-center justify-between">
         <Pressable
           onPress={() => onAdd(-15)}

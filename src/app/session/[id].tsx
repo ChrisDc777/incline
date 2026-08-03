@@ -28,6 +28,7 @@ import {
   finishWorkout,
   getExercisePRSummary,
   getLastSetsForExercise,
+  getRestDefaultsForSession,
   getWorkoutLog,
   removeSet,
   updateSet,
@@ -82,6 +83,7 @@ export default function SessionScreen() {
   const totalPausedMsRef = useRef(0);
   const [timerSheetOpen, setTimerSheetOpen] = useState(false);
   const pausedAtRef = useRef<number | null>(null);
+  const seededRestRef = useRef(false);
 
   const load = useCallback(async () => {
     const s = await getWorkoutLog(logId);
@@ -97,6 +99,13 @@ export default function SessionScreen() {
       );
       setLastSetsMap(map);
       setPrMap(prs);
+      // Pre-fill the per-exercise rest timer (template rest, else exercise default)
+      // so completing a set auto-starts a countdown. Only on first load — the
+      // user's in-session selections must survive reloads.
+      if (!seededRestRef.current) {
+        seededRestRef.current = true;
+        setRestSecondsMap(await getRestDefaultsForSession(logId));
+      }
     }
     setSession(s);
     if (s) setNotes(s.notes ?? '');
@@ -196,13 +205,26 @@ export default function SessionScreen() {
     }
     setRestSecondsMap(map);
   };
-  const onToggleComplete = async (setId: number) => {
+  const onToggleComplete = (setId: number) => {
     const target = session?.sets.find((x) => x.id === setId);
-    const next = !target?.completed;
-    await updateSet(setId, { completed: next, restSeconds: next ? (restSecondsMap[target?.exerciseId ?? 0] ?? 0) : null });
-    reload();
+    if (!target) return;
+    const next = !target.completed;
+    const restSec = next ? (restSecondsMap[target.exerciseId] ?? 0) : null;
+    // Optimistic update: flip the row and start the rest timer immediately,
+    // then persist to the DB in the background (no full reload/refetch).
+    setSession((prev) =>
+      prev
+        ? {
+            ...prev,
+            sets: prev.sets.map((s) =>
+              s.id === setId ? { ...s, completed: next, restSeconds: restSec } : s,
+            ),
+          }
+        : prev,
+    );
+    updateSet(setId, { completed: next, restSeconds: restSec }).catch(() => {});
     impact();
-    if (next && target) {
+    if (next) {
       // Celebrate only a genuine record: heavier weight or better estimated
       // 1RM than the best ever logged for this exercise. Requires prior
       // history so first-time lifts don't spam.
@@ -210,6 +232,20 @@ export default function SessionScreen() {
       if (pr && (pr.heaviestWeight > 0 || pr.best1RM > 0)) {
         const e1rm = estimated1RM(target.weight, target.reps);
         if (target.weight > pr.heaviestWeight || e1rm > pr.best1RM) {
+          // Fold the new lift into the in-memory PR map so later sets this
+          // session can build on it without a DB reload.
+          setPrMap((prev) => {
+            const cur = prev[target.exerciseId];
+            if (!cur) return prev;
+            return {
+              ...prev,
+              [target.exerciseId]: {
+                ...cur,
+                heaviestWeight: Math.max(cur.heaviestWeight, target.weight),
+                best1RM: Math.max(cur.best1RM, e1rm),
+              },
+            };
+          });
           notify();
           toast({
             title: 'New PR!',
@@ -219,7 +255,9 @@ export default function SessionScreen() {
         }
       }
       if (autoStartRest) {
-        const exRest = restSecondsMap[target.exerciseId] ?? 0;
+        // Rest per exercise (seeded from the template or exercise default), else
+        // the global default. A value of 0 ("Off") is respected and starts nothing.
+        const exRest = restSecondsMap[target.exerciseId] ?? defaultRestSeconds;
         if (exRest > 0) rest.start(exRest);
       }
     }
@@ -254,7 +292,7 @@ export default function SessionScreen() {
   const onPickExercise = async (ex: Exercise) => {
     impact();
     await addExerciseToWorkout(logId, ex.id);
-    setRestSecondsMap((prev) => ({ ...prev, [ex.id]: prev[ex.id] ?? defaultRestSeconds }));
+    setRestSecondsMap((prev) => ({ ...prev, [ex.id]: prev[ex.id] ?? ex.defaultRestSeconds ?? defaultRestSeconds }));
     setPickerOpen(false);
     reload();
   };
@@ -482,7 +520,7 @@ export default function SessionScreen() {
         }
       />
 
-      <Sheet open={timerSheetOpen} onOpenChange={setTimerSheetOpen} title="Workout Timer" snapPoints={['25%', '75%']} index={0} dynamicSizing={false}>
+      <Sheet open={timerSheetOpen} onOpenChange={setTimerSheetOpen} title="Workout Timer" snapPoints={['25%', '75%']} dynamicSizing={false}>
         <View className="items-center gap-3 py-2">
           <Body className="text-sm text-muted-foreground">Elapsed time</Body>
           <Body className="text-5xl font-bold tracking-tight text-foreground">{formatClock(elapsed)}</Body>
