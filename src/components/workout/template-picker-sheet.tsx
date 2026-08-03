@@ -66,6 +66,11 @@ function TemplateRow({ summary, onPress }: { summary: TemplateSummary; onPress: 
       <View className="flex-1">
         <Body className="font-semibold text-foreground">{t.name}</Body>
         <Caption className="text-muted-foreground" numberOfLines={1}>
+          {summary.exerciseNames.length > 0
+            ? summary.exerciseNames.join(', ')
+            : `${summary.exerciseCount} exercises`}
+        </Caption>
+        <Caption className="text-muted-foreground" numberOfLines={1}>
           {summary.exerciseCount} exercises · {t.estimatedMinutes} min
           {summary.muscleFocus.length > 0 ? ` · ${summary.muscleFocus.join(', ')}` : ''}
         </Caption>

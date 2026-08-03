@@ -494,6 +494,8 @@ export interface TemplateSummary {
   template: WorkoutTemplate;
   exerciseCount: number;
   muscleFocus: MuscleGroup[];
+  /** First few exercise names (for previews). */
+  exerciseNames: string[];
 }
 
 export async function listTemplateSummaries(): Promise<TemplateSummary[]> {
@@ -506,7 +508,16 @@ export async function listTemplateSummaries(): Promise<TemplateSummary[]> {
       'SELECT DISTINCT e.primary_muscle FROM template_exercises te JOIN exercises e ON e.id = te.exercise_id WHERE te.template_id = ?',
       t.id,
     );
-    out.push({ template: mapTemplate(t, []), exerciseCount: countRow?.c ?? 0, muscleFocus: muscleRows.map((r) => r.primary_muscle as MuscleGroup) });
+    const exerciseRows = await db.getAllAsync<{ name: string }>(
+      'SELECT e.name FROM template_exercises te JOIN exercises e ON e.id = te.exercise_id WHERE te.template_id = ? ORDER BY te.sort_order LIMIT 4',
+      t.id,
+    );
+    out.push({
+      template: mapTemplate(t, []),
+      exerciseCount: countRow?.c ?? 0,
+      muscleFocus: muscleRows.map((r) => r.primary_muscle as MuscleGroup),
+      exerciseNames: exerciseRows.map((r) => r.name),
+    });
   }
   return out;
 }

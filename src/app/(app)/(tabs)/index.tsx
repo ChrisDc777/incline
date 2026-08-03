@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Plus, Flame, TrendingUp, Dumbbell } from 'lucide-react-native';
+import { Play, Plus, Flame, TrendingUp, Dumbbell, ArrowRight } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Hero, Body, Caption } from '@/components/common/text';
@@ -12,6 +12,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { StatCard } from '@/components/common/stat-card';
 import { WorkoutFeedCard } from '@/components/workout/workout-feed-card';
 import { TemplatePickerSheet } from '@/components/workout/template-picker-sheet';
+import { MuscleBadge } from '@/components/exercise/muscle-badge';
 import { CardSkeleton } from '@/components/common/skeleton';
 import { useProfile, useSuggestedTemplate, useProgressStats, useWorkoutFeedLogs } from '@/hooks/use-data';
 import { useActiveSession } from '@/hooks/use-active-session';
@@ -21,7 +22,7 @@ import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
 import { startWorkout, discardWorkout, deleteWorkout } from '@/db/queries';
 import { formatVolume, formatFullDate } from '@/db/calc';
-import type { FeedWorkoutLog } from '@/db/types';
+import type { FeedWorkoutLog, MuscleGroup } from '@/db/types';
 
 function greeting() {
   const h = new Date().getHours();
@@ -117,10 +118,21 @@ export default function HomeScreen() {
 
   const name = profile?.name?.trim() || 'Athlete';
   const hasData = (stats?.totalSessions ?? 0) > 0;
+  const streak = stats?.streak ?? 0;
+  const suggestedMuscles = (suggested?.exercises ?? [])
+    .map((e) => e.exercise?.primaryMuscle)
+    .filter((m, i, arr): m is MuscleGroup => !!m && arr.indexOf(m) === i);
 
   const renderHeader = () => (
     <View className="px-4">
-      <Caption>{greeting()}</Caption>
+      <View className="flex-row items-center gap-2">
+        <Caption>{greeting()}</Caption>
+        {hasData && streak > 0 ? (
+          <Caption className="flex-row items-center text-warning">
+            <Icon icon={Flame} size={12} color="warning" /> {streak}w streak
+          </Caption>
+        ) : null}
+      </View>
       <Hero className="mt-0.5">Let&apos;s train, {name.split(' ')[0]}</Hero>
       <Body className="mt-1 text-muted-foreground">{today}</Body>
 
@@ -138,6 +150,13 @@ export default function HomeScreen() {
               <Body className="mt-1 text-sm text-muted-foreground" numberOfLines={2}>
                 {suggested.description}
               </Body>
+              {suggestedMuscles.length > 0 ? (
+                <View className="mt-3 flex-row flex-wrap gap-2">
+                  {suggestedMuscles.map((m) => (
+                    <MuscleBadge key={m} muscle={m} />
+                  ))}
+                </View>
+              ) : null}
               <Button
                 className="mt-4"
                 leftIcon={<Icon icon={Play} size={16} color="primary-foreground" />}
@@ -145,6 +164,7 @@ export default function HomeScreen() {
                 disabled={starting}>
                 Start workout
               </Button>
+              <Caption className="mt-3 text-center">Suggested based on your recent sessions</Caption>
             </Card>
           </Pressable>
         ) : null}
@@ -197,6 +217,25 @@ export default function HomeScreen() {
                 disabled={starting}>
                 Start empty workout
               </Button>
+            </View>
+            <View className="mt-6 w-full border-t border-border pt-4">
+              <Caption className="text-center font-medium text-foreground">How it works</Caption>
+              <View className="mt-3 flex-row items-center justify-center gap-4">
+                <View className="items-center gap-1">
+                  <Icon icon={Dumbbell} size={18} color="primary" />
+                  <Caption>Log your sets</Caption>
+                </View>
+                <Icon icon={ArrowRight} size={14} color="muted-foreground" />
+                <View className="items-center gap-1">
+                  <Icon icon={TrendingUp} size={18} color="primary" />
+                  <Caption>Track progress</Caption>
+                </View>
+                <Icon icon={ArrowRight} size={14} color="muted-foreground" />
+                <View className="items-center gap-1">
+                  <Icon icon={Flame} size={18} color="primary" />
+                  <Caption>Build streaks</Caption>
+                </View>
+              </View>
             </View>
           </Card>
         </View>
