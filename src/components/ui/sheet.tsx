@@ -8,7 +8,6 @@ export function Sheet({
   onOpenChange,
   title,
   snapPoints = ['45%', '75%'],
-  index = -1,
   scroll = false,
   dynamicSizing = true,
   children,
@@ -17,18 +16,25 @@ export function Sheet({
   onOpenChange: (open: boolean) => void;
   title?: string;
   snapPoints?: (string | number)[];
-  index?: number;
   scroll?: boolean;
   dynamicSizing?: boolean;
   children: ReactNode;
 }) {
   const sheetRef = useRef<BottomSheetModal>(null);
+  const wasOpenRef = useRef(open);
 
   const handleClose = useCallback(() => {
     onOpenChange(false);
   }, [onOpenChange]);
 
   useEffect(() => {
+    // Only act on real toggles — never fire present()/dismiss() on the initial
+    // mount (the sheet starts closed). Doing so on mount is what caused the
+    // "opens then immediately closes" flash when a screen with sheets loaded.
+    const prev = wasOpenRef.current;
+    wasOpenRef.current = open;
+    if (open === prev) return;
+
     // Defer to the next frame: @expo/ui's BottomSheetModal forwards the ref
     // through a nested component, and calling present()/dismiss() synchronously
     // here can fire its internal setIsOpen before the inner component commits
@@ -48,7 +54,7 @@ export function Sheet({
   return (
     <BottomSheetModal
       ref={sheetRef}
-      index={index}
+      index={0}
       snapPoints={snapPoints}
       enableDynamicSizing={dynamicSizing}
       enablePanDownToClose

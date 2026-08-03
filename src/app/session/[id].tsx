@@ -27,6 +27,7 @@ import {
   discardWorkout,
   finishWorkout,
   getExercisePRSummary,
+  getExerciseDefaultRest,
   getLastSetsForExercise,
   getRestDefaultsForSession,
   getWorkoutLog,
@@ -256,7 +257,18 @@ export default function SessionScreen() {
       }
       if (autoStartRest) {
         const exRest = restSecondsMap[target.exerciseId] ?? 0;
-        if (exRest > 0) rest.start(exRest);
+        if (exRest > 0) {
+          rest.start(exRest);
+        } else {
+          // Fallback if defaults weren't seeded for this exercise yet:
+          // look up its default rest and start the countdown.
+          getExerciseDefaultRest(target.exerciseId).then((r) => {
+            if (r > 0) {
+              setRestSecondsMap((prev) => ({ ...prev, [target.exerciseId]: r }));
+              rest.start(r);
+            }
+          });
+        }
       }
     }
   };
@@ -518,7 +530,7 @@ export default function SessionScreen() {
         }
       />
 
-      <Sheet open={timerSheetOpen} onOpenChange={setTimerSheetOpen} title="Workout Timer" snapPoints={['25%', '75%']} index={0} dynamicSizing={false}>
+      <Sheet open={timerSheetOpen} onOpenChange={setTimerSheetOpen} title="Workout Timer" snapPoints={['25%', '75%']} dynamicSizing={false}>
         <View className="items-center gap-3 py-2">
           <Body className="text-sm text-muted-foreground">Elapsed time</Body>
           <Body className="text-5xl font-bold tracking-tight text-foreground">{formatClock(elapsed)}</Body>

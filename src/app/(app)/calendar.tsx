@@ -7,13 +7,8 @@ import { Icon } from '@/components/common/icon';
 
 import { Body, Caption } from '@/components/common/text';
 import { Text } from '@/components/ui/text';
-import { Card } from '@/components/ui/card';
-import { Sheet } from '@/components/ui/sheet';
-import { getWorkoutDays, getWorkoutsForDay, getStreak } from '@/db/queries';
-import { formatDuration, formatVolume } from '@/db/calc';
-import { useSettings } from '@/store/settings-store';
+import { getWorkoutDays, getStreak } from '@/db/queries';
 import { cn } from '@/lib/cn';
-import type { Unit, WorkoutLog } from '@/db/types';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = [
@@ -133,56 +128,34 @@ function MonthGrid({
   );
 }
 
-/** Workout summary shown in the bottom sheet when a day is tapped. */
-function DaySummary({ workouts, unit, onPressWorkout }: { workouts: WorkoutLog[]; unit: Unit; onPressWorkout: (id: number) => void }) {
-  if (workouts.length === 0) {
-    return (
-      <View className="items-center py-8">
-        <Caption>No workouts on this day.</Caption>
-      </View>
-    );
-  }
-
-  return (
-    <View className="gap-3 py-2">
-      {workouts.map((w) => (
-        <Pressable key={w.id} onPress={() => onPressWorkout(w.id)} android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-          <Card className="p-4">
-            <View className="flex-row items-center justify-between">
-              <Body className="text-base font-semibold text-foreground">{w.name}</Body>
-              <Caption>{formatDuration(w.durationSeconds)}</Caption>
-            </View>
-            <View className="mt-2 flex-row gap-4">
-              <Caption>{formatVolume(w.totalVolume, unit)}</Caption>
-              <Caption>{new Date(w.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</Caption>
-            </View>
-          </Card>
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
 export default function CalendarScreen() {
   const router = useRouter();
   const today = useMemo(() => new Date(), []);
-  const { unit } = useSettings();
   const [now] = useState(() => Date.now());
 
   const [workoutDaySet, setWorkoutDaySet] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
   const [streak, setStreak] = useState(0);
   const [restDays, setRestDays] = useState(0);
 
-  // Day summary sheet
-  const [selectedDay, setSelectedDay] = useState<{ date: Date; workouts: WorkoutLog[] } | null>(null);
+  // Months are built synchronously (5 years back → current) so the calendar is
+  // instantly interactive; workout dots + stats fill in once the DB query lands.
+  const [months] = useState<MonthItem[]>(() => {
+    const list: MonthItem[] = [];
+    const start = new Date(now - 5 * 365 * 86400000);
+    let y = start.getFullYear();
+    let m = start.getMonth();
+    while (y < today.getFullYear() || (y === today.getFullYear() && m <= today.getMonth())) {
+      list.push({ year: y, month: m });
+      m++;
+      if (m > 11) { m = 0; y++; }
+    }
+    return list;
+  });
 
-  // Virtualized list of months: from 5 years back through the current month.
-  const [months, setMonths] = useState<MonthItem[]>([]);
   const listRef = useRef<FlatList<MonthItem>>(null);
   const viewportHeightRef = useRef(0);
   const didInitScrollRef = useRef(false);
-  const [visibleIndex, setVisibleIndex] = useState(-1);
+  const [visibleIndex, setVisibleIndex] = useState(months.length - 1);
 
   const loadData = useCallback(async () => {
     try {
@@ -200,36 +173,15 @@ export default function CalendarScreen() {
       } else {
         setRestDays(0);
       }
-
-      // Build month list from a fixed far-back point (5 years) → current month,
-      // so there's always history to scroll back through.
-      const fiveYearsBack = now - 5 * 365 * 86400000;
-      const startDate = days.length > 0 ? new Date(Math.min(days[0], fiveYearsBack)) : new Date(fiveYearsBack);
-      const list: MonthItem[] = [];
-      let y = startDate.getFullYear();
-      let m = startDate.getMonth();
-      while (y < today.getFullYear() || (y === today.getFullYear() && m <= today.getMonth())) {
-        list.push({ year: y, month: m });
-        m++;
-        if (m > 11) { m = 0; y++; }
-      }
-      setMonths(list);
-      setVisibleIndex(list.length - 1);
-    } finally {
-      setLoading(false);
+    } catch {
+      // Leave the calendar usable even if stats fail to load.
     }
-  }, [now, today]);
+  }, [now]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleDayPress = useCallback(async (dayMs: number) => {
-    const workouts = await getWorkoutsForDay(dayMs);
-    setSelectedDay({ date: new Date(dayMs), workouts });
-  }, []);
-
-  const openWorkout = useCallback((id: number) => {
-    setSelectedDay(null);
-    router.push(`/summary/${id}`);
+  const handleDayPress = useCallback((dayMs: number) => {
+    router.push({ pathname: '/(app)/day/[ms]', params: { ms: String(dayMs) } });
   }, [router]);
 
   // Pin the current month (end of the list) to the bottom of the viewport.
@@ -270,8 +222,6 @@ export default function CalendarScreen() {
     if (first.index != null) setVisibleIndex(first.index);
   }, []);
 
-  const viewabilityConfig = VIEWABILITY_CONFIG;
-
   const visible = months[visibleIndex] ?? months[months.length - 1] ?? { year: today.getFullYear(), month: today.getMonth() };
   const visibleLabel = `${MONTH_NAMES[visible.month]} ${visible.year}`;
 
@@ -308,48 +258,34 @@ export default function CalendarScreen() {
         ))}
       </View>
 
-      {/* Calendar scroll (virtualized) */}
-      {loading && months.length === 0 ? (
-        <View className="flex-1 items-center justify-center">
-          <Caption>Loading calendar...</Caption>
-        </View>
-      ) : (
-        <FlatList
-          ref={listRef}
-          data={months}
-          keyExtractor={(m) => `${m.year}-${m.month}`}
-          renderItem={({ item }) => (
-            <View style={{ height: MONTH_HEIGHT }}>
-              <MonthGrid
-                year={item.year}
-                month={item.month}
-                workoutDays={workoutDaySet}
-                onDayPress={handleDayPress}
-                today={today}
-              />
-            </View>
-          )}
-          getItemLayout={getItemLayout}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig}
-          onLayout={handleLayout}
-          showsVerticalScrollIndicator={false}
-          initialNumToRender={8}
-          maxToRenderPerBatch={8}
-          windowSize={7}
-          removeClippedSubviews
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: BOTTOM_PADDING }}
-        />
-      )}
-
-      {/* Day workout summary sheet */}
-      <Sheet
-        open={selectedDay !== null}
-        onOpenChange={(open) => { if (!open) setSelectedDay(null); }}
-        title={selectedDay ? selectedDay.date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''}
-        snapPoints={['40%', '60%']}>
-        <DaySummary workouts={selectedDay?.workouts ?? []} unit={unit} onPressWorkout={openWorkout} />
-      </Sheet>
+      {/* Calendar scroll (virtualized, starts at the current month) */}
+      <FlatList
+        ref={listRef}
+        data={months}
+        keyExtractor={(m) => `${m.year}-${m.month}`}
+        renderItem={({ item }) => (
+          <View style={{ height: MONTH_HEIGHT }}>
+            <MonthGrid
+              year={item.year}
+              month={item.month}
+              workoutDays={workoutDaySet}
+              onDayPress={handleDayPress}
+              today={today}
+            />
+          </View>
+        )}
+        getItemLayout={getItemLayout}
+        initialScrollIndex={months.length - 1}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={VIEWABILITY_CONFIG}
+        onLayout={handleLayout}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        removeClippedSubviews
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: BOTTOM_PADDING }}
+      />
     </SafeAreaView>
   );
 }

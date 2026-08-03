@@ -1,6 +1,7 @@
 import { openDatabase } from './client';
 import { estimated1RM, isoDate, startOfWeek } from './calc';
 import { PAGINATION } from '@/constants/config';
+import type { SQLiteDatabase } from 'expo-sqlite';
 import type {
   Category,
   Difficulty,
@@ -401,6 +402,15 @@ export async function deleteCustomExercise(id: number): Promise<void> {
 export async function updateExerciseDefaultRest(exerciseId: number, seconds: number): Promise<void> {
   const db = await openDatabase();
   await db.runAsync('UPDATE exercises SET default_rest_seconds = ?, updated_at = ? WHERE id = ?', seconds, Date.now(), exerciseId);
+}
+
+export async function getExerciseDefaultRest(exerciseId: number): Promise<number> {
+  const db = await openDatabase();
+  const row = await db.getFirstAsync<{ default_rest_seconds: number }>(
+    'SELECT default_rest_seconds FROM exercises WHERE id = ?',
+    exerciseId,
+  );
+  return row?.default_rest_seconds ?? 0;
 }
 
 /**
@@ -977,7 +987,24 @@ export async function listWorkoutFeedLogs(offset = 0, limit = PAGINATION.pageSiz
     offset,
   );
   if (rows.length === 0) return { items: [], nextOffset: null };
+  const items = await enrichWorkoutFeed(db, rows);
+  const nextOffset = items.length === limit ? offset + limit : null;
+  return { items, nextOffset };
+}
 
+/** Enriched completed workouts for a single day (day-start in ms), newest first. */
+export async function getWorkoutFeedForDay(dayMs: number): Promise<FeedWorkoutLog[]> {
+  const db = await openDatabase();
+  const rows = await db.getAllAsync<LogRow>(
+    `SELECT * FROM workout_logs WHERE ended_at IS NOT NULL AND started_at >= ? AND started_at < ? ORDER BY started_at DESC`,
+    dayMs, dayMs + 86_400_000,
+  );
+  if (rows.length === 0) return [];
+  return enrichWorkoutFeed(db, rows);
+}
+
+/** Batch-load sets, images, and PR counts for a set of completed workout logs. */
+async function enrichWorkoutFeed(db: SQLiteDatabase, rows: LogRow[]): Promise<FeedWorkoutLog[]> {
   const logIds = rows.map((r) => r.id);
   const placeholders = logIds.map(() => '?').join(',');
 
@@ -1048,7 +1075,7 @@ export async function listWorkoutFeedLogs(offset = 0, limit = PAGINATION.pageSiz
     prCounts.set(logId, prCount);
   }
 
-  const items: FeedWorkoutLog[] = rows.map((r) => {
+  return rows.map((r) => {
     const log = mapLog(r);
     const exMap = exerciseMap.get(r.id);
     return {
@@ -1057,9 +1084,6 @@ export async function listWorkoutFeedLogs(offset = 0, limit = PAGINATION.pageSiz
       prCount: prCounts.get(r.id) ?? 0,
     };
   });
-
-  const nextOffset = items.length === limit ? offset + limit : null;
-  return { items, nextOffset };
 }
 
 /** Consecutive weeks (ending this week) that contain at least one session. */
