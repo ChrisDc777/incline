@@ -27,7 +27,6 @@ import {
   discardWorkout,
   finishWorkout,
   getExercisePRSummary,
-  getExerciseDefaultRest,
   getLastSetsForExercise,
   getRestDefaultsForSession,
   getWorkoutLog,
@@ -256,19 +255,10 @@ export default function SessionScreen() {
         }
       }
       if (autoStartRest) {
-        const exRest = restSecondsMap[target.exerciseId] ?? 0;
-        if (exRest > 0) {
-          rest.start(exRest);
-        } else {
-          // Fallback if defaults weren't seeded for this exercise yet:
-          // look up its default rest and start the countdown.
-          getExerciseDefaultRest(target.exerciseId).then((r) => {
-            if (r > 0) {
-              setRestSecondsMap((prev) => ({ ...prev, [target.exerciseId]: r }));
-              rest.start(r);
-            }
-          });
-        }
+        // Rest per exercise (seeded from the template or exercise default), else
+        // the global default. A value of 0 ("Off") is respected and starts nothing.
+        const exRest = restSecondsMap[target.exerciseId] ?? defaultRestSeconds;
+        if (exRest > 0) rest.start(exRest);
       }
     }
   };

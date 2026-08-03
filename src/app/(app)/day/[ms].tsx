@@ -77,7 +77,7 @@ export default function DayScreen() {
           )}
           keyExtractor={(item) => String(item.id)}
           ItemSeparatorComponent={() => <View className="h-3" />}
-          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+          contentContainerStyle={{ paddingTop: 12, paddingBottom: 32 }}
           showsVerticalScrollIndicator={false}
         />
       )}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, LayoutChangeEvent, Pressable, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -40,8 +40,9 @@ function getFirstDayOfWeek(year: number, month: number): number {
   return new Date(year, month, 1).getDay();
 }
 
-/** A single month grid in the calendar. */
-function MonthGrid({
+/** A single month grid in the calendar. Memoized so scrolling doesn't re-render
+ * every visible month — the flat list only re-renders cells whose props change. */
+const MonthGrid = memo(function MonthGrid({
   year,
   month,
   workoutDays,
@@ -126,7 +127,7 @@ function MonthGrid({
       </View>
     </View>
   );
-}
+});
 
 export default function CalendarScreen() {
   const router = useRouter();
@@ -216,6 +217,18 @@ export default function CalendarScreen() {
     index,
   }), []);
 
+  const renderMonth = useCallback(({ item }: { item: MonthItem }) => (
+    <View style={{ height: MONTH_HEIGHT }}>
+      <MonthGrid
+        year={item.year}
+        month={item.month}
+        workoutDays={workoutDaySet}
+        onDayPress={handleDayPress}
+        today={today}
+      />
+    </View>
+  ), [workoutDaySet, handleDayPress, today]);
+
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length === 0) return;
     const first = viewableItems[0];
@@ -263,17 +276,7 @@ export default function CalendarScreen() {
         ref={listRef}
         data={months}
         keyExtractor={(m) => `${m.year}-${m.month}`}
-        renderItem={({ item }) => (
-          <View style={{ height: MONTH_HEIGHT }}>
-            <MonthGrid
-              year={item.year}
-              month={item.month}
-              workoutDays={workoutDaySet}
-              onDayPress={handleDayPress}
-              today={today}
-            />
-          </View>
-        )}
+        renderItem={renderMonth}
         getItemLayout={getItemLayout}
         initialScrollIndex={months.length - 1}
         onViewableItemsChanged={onViewableItemsChanged}
