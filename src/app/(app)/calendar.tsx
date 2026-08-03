@@ -189,8 +189,8 @@ export default function CalendarScreen() {
         setRestDays(0);
       }
 
-      // Build month list from first workout month (or 24 months back) → current month
-      const startDate = days.length > 0 ? new Date(days[0]) : new Date(now - 24 * 30 * 86400000);
+      // Build month list from first workout month (or 36 months back) → current month
+      const startDate = days.length > 0 ? new Date(days[0]) : new Date(now - 36 * 30 * 86400000);
       const list: { year: number; month: number }[] = [];
       let y = startDate.getFullYear();
       let m = startDate.getMonth();
@@ -219,8 +219,7 @@ export default function CalendarScreen() {
   }, [router]);
 
   const goToToday = useCallback(() => {
-    const end = monthOffsets.current.length - 1;
-    scrollRef.current?.scrollTo({ y: Math.max(0, monthOffsets.current[end] ?? 0), animated: true });
+    scrollRef.current?.scrollToEnd({ animated: true });
   }, []);
 
   const handleMonthLayout = useCallback((index: number, event: LayoutChangeEvent) => {
@@ -237,17 +236,16 @@ export default function CalendarScreen() {
     if (idx !== visibleIndex) setVisibleIndex(idx);
   }, [visibleIndex]);
 
-  // Scroll to the current month once the list has rendered
-  useEffect(() => {
-    if (months.length > 0 && loading === false) {
-      const timer = setTimeout(() => {
-        const end = monthOffsets.current.length - 1;
-        const target = monthOffsets.current[end];
-        if (target !== undefined) scrollRef.current?.scrollTo({ y: target, animated: false });
-      }, 50);
-      return () => clearTimeout(timer);
+  // Scroll to the current month (end of the list) once the content has laid out.
+  // Using onContentSizeChange guarantees offsets/height are ready, unlike a fixed
+  // timeout that races onLayout.
+  const didInitScroll = useRef(false);
+  const handleContentSizeChange = useCallback(() => {
+    if (!didInitScroll.current && months.length > 0) {
+      didInitScroll.current = true;
+      scrollRef.current?.scrollToEnd({ animated: false });
     }
-  }, [months, loading]);
+  }, [months.length]);
 
   const visible = months[visibleIndex] ?? months[months.length - 1] ?? { year: today.getFullYear(), month: today.getMonth() };
   const visibleLabel = `${MONTH_NAMES[visible.month]} ${visible.year}`;
@@ -290,6 +288,7 @@ export default function CalendarScreen() {
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
+        onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={32}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
         {loading ? (
