@@ -239,6 +239,13 @@ export default function CalendarScreen() {
     if (first.index != null) setVisibleIndex(first.index);
   }, []);
 
+  if (loading)
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator color="#16a34a" />
+      </SafeAreaView>
+    );
+
   const visible = months[visibleIndex] ?? months[months.length - 1] ?? { year: today.getFullYear(), month: today.getMonth() };
   const visibleLabel = `${MONTH_NAMES[visible.month]} ${visible.year}`;
 
@@ -251,9 +258,7 @@ export default function CalendarScreen() {
           <Body className="text-lg font-semibold text-foreground">{visibleLabel}</Body>
           <Icon icon={ChevronRight} size={16} color="muted-foreground" />
         </Pressable>
-        <View className="w-6 items-center">
-          {loading ? <ActivityIndicator size="small" color="#16a34a" /> : null}
-        </View>
+        <View style={{ width: 24 }} />
       </View>
 
       {/* Stats row */}
