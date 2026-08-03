@@ -188,7 +188,7 @@ export default function HomeScreen() {
                 leftIcon={<Icon icon={Plus} size={16} color="primary-foreground" />}
                 onPress={() => setPickerOpen(true)}
                 disabled={starting}>
-                Choose a template
+                Choose a routine
               </Button>
               <Button
                 variant="outline"

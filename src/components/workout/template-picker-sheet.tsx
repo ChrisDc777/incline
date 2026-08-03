@@ -45,7 +45,7 @@ export function TemplatePickerSheet({
         </Pressable>
       )}
 
-      <Caption className="mb-2 mt-4 font-semibold">Templates</Caption>
+      <Caption className="mb-2 mt-4 font-semibold">Routines</Caption>
       {templates.data?.map((t) => (
         <TemplateRow key={t.template.id} summary={t} onPress={() => start(t.template.id, t.template.name)} />
       ))}

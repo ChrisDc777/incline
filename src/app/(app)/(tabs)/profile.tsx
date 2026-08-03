@@ -192,7 +192,7 @@ export default function ProfileScreen() {
               <Button variant="outline" size="sm" onPress={async () => {
                 const { resetUserData } = await import('@/db/queries');
                 await resetUserData();
-                Alert.alert('Done', 'Logs, bodyweight, and profile cleared. Templates kept.');
+                Alert.alert('Done', 'Logs, bodyweight, and profile cleared. Routines kept.');
                 router.replace('/(onboarding)');
               }}>
                 Clear Logs &amp; Reset Profile

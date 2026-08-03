@@ -54,7 +54,7 @@ export default function TemplateEditorScreen() {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
-    navigation.setOptions({ headerShown: true, title: isNew ? 'New template' : 'Edit template' });
+    navigation.setOptions({ headerShown: true, title: isNew ? 'New routine' : 'Edit routine' });
   }, [navigation, isNew]);
 
   useEffect(() => {
@@ -124,15 +124,15 @@ export default function TemplateEditorScreen() {
         for (const ex of exercises) {
           await addExerciseToTemplate(newId, ex.exerciseId, ex.targetSets, ex.targetRepsMin, ex.targetRepsMax, ex.restSeconds);
         }
-        toast({ title: 'Template created', variant: 'success' });
+        toast({ title: 'Routine created', variant: 'success' });
         router.replace(`/workout/${newId}`);
       } else if (templateId) {
         await updateTemplate(templateId, { name: name.trim(), description: description.trim(), difficulty });
-        toast({ title: 'Template saved', variant: 'success' });
+        toast({ title: 'Routine saved', variant: 'success' });
         router.back();
       }
     } catch {
-      toast({ title: 'Could not save template', variant: 'destructive' });
+      toast({ title: 'Could not save routine', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -142,7 +142,7 @@ export default function TemplateEditorScreen() {
     if (!templateId) return;
     await deleteTemplate(templateId);
     setDeleteOpen(false);
-    toast({ title: 'Template deleted', variant: 'success' });
+    toast({ title: 'Routine deleted', variant: 'success' });
     router.replace('/(app)/(tabs)/workouts');
   };
 
@@ -231,7 +231,7 @@ export default function TemplateEditorScreen() {
             )}
             ListEmptyComponent={
               <View className="items-center py-10">
-                <Caption className="text-center">No exercises yet. Tap Add to build your template.</Caption>
+                <Caption className="text-center">No exercises yet. Tap Add to build your routine.</Caption>
               </View>
             }
           />
@@ -240,11 +240,11 @@ export default function TemplateEditorScreen() {
 
       <View className="absolute inset-x-0 bottom-0 border-t border-border bg-background p-5 pb-8">
         <Button size="lg" onPress={save} disabled={saving}>
-          {saving ? 'Saving...' : isNew ? 'Create template' : 'Save changes'}
+          {saving ? 'Saving...' : isNew ? 'Create routine' : 'Save changes'}
         </Button>
         {!isNew && (
           <Button variant="destructive" className="mt-2" onPress={() => setDeleteOpen(true)}>
-            Delete template
+            Delete routine
           </Button>
         )}
       </View>
@@ -275,7 +275,7 @@ export default function TemplateEditorScreen() {
         )}
       </Dialog>
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen} title="Delete template?"
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen} title="Delete routine?"
         description="This cannot be undone."
         footer={
           <>
