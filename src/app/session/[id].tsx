@@ -13,7 +13,6 @@ import { Sheet } from '@/components/ui/sheet';
 import { ExerciseBlock } from '@/components/workout/exercise-block';
 import { ExercisePickerSheet } from '@/components/workout/exercise-picker-sheet';
 import { RestTimer } from '@/components/workout/rest-timer';
-import { PlateCalculator } from '@/components/workout/plate-calculator';
 import { RestPresetBar } from '@/components/workout/rest-preset-bar';
 import { useRestTimer } from '@/hooks/use-rest-timer';
 import { useRestTimerSound } from '@/hooks/use-rest-timer-sound';
@@ -82,7 +81,6 @@ export default function SessionScreen() {
   const [pausedAt, setPausedAt] = useState<number | null>(null);
   const totalPausedMsRef = useRef(0);
   const [timerSheetOpen, setTimerSheetOpen] = useState(false);
-  const [plateCalcOpen, setPlateCalcOpen] = useState(false);
   const pausedAtRef = useRef<number | null>(null);
 
   const load = useCallback(async () => {
@@ -205,13 +203,13 @@ export default function SessionScreen() {
     reload();
     impact();
     if (next && target) {
-      // Celebrate a personal record: heavier weight, better e1RM, or bigger
-      // set volume than the best ever logged for this exercise.
+      // Celebrate only a genuine record: heavier weight or better estimated
+      // 1RM than the best ever logged for this exercise. Requires prior
+      // history so first-time lifts don't spam.
       const pr = prMap[target.exerciseId];
-      if (pr) {
-        const vol = target.weight * target.reps;
+      if (pr && (pr.heaviestWeight > 0 || pr.best1RM > 0)) {
         const e1rm = estimated1RM(target.weight, target.reps);
-        if (vol > 0 && (target.weight > pr.heaviestWeight || e1rm > pr.best1RM || vol > pr.bestSetVolume)) {
+        if (target.weight > pr.heaviestWeight || e1rm > pr.best1RM) {
           notify();
           toast({
             title: 'New PR!',
@@ -393,24 +391,12 @@ export default function SessionScreen() {
           </View>
         )}
 
-        {!plateCalcOpen ? (
-          <Pressable
-            onPress={() => setPlateCalcOpen(true)}
-            className="mb-3 flex-row items-center gap-2 rounded-xl bg-card px-4 py-3">
-            <Icon icon={Dumbbell} size={16} color="primary" />
-            <Body className="text-sm text-foreground">Plate calculator</Body>
-          </Pressable>
-        ) : (
-          <View className="mb-3">
-            <Pressable
-              onPress={() => setPlateCalcOpen(false)}
-              className="mb-2 flex-row items-center gap-2">
-              <Icon icon={Dumbbell} size={16} color="primary" />
-              <Body className="text-sm font-semibold text-foreground">Plate calculator</Body>
-            </Pressable>
-            <PlateCalculator />
-          </View>
-        )}
+        <Pressable
+          onPress={() => router.push('/(app)/plate-calculator' as any)}
+          className="mb-3 flex-row items-center gap-2 rounded-xl bg-card px-4 py-3">
+          <Icon icon={Dumbbell} size={16} color="primary" />
+          <Body className="text-sm text-foreground">Plate calculator</Body>
+        </Pressable>
 
         {groups.length === 0 ? (
           <View className="items-center py-16">

@@ -1,11 +1,12 @@
 import * as React from 'react';
-import { View, Pressable, TextInput } from 'react-native';
+import { View, TextInput } from 'react-native';
 import { Dumbbell } from 'lucide-react-native';
 
 import { Heading, Body, Caption } from '@/components/common/text';
-import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/common/icon';
-import { calculatePlates, type Plate } from '@/lib/plate-calculator';
+import { SegmentedControl } from '@/components/common/segmented-control';
+import { Switch } from '@/components/ui/switch';
+import { calculatePlates, BAR_OPTIONS, type BarKind, type Plate } from '@/lib/plate-calculator';
 import { useSettings } from '@/store/settings-store';
 import { cn } from '@/lib/cn';
 
@@ -19,7 +20,12 @@ export function PlateCalculator({ targetWeight: initialTarget, className }: Plat
   const settingsUnit = useSettings((s) => s.unit);
   const unit = settingsUnit === 'metric' ? 'kg' : 'lb';
   const [input, setInput] = React.useState(initialTarget?.toString() ?? '');
-  const result = calculatePlates(Number(input) || 0, unit);
+  const [includeBar, setIncludeBar] = React.useState(true);
+  const [barKind, setBarKind] = React.useState<BarKind>('barbell');
+
+  const barOption = BAR_OPTIONS.find((b) => b.kind === barKind) ?? BAR_OPTIONS[0];
+  const barWeight = includeBar ? (unit === 'kg' ? barOption.kg : barOption.lb) : 0;
+  const result = calculatePlates(Number(input) || 0, unit, barWeight);
 
   return (
     <View className={cn('rounded-2xl border border-border bg-card p-4', className)}>
@@ -41,10 +47,38 @@ export function PlateCalculator({ targetWeight: initialTarget, className }: Plat
           />
         </View>
 
+        <View className="flex-row items-center justify-between rounded-xl bg-background px-4 py-3">
+          <View>
+            <Body className="text-sm font-medium text-foreground">Include bar weight</Body>
+            <Caption>Subtract the bar before loading plates</Caption>
+          </View>
+          <Switch
+            value={includeBar}
+            onValueChange={setIncludeBar}
+            accessibilityLabel="Include bar weight"
+          />
+        </View>
+
+        {includeBar ? (
+          <View className="gap-1.5">
+            <Caption>Bar type</Caption>
+            <SegmentedControl<BarKind>
+              values={BAR_OPTIONS.map((b) => ({ value: b.kind, label: b.label }))}
+              value={barKind}
+              onChange={setBarKind}
+            />
+            <Caption className="text-muted-foreground">
+              {barWeight}{unit} bar · {barOption.label}
+            </Caption>
+          </View>
+        ) : null}
+
         {input && Number(input) > 0 && result && (
           <View className="gap-2">
             <Caption className="text-muted-foreground">
-              {result.barbell}{unit} bar + {result.totalPerSide.toFixed(1)}{unit} per side
+              {result.barbell > 0
+                ? `${result.barbell}${unit} bar + ${result.totalPerSide.toFixed(1)}${unit} per side`
+                : `${result.totalPerSide.toFixed(1)}${unit} per side · no bar`}
             </Caption>
             {result.plates.length === 0 ? (
               <Caption className="text-primary">Bar only — no plates needed</Caption>
@@ -60,7 +94,7 @@ export function PlateCalculator({ targetWeight: initialTarget, className }: Plat
 
         {input && Number(input) > 0 && !result && (
           <Caption className="text-destructive">
-            Weight must be at least the barbell ({unit === 'kg' ? '20' : '45'}{unit})
+            Weight must be at least {includeBar ? `the ${barWeight}${unit} bar` : '0'}.
           </Caption>
         )}
       </View>

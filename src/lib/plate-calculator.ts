@@ -1,6 +1,6 @@
 /**
- * Plate calculator — given a target weight and barbell weight,
- * returns the plates to load on each side.
+ * Plate calculator — given a target weight, barbell weight and whether the
+ * bar is counted, returns the plates to load on each side.
  */
 
 export interface Plate {
@@ -8,26 +8,42 @@ export interface Plate {
   count: number;
 }
 
+export type BarKind = 'barbell' | 'ez' | 'smith';
+
+export interface BarOption {
+  kind: BarKind;
+  label: string;
+  kg: number;
+  lb: number;
+}
+
+export const BAR_OPTIONS: BarOption[] = [
+  { kind: 'barbell', label: 'Barbell', kg: 20, lb: 45 },
+  { kind: 'ez', label: 'EZ bar', kg: 10, lb: 22 },
+  { kind: 'smith', label: 'Smith', kg: 15, lb: 34 },
+];
+
 const KG_PLATES = [25, 20, 15, 10, 5, 2.5, 1.25];
 const LB_PLATES = [45, 35, 25, 10, 5, 2.5, 1.25];
-const BARBELL_KG = 20;
-const BARBELL_LB = 45;
 
 /**
  * Calculate plates needed per side.
- * Returns null if the target weight is less than the barbell.
+ * `barWeight` is in the target unit; pass 0 to exclude the bar (target weight
+ * is then the total plate load, split across both sides).
+ * Returns null if the target weight is less than the bar weight.
  */
 export function calculatePlates(
   targetWeight: number,
   unit: 'kg' | 'lb' = 'kg',
+  barWeight = 20,
 ): { plates: Plate[]; totalPerSide: number; barbell: number } | null {
-  const barbell = unit === 'kg' ? BARBELL_KG : BARBELL_LB;
+  const barbell = Math.max(0, barWeight);
   const availablePlates = unit === 'kg' ? KG_PLATES : LB_PLATES;
 
-  const barWeight = targetWeight - barbell;
-  if (barWeight < 0) return null;
+  const plateLoad = targetWeight - barbell;
+  if (plateLoad < 0) return null;
 
-  const perSide = barWeight / 2;
+  const perSide = plateLoad / 2;
   let remaining = perSide;
   const plates: Plate[] = [];
 
