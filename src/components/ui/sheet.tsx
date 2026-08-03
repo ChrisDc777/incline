@@ -29,11 +29,18 @@ export function Sheet({
   }, [onOpenChange]);
 
   useEffect(() => {
-    if (open) {
-      sheetRef.current?.present();
-    } else {
-      sheetRef.current?.dismiss();
-    }
+    // Defer to the next frame: @expo/ui's BottomSheetModal forwards the ref
+    // through a nested component, and calling present()/dismiss() synchronously
+    // here can fire its internal setIsOpen before the inner component commits
+    // ("can't perform a React state update on a component that hasn't mounted").
+    const frame = requestAnimationFrame(() => {
+      if (open) {
+        sheetRef.current?.present();
+      } else {
+        sheetRef.current?.dismiss();
+      }
+    });
+    return () => cancelAnimationFrame(frame);
   }, [open]);
 
   const Content = scroll ? BottomSheetScrollView : BottomSheetView;
