@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Pressable, View, ActivityIndicator } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Plus } from 'lucide-react-native';
+import { Plus, Trash2 } from 'lucide-react-native';
 
 import { Sheet } from '@/components/ui/sheet';
 import { SearchBar } from '@/components/common/search-bar';
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
 import { fetchExercisesFromSupabase, searchExercisesFromSupabase, type SupabaseExercise } from '@/lib/supabase';
-import { ensureExerciseExists, listExercises, searchExercises } from '@/db/queries';
+import { ensureExerciseExists, getExercise, listCustomExercises, deleteCustomExercise, getCustomExerciseUsage, listExercises, searchExercises } from '@/db/queries';
 import type { Exercise } from '@/db/types';
 
 /** Convert a Supabase exercise to the local Exercise type for workout logging. */
@@ -40,6 +40,27 @@ function toLocalExercise(ex: SupabaseExercise): Exercise {
   };
 }
 
+/** Convert a local SQLite exercise into the picker's list shape. */
+function toSupabaseItem(ex: Exercise): SupabaseExercise {
+  return {
+    id: ex.id,
+    external_id: ex.externalId ?? `local:${ex.id}`,
+    name: ex.name,
+    body_part: ex.primaryMuscle,
+    equipment: ex.equipment,
+    target_muscle: ex.primaryMuscle,
+    secondary_muscles: ex.secondaryMuscles,
+    movement_pattern: ex.movementPattern ?? 'isolation',
+    category: ex.category,
+    is_compound: ex.isCompound,
+    difficulty: ex.difficulty ?? 'intermediate',
+    instructions: ex.instructions,
+    gif_url: ex.imageUrl ?? '',
+    created_at: new Date(ex.createdAt).toISOString(),
+    is_custom: ex.isCustom,
+  };
+}
+
 /** Modal sheet to pick an exercise — fetches from Supabase (ExerciseDB data). */
 export function ExercisePickerSheet({
   open,
@@ -57,6 +78,8 @@ export function ExercisePickerSheet({
   const [error, setError] = useState('');
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  // Local id → usage count for custom exercises (0 = safe to delete).
+  const [usageMap, setUsageMap] = useState<Record<number, number>>({});
   const BATCH = 50;
 
   const loadInitial = useCallback(async () => {
@@ -64,30 +87,21 @@ export function ExercisePickerSheet({
     setError('');
     try {
       const data = await fetchExercisesFromSupabase(BATCH, 0);
-      setItems(data);
+      const customs = (await listCustomExercises()).map(toSupabaseItem);
+      const usage: Record<number, number> = {};
+      await Promise.all(customs.map(async (c) => { usage[c.id] = await getCustomExerciseUsage(c.id); }));
+      setUsageMap(usage);
+      setItems([...customs, ...data]);
       setOffset(data.length);
       setHasMore(data.length === BATCH);
     } catch {
       // Supabase unreachable — fall back to local SQLite exercises
       try {
         const local = await listExercises();
-        const localItems: SupabaseExercise[] = local.map((ex) => ({
-          id: ex.id,
-          external_id: ex.externalId ?? `local:${ex.id}`,
-          name: ex.name,
-          body_part: ex.primaryMuscle,
-          equipment: ex.equipment,
-          target_muscle: ex.primaryMuscle,
-          secondary_muscles: ex.secondaryMuscles,
-          movement_pattern: ex.movementPattern ?? 'isolation',
-          category: ex.category,
-          is_compound: ex.isCompound,
-          difficulty: ex.difficulty ?? 'intermediate',
-          instructions: ex.instructions,
-          gif_url: ex.imageUrl ?? '',
-          created_at: new Date(ex.createdAt).toISOString(),
-        }));
-        setItems(localItems);
+        const usage: Record<number, number> = {};
+        await Promise.all(local.map(async (ex) => { if (ex.isCustom) usage[ex.id] = await getCustomExerciseUsage(ex.id); }));
+        setUsageMap(usage);
+        setItems(local.map(toSupabaseItem));
         setHasMore(false);
       } catch {
         setError('Could not load exercises. Check your connection.');
@@ -118,29 +132,18 @@ export function ExercisePickerSheet({
     setError('');
     try {
       const data = await searchExercisesFromSupabase(q);
-      setItems(data);
+      // Local custom exercises always participate in search.
+      const customs = (await searchExercises(q))
+        .filter((h) => h.exercise.isCustom)
+        .map((h) => toSupabaseItem(h.exercise));
+      const customNames = new Set(customs.map((c) => c.name.toLowerCase()));
+      setItems([...customs, ...data.filter((d) => !customNames.has(d.name.toLowerCase()))]);
       setHasMore(false);
     } catch {
       // Supabase unreachable — search local SQLite
       try {
         const local = await searchExercises(q);
-        const localItems: SupabaseExercise[] = local.map((hit) => ({
-          id: hit.exercise.id,
-          external_id: hit.exercise.externalId ?? `local:${hit.exercise.id}`,
-          name: hit.exercise.name,
-          body_part: hit.exercise.primaryMuscle,
-          equipment: hit.exercise.equipment,
-          target_muscle: hit.exercise.primaryMuscle,
-          secondary_muscles: hit.exercise.secondaryMuscles,
-          movement_pattern: hit.exercise.movementPattern ?? 'isolation',
-          category: hit.exercise.category,
-          is_compound: hit.exercise.isCompound,
-          difficulty: hit.exercise.difficulty ?? 'intermediate',
-          instructions: hit.exercise.instructions,
-          gif_url: hit.exercise.imageUrl ?? '',
-          created_at: new Date(hit.exercise.createdAt).toISOString(),
-        }));
-        setItems(localItems);
+        setItems(local.map((hit) => toSupabaseItem(hit.exercise)));
         setHasMore(false);
       } catch {
         setError('Search failed. Try again.');
@@ -153,7 +156,8 @@ export function ExercisePickerSheet({
   // Load initial data when sheet opens
   useEffect(() => {
     if (open && !creating) {
-      loadInitial();
+      const t = setTimeout(() => loadInitial(), 0);
+      return () => clearTimeout(t);
     }
   }, [open, creating, loadInitial]);
 
@@ -164,12 +168,28 @@ export function ExercisePickerSheet({
   }, [query, doSearch]);
 
   const handlePick = async (ex: SupabaseExercise) => {
+    if (ex.is_custom) {
+      // Already a local row — use it directly, no ensure/insert round-trip.
+      const local = await getExercise(ex.id);
+      if (local) {
+        onPick(local);
+        onOpenChange(false);
+        setQuery('');
+      }
+      return;
+    }
     // Save to local SQLite so workout logging works
     const local = toLocalExercise(ex);
     const localId = await ensureExerciseExists(local, ex.external_id);
     onPick({ ...local, id: localId });
     onOpenChange(false);
     setQuery('');
+  };
+
+  const handleDeleteCustom = async (ex: SupabaseExercise) => {
+    await deleteCustomExercise(ex.id);
+    setQuery('');
+    loadInitial();
   };
 
   const handleCreated = () => {
@@ -204,12 +224,29 @@ export function ExercisePickerSheet({
                     <View className="mb-2">
                       <View className="flex-row items-center gap-3 rounded-3xl bg-card p-4">
                         <View className="flex-1">
-                          <Text className="text-sm font-semibold text-foreground">{item.name}</Text>
+                          <View className="flex-row items-center gap-2">
+                            <Text className="text-sm font-semibold text-foreground">{item.name}</Text>
+                            {item.is_custom ? (
+                              <View className="rounded-full bg-primary/15 px-2 py-0.5">
+                                <Text className="text-[10px] font-semibold text-primary">Custom</Text>
+                              </View>
+                            ) : null}
+                          </View>
                           <View className="mt-1 flex-row flex-wrap items-center gap-1.5">
                             <MuscleBadge muscle={item.target_muscle} />
                             <Text className="text-xs text-muted-foreground">{item.equipment}</Text>
                           </View>
                         </View>
+                        {item.is_custom && usageMap[item.id] === 0 ? (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Delete ${item.name}`}
+                            onPress={() => handleDeleteCustom(item)}
+                            hitSlop={8}
+                            className="p-2">
+                            <Icon icon={Trash2} size={16} color="muted-foreground" />
+                          </Pressable>
+                        ) : null}
                       </View>
                     </View>
                   </Pressable>
