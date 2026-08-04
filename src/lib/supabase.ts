@@ -26,6 +26,8 @@ export interface SupabaseExercise {
   instructions: string[];
   gif_url: string;
   created_at: string;
+  /** Local-only marker for user-created exercises. */
+  is_custom?: boolean;
 }
 
 /* ---- Queries ---- */

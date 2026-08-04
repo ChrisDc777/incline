@@ -399,6 +399,23 @@ export async function deleteCustomExercise(id: number): Promise<void> {
   await db.runAsync('DELETE FROM exercises WHERE id = ? AND is_custom = 1', id);
 }
 
+/** List only user-created exercises (local SQLite), sorted by name. */
+export async function listCustomExercises(): Promise<Exercise[]> {
+  const db = await openDatabase();
+  const rows = await db.getAllAsync<ExerciseRow>('SELECT * FROM exercises WHERE is_custom = 1 ORDER BY name');
+  return Promise.all(rows.map((row) => mapExercise(db, row)));
+}
+
+/** Logged sets + template usages for an exercise (0 = safe to delete). */
+export async function getCustomExerciseUsage(exerciseId: number): Promise<number> {
+  const db = await openDatabase();
+  const row = await db.getFirstAsync<{ c: number }>(
+    `SELECT (SELECT COUNT(*) FROM set_entries WHERE exercise_id = ?) + (SELECT COUNT(*) FROM template_exercises WHERE exercise_id = ?) AS c`,
+    exerciseId, exerciseId,
+  );
+  return row?.c ?? 0;
+}
+
 export async function updateExerciseDefaultRest(exerciseId: number, seconds: number): Promise<void> {
   const db = await openDatabase();
   await db.runAsync('UPDATE exercises SET default_rest_seconds = ?, updated_at = ? WHERE id = ?', seconds, Date.now(), exerciseId);
