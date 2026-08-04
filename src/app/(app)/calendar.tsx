@@ -21,6 +21,9 @@ const MONTH_NAMES = [
 const MONTH_HEIGHT = 420;
 const DAY_CELL_HEIGHT = 60;
 const BOTTOM_PADDING = 40;
+// Tiny floor so the overlay never lifts in the same frame it appeared —
+// readiness is driven by the viewable-items signal, not this timer.
+const SPINNER_MIN_FLOOR_MS = 200;
 const VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 10 };
 
 interface MonthItem {
@@ -138,7 +141,12 @@ export default function CalendarScreen() {
   const [workoutDaySet, setWorkoutDaySet] = useState<Set<string>>(new Set());
   const [streak, setStreak] = useState(0);
   const [restDays, setRestDays] = useState(0);
-  const [loading, setLoading] = useState(true);
+
+  // The calendar grid mounts immediately underneath a spinner overlay. The
+  // overlay lifts as soon as the current month is actually rendered/viewable
+  // (the real readiness signal), with a tiny floor to avoid a same-frame flash.
+  const [minTimePassed, setMinTimePassed] = useState(false);
+  const [calendarReady, setCalendarReady] = useState(false);
 
   // Months are built synchronously (5 years back → current) so the calendar is
   // instantly interactive; workout dots + stats fill in once the DB query lands.
@@ -161,6 +169,11 @@ export default function CalendarScreen() {
   const [visibleIndex, setVisibleIndex] = useState(months.length - 1);
 
   useEffect(() => {
+    const floor = setTimeout(() => setMinTimePassed(true), SPINNER_MIN_FLOOR_MS);
+    return () => clearTimeout(floor);
+  }, []);
+
+  useEffect(() => {
     (async () => {
       try {
         const days = await getWorkoutDays();
@@ -179,8 +192,6 @@ export default function CalendarScreen() {
         }
       } catch {
         // Leave the calendar usable even if stats fail to load.
-      } finally {
-        setLoading(false);
       }
     })();
   }, [now]);
@@ -236,18 +247,18 @@ export default function CalendarScreen() {
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length === 0) return;
     const first = viewableItems[0];
-    if (first.index != null) setVisibleIndex(first.index);
-  }, []);
-
-  if (loading)
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#16a34a" />
-      </SafeAreaView>
-    );
+    if (first.index != null) {
+      setVisibleIndex(first.index);
+      if (viewableItems.some((v) => v.index === months.length - 1)) {
+        setCalendarReady(true);
+      }
+    }
+  }, [months.length]);
 
   const visible = months[visibleIndex] ?? months[months.length - 1] ?? { year: today.getFullYear(), month: today.getMonth() };
   const visibleLabel = `${MONTH_NAMES[visible.month]} ${visible.year}`;
+
+  const showSpinner = !minTimePassed || !calendarReady;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
@@ -300,6 +311,12 @@ export default function CalendarScreen() {
         removeClippedSubviews
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: BOTTOM_PADDING }}
       />
+
+      {showSpinner ? (
+        <View pointerEvents="auto" className="absolute inset-0 z-50 items-center justify-center bg-background">
+          <ActivityIndicator color="#16a34a" />
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
