@@ -73,9 +73,9 @@ export default function RootLayout() {
                     <Stack.Screen name="(app)" />
                     <Stack.Screen name="exercise/[id]" options={{ headerShown: true, title: 'Exercise' }} />
                     <Stack.Screen name="workout/[id]" options={{ headerShown: true, title: 'Workout' }} />
-                    <Stack.Screen name="session/[id]" options={{ headerShown: true, title: 'Workout' }} />
-                    <Stack.Screen name="summary/[id]" options={{ headerShown: true, title: 'Summary' }} />
-                    <Stack.Screen name="edit-workout/[id]" options={{ headerShown: true, title: 'Edit Workout' }} />
+                    <Stack.Screen name="session/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="summary/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="edit-workout/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
                   </Stack>
                 </ToastProvider>

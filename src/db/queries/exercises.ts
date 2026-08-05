@@ -1,5 +1,4 @@
 import { openDatabase } from '../client';
-import { estimated1RM } from '../calc';
 import type {
   Category,
   Equipment,
@@ -307,15 +306,17 @@ export interface ExercisePRSummary {
 
 export async function getExercisePRSummary(exerciseId: number): Promise<ExercisePRSummary> {
   const db = await openDatabase();
-  const base = await db.getFirstAsync<{ max_weight: number; max_reps: number; best_set_vol: number }>(
-    `SELECT MAX(s.weight) as max_weight, MAX(s.reps) as max_reps, MAX(s.weight * s.reps) as best_set_vol
+  const base = await db.getFirstAsync<{ max_weight: number; best_1rm: number; best_set_vol: number }>(
+    `SELECT MAX(s.weight) as max_weight,
+            MAX(CASE WHEN s.reps <= 1 THEN s.weight
+                     ELSE s.weight * (1.0 + s.reps / 30.0) END) as best_1rm,
+            MAX(s.weight * s.reps) as best_set_vol
      FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
      WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND s.completed = 1`,
     exerciseId,
   );
   const maxWeight = base?.max_weight ?? 0;
-  const maxReps = base?.max_reps ?? 1;
-  const best1RM = estimated1RM(maxWeight, maxReps);
+  const best1RM = Math.round((base?.best_1rm ?? 0) * 100) / 100;
   const bestSetVol = base?.best_set_vol ?? 0;
 
   // Best session volume: max sum(weight*reps) per workout_log

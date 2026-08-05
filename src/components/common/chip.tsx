@@ -24,10 +24,10 @@ export function Chip({
       className={cn(
         'rounded-full border',
         size === 'sm' ? 'px-2.5 py-1' : 'px-3.5 py-1.5',
-        selected ? 'border-primary bg-primary' : 'border-border bg-transparent',
+        selected ? 'border-border bg-secondary' : 'border-border/70 bg-transparent',
         className,
       )}>
-      <Text className={cn('font-medium', size === 'sm' ? 'text-xs' : 'text-sm', selected ? 'text-primary-foreground' : 'text-muted-foreground')}>
+      <Text className={cn('font-medium', size === 'sm' ? 'text-xs' : 'text-sm', selected ? 'text-foreground' : 'text-muted-foreground')}>
         {label}
       </Text>
     </Pressable>

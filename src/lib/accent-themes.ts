@@ -7,8 +7,16 @@
  */
 
 import type { AccentTheme } from '@/db/types';
+import { useSettings } from '@/store/settings-store';
+import { useAppColorScheme } from '@/lib/use-color-scheme';
 
 export type { AccentTheme };
+
+/** Shared supporting hues that sit alongside each accent without clashing. */
+const CHART_SUPPORT = {
+  light: ['#F59E0B', '#A78BFA', '#F87171', '#64748B', '#0F766E'],
+  dark: ['#FBBF24', '#C4B5FD', '#FB7185', '#94A3B8', '#2DD4BF'],
+} as const;
 
 export interface AccentDefinition {
   id: AccentTheme;
@@ -70,4 +78,20 @@ export const DEFAULT_ACCENT_THEME: AccentTheme = 'indigo';
 
 export function isAccentTheme(value: unknown): value is AccentTheme {
   return typeof value === 'string' && value in ACCENT_THEMES;
+}
+
+/** Chart palette keyed to the active accent: accent + amber/mauve/red/slate/teal. */
+export function chartPaletteFor(
+  accent: AccentTheme = DEFAULT_ACCENT_THEME,
+  scheme: 'light' | 'dark' = 'dark',
+): string[] {
+  const def = ACCENT_THEMES[accent] ?? ACCENT_THEMES[DEFAULT_ACCENT_THEME];
+  const support = CHART_SUPPORT[scheme];
+  return [def.hex[scheme], ...support];
+}
+
+export function useChartPalette(): string[] {
+  const accent = useSettings((s) => s.accentTheme);
+  const scheme = useAppColorScheme() === 'dark' ? 'dark' : 'light';
+  return chartPaletteFor(accent, scheme);
 }

@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useLayoutEffect } from 'react';
-import { ScrollView, View, Image, Pressable } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
-import { Dumbbell, Lightbulb, Pause, Play, Trophy } from 'lucide-react-native';
+import { Dumbbell, Lightbulb, Trophy } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
+import { ExerciseMedia } from '@/components/exercise/exercise-media';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SegmentedControl } from '@/components/common/segmented-control';
@@ -15,7 +16,7 @@ import { useExercise, useExerciseHistory } from '@/hooks/use-data';
 import { getExerciseByExternalId, getExercisePRSummary, getExerciseRepRecords, getExerciseProgression, type ExercisePRSummary, type RepRecord, type ProgressionPoint } from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
 import { MOVEMENT_LABELS } from '@/lib/labels';
-import { formatWeight, relativeTime } from '@/db/calc';
+import { estimated1RM, formatWeight, relativeTime } from '@/db/calc';
 import type { Exercise, ExerciseHistoryRow, Unit } from '@/db/types';
 
 const TABS = ['Summary', 'History', 'How to'] as const;
@@ -34,7 +35,6 @@ export default function ExerciseDetailScreen() {
   const { unit } = useSettings();
   const navigation = useNavigation();
   const [tab, setTab] = useState<Tab>('Summary');
-  const [gifPaused, setGifPaused] = useState(false);
 
   const isSupabaseId = typeof id === 'string' && id.startsWith('supabase:');
   const externalId = isSupabaseId ? id.replace('supabase:', '') : null;
@@ -101,8 +101,8 @@ export default function ExerciseDetailScreen() {
     <View className="flex-1 bg-background">
       {/* Exercise header */}
       <View className="flex-row items-center gap-3 px-4 pt-2">
-        <View className="h-10 w-10 items-center justify-center rounded-2xl bg-primary/15">
-          <Icon icon={Dumbbell} size={20} color="primary" />
+        <View className="h-10 w-10 items-center justify-center rounded-2xl bg-muted">
+          <Icon icon={Dumbbell} size={20} color="muted-foreground" />
         </View>
         <View className="flex-1">
           <Heading style={{ fontSize: 18 }}>{exercise.name}</Heading>
@@ -123,8 +123,6 @@ export default function ExerciseDetailScreen() {
             prSummary={prSummary}
             repRecords={repRecords}
             progression={progression}
-            gifPaused={gifPaused}
-            setGifPaused={setGifPaused}
             unit={unit}
             maxWeight={maxWeight}
             max1RM={max1RM}
@@ -134,7 +132,7 @@ export default function ExerciseDetailScreen() {
           <HistoryTab sessions={sessions} unit={unit} maxWeight={maxWeight} max1RM={max1RM} />
         )}
         {tab === 'How to' && (
-          <HowToTab exercise={exercise} gifPaused={gifPaused} setGifPaused={setGifPaused} />
+          <HowToTab exercise={exercise} />
         )}
       </ScrollView>
     </View>
@@ -144,14 +142,12 @@ export default function ExerciseDetailScreen() {
 /* ───────────── Summary Tab ───────────── */
 
 function SummaryTab({
-  exercise, prSummary, repRecords, progression, gifPaused, setGifPaused, unit, maxWeight, max1RM,
+  exercise, prSummary, repRecords, progression, unit, maxWeight, max1RM,
 }: {
   exercise: Exercise;
   prSummary: ExercisePRSummary | null;
   repRecords: RepRecord[];
   progression: ProgressionPoint[];
-  gifPaused: boolean;
-  setGifPaused: (v: boolean) => void;
   unit: Unit;
   maxWeight: number;
   max1RM: number;
@@ -159,20 +155,7 @@ function SummaryTab({
   return (
     <View>
       {/* Exercise GIF */}
-      {exercise.imageUrl ? (
-        <View className="mb-4 overflow-hidden rounded-2xl bg-card">
-          <Image source={{ uri: exercise.imageUrl }} style={{ width: '100%', height: 200, resizeMode: 'contain' }} />
-          <Pressable
-            onPress={() => setGifPaused(!gifPaused)}
-            className="absolute right-2 top-2 h-8 w-8 items-center justify-center rounded-full bg-black/50">
-            <Icon icon={gifPaused ? Play : Pause} size={16} color="white" />
-          </Pressable>
-        </View>
-      ) : (
-        <View className="mb-4 items-center justify-center rounded-2xl bg-card py-10">
-          <Icon icon={Dumbbell} size={40} color="muted-foreground" />
-        </View>
-      )}
+      <ExerciseMedia uri={exercise.imageUrl} height={200} />
 
       {/* Muscle info */}
       <View className="mb-4 flex-row flex-wrap gap-2">
@@ -309,38 +292,13 @@ function HistoryTab({
   );
 }
 
-function estimated1RM(weight: number, reps: number): number {
-  if (reps <= 0 || weight <= 0) return 0;
-  if (reps === 1) return weight;
-  return Math.round(weight * (1 + reps / 30));
-}
-
 /* ───────────── How to Tab ───────────── */
 
-function HowToTab({
-  exercise, gifPaused, setGifPaused,
-}: {
-  exercise: Exercise;
-  gifPaused: boolean;
-  setGifPaused: (v: boolean) => void;
-}) {
+function HowToTab({ exercise }: { exercise: Exercise }) {
   return (
     <View>
       {/* Exercise GIF */}
-      {exercise.imageUrl ? (
-        <View className="mb-4 overflow-hidden rounded-2xl bg-card">
-          <Image source={{ uri: exercise.imageUrl }} style={{ width: '100%', height: 220, resizeMode: 'contain' }} />
-          <Pressable
-            onPress={() => setGifPaused(!gifPaused)}
-            className="absolute right-2 top-2 h-8 w-8 items-center justify-center rounded-full bg-black/50">
-            <Icon icon={gifPaused ? Play : Pause} size={16} color="white" />
-          </Pressable>
-        </View>
-      ) : (
-        <View className="mb-4 items-center justify-center rounded-2xl bg-card py-12">
-          <Icon icon={Dumbbell} size={40} color="muted-foreground" />
-        </View>
-      )}
+      <ExerciseMedia uri={exercise.imageUrl} height={220} />
 
       <Heading style={{ fontSize: 18, marginBottom: 12 }}>{exercise.name}</Heading>
 

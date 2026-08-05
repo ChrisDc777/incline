@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { View, TextInput } from 'react-native';
-import { Dumbbell } from 'lucide-react-native';
 
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Icon } from '@/components/common/icon';
@@ -9,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { calculatePlates, BAR_OPTIONS, type BarKind, type Plate } from '@/lib/plate-calculator';
 import { useSettings } from '@/store/settings-store';
 import { cn } from '@/lib/cn';
+import { METRIC_ICONS } from '@/lib/metric-icons';
 
 interface PlateCalculatorProps {
   /** Target total weight on the bar */
@@ -30,7 +30,7 @@ export function PlateCalculator({ targetWeight: initialTarget, className }: Plat
   return (
     <View className={cn('rounded-2xl border border-border bg-card p-4', className)}>
       <View className="mb-3 flex-row items-center gap-2">
-        <Icon icon={Dumbbell} color="primary" size={20} />
+        <Icon icon={METRIC_ICONS.equipment} color="primary" size={20} />
         <Heading>Plate Calculator</Heading>
       </View>
 

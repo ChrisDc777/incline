@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from 'expo-router';
 import { Plus, ChevronDown, BarChart3 } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 import { LineChart } from 'react-native-gifted-charts';
 
-import { Heading, Body, Caption } from '@/components/common/text';
+import { Body, Caption } from '@/components/common/text';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
 import { addBodyweightEntry, getBodyweightEntries, deleteBodyweightEntry } from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
+import { SCREEN_CONTENT } from '@/lib/layout';
 import { hexToRgba, useThemeHex } from '@/lib/theme';
 import { cn } from '@/lib/cn';
 
@@ -125,6 +127,7 @@ function TimeRangeDropdown({ value, onChange }: { value: TimeRange; onChange: (v
 }
 
 export default function BodyweightScreen() {
+  const navigation = useNavigation();
   const { toast } = useToast();
   const { impact } = useHaptics();
   const { unit } = useSettings();
@@ -141,6 +144,21 @@ export default function BodyweightScreen() {
   }, [timeRange]);
 
   useEffect(() => { load(); }, [load]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          onPress={() => setAddOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Add measurement"
+          hitSlop={8}
+          className="mr-1 p-2">
+          <Icon icon={Plus} size={22} color="foreground" />
+        </Pressable>
+      ),
+    });
+  }, [navigation]);
 
   const [now] = useState(() => Date.now());
   const filteredEntries = useMemo(() => {
@@ -174,22 +192,15 @@ export default function BodyweightScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-      <View className="flex-row items-center justify-between px-5 pt-4 pb-2">
-        <Heading>Measurements</Heading>
-        <Button size="sm" variant="ghost" onPress={() => setAddOpen(true)}>
-          <Icon icon={Plus} size={22} color="foreground" />
-        </Button>
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
+    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={SCREEN_CONTENT}>
         <View className="mt-2 items-end">
           <TimeRangeDropdown value={timeRange} onChange={setTimeRange} />
         </View>
 
         <MiniChart data={filteredEntries} unit={unit === 'metric' ? 'kg' : 'lb'} />
 
-        <View className="mt-8">
+        <View className="mt-6">
           <Body className="text-base text-muted-foreground">Weight History</Body>
 
           {filteredEntries.length === 0 ? (

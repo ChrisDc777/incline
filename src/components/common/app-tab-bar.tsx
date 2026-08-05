@@ -42,16 +42,13 @@ export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const scheme = useAppColorScheme();
   const accent = useSettings((s) => s.accentTheme);
-  const isDark = scheme === 'dark';
   const colors = themeHex(scheme, accent);
 
-  const tabBarBg = isDark ? 'bg-[#1c1c1e]' : 'bg-card';
-  const borderCol = isDark ? 'border-[#2c2c2e]' : 'border-border';
   const activeColor = colors.primary;
-  const inactiveColor = '#8e8e93';
+  const inactiveColor = colors.mutedForeground;
 
   return (
-    <View className={cn('border-t', tabBarBg, borderCol)}>
+    <View className="border-t border-border bg-surface2">
       <View className="flex-row" style={{ paddingBottom: insets.bottom, paddingTop: 8, height: 64 + insets.bottom }}>
         {state.routes.map((route, i) => {
           const focused = state.index === i;

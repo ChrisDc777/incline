@@ -10,19 +10,23 @@ import { useAppColorScheme } from '@/lib/use-color-scheme';
 const NEUTRALS = {
   light: {
     muted: '#e4e4e7',
-    mutedForeground: '#71717a',
+    mutedForeground: '#62626a',
     foreground: '#09090b',
-    background: '#ffffff',
+    background: '#f9f9fb',
+    surface1: '#ffffff',
+    surface2: '#f4f4f5',
     card: '#ffffff',
     border: '#e4e4e7',
   },
   dark: {
     muted: '#3f3f46',
-    mutedForeground: '#a1a1aa',
+    mutedForeground: '#afafb6',
     foreground: '#fafafa',
-    background: '#09090b',
-    card: '#09090b',
-    border: '#27272a',
+    background: '#0c0c0e',
+    surface1: '#151519',
+    surface2: '#1d1d20',
+    card: '#151519',
+    border: '#242428',
   },
 } as const;
 

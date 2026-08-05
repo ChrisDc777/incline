@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Flame, Dumbbell, Layers, TrendingUp } from 'lucide-react-native';
+import { Dumbbell, TrendingUp } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Heading, Caption } from '@/components/common/text';
@@ -21,6 +21,8 @@ import { HistoryRow } from '@/components/progress/history-row';
 import { usePeriodStats, useWorkoutLogs } from '@/hooks/use-data';
 import { useSettings } from '@/store/settings-store';
 import { formatVolume } from '@/db/calc';
+import { SCREEN_CONTENT } from '@/lib/layout';
+import { METRIC_ICONS } from '@/lib/metric-icons';
 import type { ProgressRange } from '@/db/types';
 
 const RANGES: { value: ProgressRange; label: string }[] = [
@@ -61,7 +63,7 @@ export default function ProgressScreen() {
         data={history.items}
         renderItem={({ item }) => <HistoryRow log={item} unit={unit} />}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
+        contentContainerStyle={SCREEN_CONTENT}
         ItemSeparatorComponent={() => <View className="h-2" />}
         onEndReached={history.loadMore}
         onEndReachedThreshold={0.3}
@@ -83,9 +85,9 @@ export default function ProgressScreen() {
             ) : stats ? (
               <>
                 <View className="flex-row gap-3">
-                  <StatCard label="Sessions" value={stats.sessions} icon={<Icon icon={Dumbbell} size={16} color="primary" />} accent />
-                  <StatCard label="Volume" value={formatVolume(stats.totalVolume, unit)} icon={<Icon icon={Layers} size={16} color="info" />} />
-                  <StatCard label="Streak" value={`${stats.streak}w`} icon={<Icon icon={Flame} size={16} color="warning" />} />
+                  <StatCard label="Sessions" value={stats.sessions} icon={<Icon icon={METRIC_ICONS.sessions} size={16} color="primary" />} accent />
+                  <StatCard label="Volume" value={formatVolume(stats.totalVolume, unit)} icon={<Icon icon={METRIC_ICONS.volume} size={16} color="info" />} />
+                  <StatCard label="Streak" value={`${stats.streak}w`} icon={<Icon icon={METRIC_ICONS.streak} size={16} color="warning" />} />
                 </View>
 
                 {stats.trend ? (

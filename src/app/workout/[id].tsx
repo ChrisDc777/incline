@@ -1,7 +1,7 @@
 import { useLayoutEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation, type Href } from 'expo-router';
-import { Clock, Dumbbell, Play } from 'lucide-react-native';
+import { Clock, Play } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
@@ -19,6 +19,7 @@ import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
 import { startWorkout, discardWorkout } from '@/db/queries';
 import { DIFFICULTY_LABELS, EQUIPMENT_LABELS } from '@/lib/labels';
+import { METRIC_ICONS } from '@/lib/metric-icons';
 import type { MuscleGroup } from '@/db/types';
 
 export default function WorkoutPreviewScreen() {
@@ -112,7 +113,7 @@ export default function WorkoutPreviewScreen() {
             </View>
             <View className="mt-2 flex-row items-center gap-4">
               <View className="flex-row items-center gap-1.5">
-                <Icon icon={Dumbbell} size={13} color="muted-foreground" />
+                <Icon icon={METRIC_ICONS.equipment} size={13} color="muted-foreground" />
                 <Caption>{te.exercise?.equipment ? EQUIPMENT_LABELS[te.exercise.equipment] : ''}</Caption>
               </View>
               <View className="flex-row items-center gap-1.5">

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ErrorState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
 import { openDatabase } from '@/db/client';
+import { SCREEN_CONTENT } from '@/lib/layout';
 import type { Program, ProgramWorkout } from '@/db/types';
 
 export default function ProgramDetailScreen() {
@@ -64,7 +65,7 @@ export default function ProgramDetailScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ ...SCREEN_CONTENT, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
         <Heading>{program.name}</Heading>
         <Body className="mt-2 text-muted-foreground">{program.description}</Body>
 

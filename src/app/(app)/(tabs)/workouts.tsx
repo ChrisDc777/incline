@@ -23,6 +23,7 @@ import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
 import { startWorkout, discardWorkout, deleteTemplate } from '@/db/queries';
 import type { TemplateSummary } from '@/db/queries';
+import { SCREEN_CONTENT, SCREEN_HEADER } from '@/lib/layout';
 
 type Tab = 'routines' | 'programs';
 
@@ -104,7 +105,7 @@ export default function WorkoutsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="px-5 pt-4 pb-3">
+      <View className={SCREEN_HEADER}>
         <Heading>Workouts</Heading>
         <SegmentedControl<Tab>
           className="mt-3"
@@ -134,12 +135,11 @@ export default function WorkoutsScreen() {
             />
           )}
           keyExtractor={(item) => String(item.template.id)}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
+          contentContainerStyle={SCREEN_CONTENT}
           ItemSeparatorComponent={() => <View className="h-3" />}
           ListHeaderComponent={
             <View className="mb-4 gap-3">
               <Button
-                size="lg"
                 leftIcon={<Icon icon={Play} size={18} color="primary-foreground" />}
                 onPress={() => handleStart(null, 'Empty Workout')}
                 disabled={starting}>
@@ -192,7 +192,7 @@ export default function WorkoutsScreen() {
             </Pressable>
           )}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
+          contentContainerStyle={SCREEN_CONTENT}
           ItemSeparatorComponent={() => <View className="h-3" />}
           ListEmptyComponent={
             programs.loading ? <ListSkeleton count={2} /> : <EmptyState title="No programs yet" description="Training programs will appear here." />
@@ -231,7 +231,7 @@ export default function WorkoutsScreen() {
               setDeleteTarget(menuTarget);
               setMenuTarget(null);
             }}
-            className="flex-row items-center gap-3 rounded-xl p-3"
+            className="flex-row items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/10 p-3"
             android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Trash2} size={18} color="destructive" />
             <Body className="text-destructive">Delete Routine</Body>

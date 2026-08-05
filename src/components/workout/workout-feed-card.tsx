@@ -1,33 +1,17 @@
 import { useState } from 'react';
-import { Image, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Clock, Weight, Medal, Dumbbell } from 'lucide-react-native';
+import { Clock, Weight, Medal } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Text } from '@/components/ui/text';
 import { Caption, Body } from '@/components/common/text';
 import { InitialsAvatar } from '@/components/common/initials-avatar';
+import { ExerciseThumb } from '@/components/exercise/exercise-media';
 import { formatDuration, formatVolume, relativeTime } from '@/db/calc';
-import type { FeedWorkoutLog, FeedExercise, Unit } from '@/db/types';
+import type { FeedWorkoutLog, Unit } from '@/db/types';
 
 const MAX_VISIBLE_EXERCISES = 3;
-
-function ExerciseThumb({ exercise }: { exercise: FeedExercise }) {
-  if (exercise.imageUrl) {
-    return (
-      <Image
-        source={{ uri: exercise.imageUrl }}
-        className="h-11 w-11 rounded-full bg-muted"
-        style={{ resizeMode: 'cover' }}
-      />
-    );
-  }
-  return (
-    <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/15">
-      <Icon icon={Dumbbell} size={18} color="primary" />
-    </View>
-  );
-}
 
 /** A single completed workout in the home feed. */
 export function WorkoutFeedCard({
@@ -99,7 +83,7 @@ export function WorkoutFeedCard({
             className="flex-row items-center gap-3"
             accessibilityRole="button"
             accessibilityLabel={`Open ${ex.exerciseName} details`}>
-            <ExerciseThumb exercise={ex} />
+            <ExerciseThumb uri={ex.imageUrl} />
             <Body className="flex-1 text-sm text-foreground">
               {ex.setCount} set{ex.setCount !== 1 ? 's' : ''} {ex.exerciseName}
             </Body>

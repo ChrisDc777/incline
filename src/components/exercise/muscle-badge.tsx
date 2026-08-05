@@ -6,7 +6,7 @@ import type { MuscleGroup } from '@/db/types';
 export function MuscleBadge({ muscle, className }: { muscle: MuscleGroup | string; className?: string }) {
   const label = MUSCLE_LABELS[muscle as MuscleGroup] ?? muscle;
   return (
-    <Badge variant="default" className={className}>
+    <Badge variant="neutral" className={className}>
       {label}
     </Badge>
   );

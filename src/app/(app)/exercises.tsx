@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search as SearchIcon } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
-import { Heading, Caption } from '@/components/common/text';
+import { Caption } from '@/components/common/text';
 import { SearchBar } from '@/components/common/search-bar';
 import { FilterChips, type FilterOption } from '@/components/common/chip';
 import { EmptyState } from '@/components/common/states';
@@ -13,6 +13,7 @@ import { ListSkeleton } from '@/components/common/skeleton';
 import { ExerciseListItem } from '@/components/exercise/exercise-list-item';
 import { useSearchExercises } from '@/hooks/use-data';
 import { useDebounce } from '@/hooks/use-debounce';
+import { SCREEN_CONTENT, SCREEN_HEADER } from '@/lib/layout';
 import { MUSCLE_LABELS } from '@/lib/labels';
 import type { MuscleGroup } from '@/db/types';
 
@@ -29,16 +30,15 @@ export default function ExercisesScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="px-5 pt-4 pb-3">
-        <Heading>Exercises</Heading>
-        <Caption className="mt-1">{exercises.data?.length ?? 0} exercises in library</Caption>
+      <View className={SCREEN_HEADER}>
+        <Caption>{exercises.data?.length ?? 0} exercises in library</Caption>
       </View>
 
       <FlashList
         data={exercises.data ?? []}
         renderItem={({ item }) => <ExerciseListItem exercise={item.exercise} />}
         keyExtractor={(item) => String(item.exercise.id)}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
+        contentContainerStyle={SCREEN_CONTENT}
         ItemSeparatorComponent={() => <View className="h-2" />}
         ListHeaderComponent={
           <View className="mb-3 gap-3">

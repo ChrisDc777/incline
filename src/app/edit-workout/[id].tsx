@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Clock, Weight, Dumbbell, Calendar, Plus, Flame, Undo2 } from 'lucide-react-native';
+import { X, Clock, Calendar, Plus, Flame, Undo2 } from 'lucide-react-native';
 import { DateTimePicker } from '@expo/ui/community/datetime-picker';
 import { Icon } from '@/components/common/icon';
 import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
+import { ExerciseThumb } from '@/components/exercise/exercise-media';
 
 import { Body, Caption } from '@/components/common/text';
 import { Button } from '@/components/ui/button';
@@ -32,20 +33,8 @@ import {
 import { openDatabase } from '@/db/client';
 import { formatDuration, formatVolume, formatFullDateTime } from '@/db/calc';
 import type { Exercise, SetEntry } from '@/db/types';
+import { METRIC_ICONS } from '@/lib/metric-icons';
 import { usePrimaryHex } from '@/lib/theme';
-
-function ExerciseThumb({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
-  if (imageUrl) {
-    return (
-      <Image source={{ uri: imageUrl }} className="h-11 w-11 rounded-full bg-muted" style={{ resizeMode: 'cover' }} />
-    );
-  }
-  return (
-    <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/15">
-      <Icon icon={Dumbbell} size={18} color="primary" />
-    </View>
-  );
-}
 
 interface ExerciseGroup {
   exerciseId: number;
@@ -281,8 +270,8 @@ export default function EditWorkoutScreen() {
               icon={<Icon icon={Clock} size={18} color="primary" />}
             />
           </Pressable>
-          <SummaryStat label="Volume" value={formatVolume(log.totalVolume, unit)} icon={<Icon icon={Weight} size={18} color="info" />} />
-          <SummaryStat label="Sets" value={`${completedSets}`} icon={<Icon icon={Dumbbell} size={18} color="warning" />} />
+          <SummaryStat label="Volume" value={formatVolume(log.totalVolume, unit)} icon={<Icon icon={METRIC_ICONS.volume} size={18} color="info" />} />
+          <SummaryStat label="Sets" value={`${completedSets}`} icon={<Icon icon={METRIC_ICONS.sets} size={18} color="warning" />} />
         </View>
 
         {durationOpen ? (
@@ -393,7 +382,7 @@ export default function EditWorkoutScreen() {
                 className="mb-1 flex-row items-center gap-3"
                 accessibilityRole="button"
                 accessibilityLabel={`Open ${g.exerciseName} details`}>
-                <ExerciseThumb imageUrl={g.imageUrl} name={g.exerciseName} />
+                <ExerciseThumb uri={g.imageUrl} />
                 <Body className="flex-1 text-base font-semibold text-primary">{g.exerciseName}</Body>
               </Pressable>
 

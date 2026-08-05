@@ -72,31 +72,36 @@ export async function getProgressStats(weeks = 8): Promise<ProgressStats> {
   );
   const muscleDistribution: MuscleDistribution[] = muscleRows.map((r) => ({ muscle: r.primary_muscle as MuscleGroup, sets: r.sets, volume: r.volume }));
 
-  const prBase = await db.getAllAsync<{ id: number; name: string; max_weight: number; max_reps: number; best_volume: number }>(
-    `SELECT e.id, e.name, MAX(s.weight) as max_weight, MAX(s.reps) as max_reps, MAX(s.weight * s.reps) as best_volume
+  const prRows = await db.getAllAsync<{ id: number; name: string; weight: number; reps: number; created_at: number; best_volume: number }>(
+    `SELECT e.id, e.name, s.weight, s.reps, s.created_at, (s.weight * s.reps) as best_volume
      FROM set_entries s JOIN exercises e ON e.id = s.exercise_id JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE w.ended_at IS NOT NULL AND s.completed = 1
-     GROUP BY e.id, e.name`,
+     WHERE w.ended_at IS NOT NULL AND s.completed = 1 AND s.weight > 0`,
   );
-  const prs: PR[] = [];
-  for (const p of prBase) {
-    const atMax = await db.getFirstAsync<{ reps: number; created_at: number }>(
-      `SELECT s.reps, s.created_at FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
-       WHERE s.exercise_id = ? AND s.completed = 1 AND w.ended_at IS NOT NULL AND s.weight = ?
-       ORDER BY s.created_at DESC LIMIT 1`,
-      p.id, p.max_weight,
-    );
-    prs.push({
-      exerciseId: p.id,
-      exerciseName: p.name,
-      maxWeight: p.max_weight,
-      maxReps: p.max_reps,
-      estimated1RM: estimated1RM(p.max_weight, atMax?.reps ?? 1),
-      bestSetVolume: p.best_volume,
-      achievedAt: atMax?.created_at ?? 0,
-    });
+  const bestMap = new Map<number, PR>();
+  for (const r of prRows) {
+    const oneRM = estimated1RM(r.weight, r.reps);
+    const cur = bestMap.get(r.id);
+    if (!cur || oneRM > cur.estimated1RM) {
+      bestMap.set(r.id, {
+        exerciseId: r.id,
+        exerciseName: r.name,
+        maxWeight: r.weight,
+        maxReps: r.reps,
+        estimated1RM: oneRM,
+        bestSetVolume: r.best_volume,
+        achievedAt: r.created_at,
+      });
+    } else if (oneRM === cur.estimated1RM && r.weight > cur.maxWeight) {
+      bestMap.set(r.id, {
+        ...cur,
+        maxWeight: r.weight,
+        maxReps: r.reps,
+        bestSetVolume: Math.max(cur.bestSetVolume, r.best_volume),
+        achievedAt: r.created_at,
+      });
+    }
   }
-  prs.sort((a, b) => b.estimated1RM - a.estimated1RM);
+  const prs = [...bestMap.values()].sort((a, b) => b.estimated1RM - a.estimated1RM);
 
   return {
     totalSessions: totals?.c ?? 0,

@@ -65,27 +65,30 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   advanced: 'Advanced',
 };
 
-/** Palette used by charts, cycling by index. First slot follows brand indigo. */
+/** Fallback palette used when no accent-aware palette is provided. */
 export const CHART_PALETTE = [
   '#6D5DF6',
-  '#3b82f6',
-  '#f59e0b',
-  '#a855f7',
-  '#ef4444',
-  '#14b8a6',
-  '#ec4899',
-  '#8b5cf6',
-  '#f97316',
-  '#06b6d4',
-  '#84cc16',
-  '#eab308',
-  '#64748b',
+  '#F59E0B',
+  '#A78BFA',
+  '#F87171',
+  '#64748B',
+  '#0F766E',
+  '#FBBF24',
+  '#C4B5FD',
+  '#FB7185',
+  '#94A3B8',
+  '#2DD4BF',
+  '#EAB308',
+  '#8B5CF6',
 ];
 
-export function muscleColor(muscle: MuscleGroup): string {
-  const order: MuscleGroup[] = [
-    'chest', 'back', 'shoulders', 'biceps', 'triceps', 'quads',
-    'hamstrings', 'glutes', 'calves', 'core', 'forearms', 'traps', 'full_body',
-  ];
-  return CHART_PALETTE[order.indexOf(muscle) % CHART_PALETTE.length];
+const MUSCLE_ORDER: MuscleGroup[] = [
+  'chest', 'back', 'shoulders', 'biceps', 'triceps', 'quads',
+  'hamstrings', 'glutes', 'calves', 'core', 'forearms', 'traps', 'full_body',
+];
+
+export function muscleColor(muscle: MuscleGroup, palette: string[] = CHART_PALETTE): string {
+  const idx = MUSCLE_ORDER.indexOf(muscle);
+  const safe = idx >= 0 ? idx : 0;
+  return palette[safe % palette.length];
 }

@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, LayoutChangeEvent, Pressable, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronRight, Flame, Moon } from 'lucide-react-native';
+import { ChevronRight, Moon } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 
@@ -10,6 +10,8 @@ import { Body, Caption } from '@/components/common/text';
 import { Text } from '@/components/ui/text';
 import { getWorkoutDays, getStreak } from '@/db/queries';
 import { cn } from '@/lib/cn';
+import { SCREEN_CONTENT, SCREEN_HEADER } from '@/lib/layout';
+import { METRIC_ICONS } from '@/lib/metric-icons';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = [
@@ -99,6 +101,10 @@ const MonthGrid = memo(function MonthGrid({
                     onPress={() => {
                       if (!isFuture) onDayPress(date.getTime());
                     }}
+                    disabled={isFuture}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${date.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}${hasWorkout ? ', has workout' : ''}`}
+                    accessibilityState={{ disabled: isFuture, selected: isToday }}
                     style={{ height: DAY_CELL_HEIGHT }}
                     className="flex-1 items-center justify-center"
                     android_ripple={{ color: 'rgba(255,255,255,0.08)' }}>
@@ -264,9 +270,9 @@ export default function CalendarScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
       {/* Header */}
-      <View className="flex-row items-center justify-between px-5 pt-4 pb-2">
+      <View className={`${SCREEN_HEADER} flex-row items-center justify-between`}>
         <View style={{ width: 24 }} />
-        <Pressable onPress={goToToday} className="flex-row items-center gap-1">
+        <Pressable onPress={goToToday} accessibilityRole="button" accessibilityLabel="Go to today" className="flex-row items-center gap-1">
           <Body className="text-lg font-semibold text-foreground">{visibleLabel}</Body>
           <Icon icon={ChevronRight} size={16} color="muted-foreground" />
         </Pressable>
@@ -274,9 +280,9 @@ export default function CalendarScreen() {
       </View>
 
       {/* Stats row */}
-      <View className="mx-5 mt-2 flex-row gap-3">
+      <View className="mx-4 mt-2 flex-row gap-3">
         <View className="flex-1 flex-row items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-3">
-          <Icon icon={Flame} size={16} color="warning" />
+          <Icon icon={METRIC_ICONS.streak} size={16} color="warning" />
           <Caption className="text-sm font-medium text-foreground">{streak} week streak</Caption>
         </View>
         <View className="flex-1 flex-row items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-3">
@@ -310,7 +316,7 @@ export default function CalendarScreen() {
         maxToRenderPerBatch={8}
         windowSize={7}
         removeClippedSubviews
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: BOTTOM_PADDING }}
+        contentContainerStyle={{ paddingHorizontal: SCREEN_CONTENT.paddingHorizontal, paddingBottom: BOTTOM_PADDING }}
       />
 
       {showSpinner ? (

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { NumberStepper } from '@/components/workout/number-stepper';
 import { useSettings } from '@/store/settings-store';
 import { estimated1RM } from '@/db/calc';
+import { SCREEN_CONTENT } from '@/lib/layout';
 
 const TARGET_REPS = [1, 2, 3, 5, 8, 10, 12];
 
@@ -31,7 +32,7 @@ export default function OneRMCalculatorScreen() {
         <Body className="text-base font-semibold text-foreground">1RM Calculator</Body>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ ...SCREEN_CONTENT, paddingBottom: 40 }}>
         <Hero className="mt-2">Estimate your max</Hero>
         <Caption className="mt-1 text-muted-foreground">
           Enter a weight you can lift for a known number of reps to estimate your one-rep max (Epley formula).
