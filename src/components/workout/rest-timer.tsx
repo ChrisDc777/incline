@@ -1,11 +1,18 @@
 import { Pressable, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { useEffect } from 'react';
 
 import { formatClock } from '@/db/calc';
 import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/cn';
 
 /**
  * Compact rest-timer bar shown at the bottom of the session screen.
- * Displays: [-15] [time] [+15] [Skip]
+ * Displays: [-15] [time] [+15] [Skip] with a progressive fill.
  */
 export function RestTimer({
   remaining,
@@ -19,11 +26,28 @@ export function RestTimer({
   onSkip: () => void;
 }) {
   const done = remaining <= 0 && total > 0;
+  const progress = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
+  const fill = useSharedValue(progress);
+  const urgent = remaining > 0 && remaining <= 10;
+
+  useEffect(() => {
+    fill.value = withTiming(progress, { duration: 250 });
+  }, [fill, progress]);
+
+  const fillStyle = useAnimatedStyle(() => ({
+    width: `${fill.value * 100}%`,
+  }));
 
   return (
     <View
       className="absolute inset-x-0 bottom-0 z-30 border-t border-border bg-background px-4 py-3 pb-6"
       style={{ elevation: 12 }}>
+      <View className="mb-3 h-1.5 overflow-hidden rounded-full bg-muted">
+        <Animated.View
+          className={cn('h-full rounded-full', urgent ? 'bg-warning' : 'bg-primary')}
+          style={fillStyle}
+        />
+      </View>
       <View className="flex-row items-center justify-between">
         <Pressable
           onPress={() => onAdd(-15)}

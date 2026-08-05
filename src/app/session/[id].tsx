@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, MessageSquarePlus, Pause, Play, Plus, Undo2, X, Dumbbell } from 'lucide-react-native';
+import { Check, MessageSquarePlus, Pause, Play, Plus, Undo2, X } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Body, Caption } from '@/components/common/text';
@@ -40,6 +40,8 @@ import {
 } from '@/db/queries';
 import { openDatabase } from '@/db/client';
 import { estimated1RM, formatClock, formatVolume, formatWeight } from '@/db/calc';
+import { SCREEN_CONTENT_CTA } from '@/lib/layout';
+import { METRIC_ICONS } from '@/lib/metric-icons';
 import type { Exercise, SetEntry } from '@/db/types';
 
 interface Group {
@@ -363,7 +365,7 @@ export default function SessionScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-      <View className="flex-row items-center justify-between px-5 pb-2 pt-3">
+      <View className="flex-row items-center justify-between px-4 pb-2 pt-3">
         <Pressable accessibilityRole="button" accessibilityLabel="Discard workout" onPress={() => setDiscardOpen(true)} className="p-1">
           <Icon icon={X} size={24} color="muted-foreground" />
         </Pressable>
@@ -376,7 +378,7 @@ export default function SessionScreen() {
         </Button>
       </View>
 
-      <View className="flex-row items-center justify-between px-5 py-3">
+      <View className="flex-row items-center justify-between px-4 py-3">
         <Pressable
           onPress={() => setTimerSheetOpen(true)}
           accessibilityRole="button"
@@ -408,7 +410,7 @@ export default function SessionScreen() {
 
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 160 }}
+        contentContainerStyle={{ ...SCREEN_CONTENT_CTA, paddingTop: 4 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive">
@@ -451,7 +453,7 @@ export default function SessionScreen() {
         <Pressable
           onPress={() => router.push('/(app)/plate-calculator' as Href)}
           className="mb-3 flex-row items-center gap-2 rounded-xl bg-card px-4 py-3">
-          <Icon icon={Dumbbell} size={16} color="primary" />
+          <Icon icon={METRIC_ICONS.equipment} size={16} color="primary" />
           <Body className="text-sm text-foreground">Plate calculator</Body>
         </Pressable>
 

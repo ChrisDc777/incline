@@ -28,6 +28,7 @@ import {
   reorderTemplateExercises,
 } from '@/db/queries';
 import { DIFFICULTY_LABELS } from '@/lib/labels';
+import { SCREEN_CONTENT_CTA } from '@/lib/layout';
 import type { Difficulty, TemplateExercise } from '@/db/types';
 
 type Exercise = TemplateExercise & { exercise?: { id: number; name: string; primaryMuscle: string; equipment: string } };
@@ -174,7 +175,7 @@ export default function TemplateEditorScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
-      <NestableScrollContainer contentContainerStyle={{ padding: 16, paddingBottom: 160 }}>
+      <NestableScrollContainer contentContainerStyle={SCREEN_CONTENT_CTA}>
         <View className="gap-3">
           <View className="gap-1">
             <Label>Name</Label>
@@ -243,7 +244,7 @@ export default function TemplateEditorScreen() {
           {saving ? 'Saving...' : isNew ? 'Create routine' : 'Save changes'}
         </Button>
         {!isNew && (
-          <Button variant="destructive" className="mt-2" onPress={() => setDeleteOpen(true)}>
+          <Button variant="destructiveTonal" className="mt-2" onPress={() => setDeleteOpen(true)}>
             Delete routine
           </Button>
         )}

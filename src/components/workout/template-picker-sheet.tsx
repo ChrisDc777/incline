@@ -35,7 +35,7 @@ export function TemplatePickerSheet({
           onPress={() => start(null, 'Quick Workout')}
           className="mb-2 flex-row items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4"
           android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-          <View className="h-10 w-10 items-center justify-center rounded-xl bg-primary/15">
+          <View className="h-10 w-10 items-center justify-center rounded-xl bg-muted">
             <Icon icon={Plus} size={18} color="primary" />
           </View>
           <View className="flex-1">
@@ -60,8 +60,8 @@ function TemplateRow({ summary, onPress }: { summary: TemplateSummary; onPress: 
       onPress={onPress}
       className={cn('flex-row items-center gap-3 rounded-2xl border border-border/60 p-4')}
       android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-      <View className="h-10 w-10 items-center justify-center rounded-xl bg-primary/15">
-        <Icon icon={Dumbbell} size={18} color="primary" />
+      <View className="h-10 w-10 items-center justify-center rounded-xl bg-muted">
+        <Icon icon={Dumbbell} size={18} color="muted-foreground" />
       </View>
       <View className="flex-1">
         <Body className="font-semibold text-foreground">{t.name}</Body>

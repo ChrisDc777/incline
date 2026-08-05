@@ -11,6 +11,7 @@ import { CardSkeleton } from '@/components/common/skeleton';
 import { getWorkoutFeedForDay } from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
 import { useProfile } from '@/hooks/use-data';
+import { SCREEN_CONTENT, SCREEN_HEADER } from '@/lib/layout';
 import type { FeedWorkoutLog } from '@/db/types';
 
 /** Day detail: every completed workout for a calendar date, styled like the home feed. */
@@ -43,7 +44,7 @@ export default function DayScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-      <View className="flex-row items-center gap-2 px-4 pb-2 pt-3">
+      <View className={`${SCREEN_HEADER} flex-row items-center gap-2`}>
         <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8} className="p-1">
           <Icon icon={ChevronLeft} size={24} color="muted-foreground" />
         </Pressable>
@@ -60,7 +61,7 @@ export default function DayScreen() {
           <CardSkeleton />
         </View>
       ) : items.length === 0 ? (
-        <View className="items-center py-20 px-6">
+        <View className="items-center px-6 py-20">
           <Body className="font-semibold text-foreground">No workouts this day</Body>
           <Caption className="mt-1 text-center">Tap another date on the calendar to see its history.</Caption>
         </View>
@@ -77,7 +78,7 @@ export default function DayScreen() {
           )}
           keyExtractor={(item) => String(item.id)}
           ItemSeparatorComponent={() => <View className="h-3" />}
-          contentContainerStyle={{ paddingTop: 12, paddingBottom: 32 }}
+          contentContainerStyle={{ ...SCREEN_CONTENT, paddingTop: 12 }}
           showsVerticalScrollIndicator={false}
         />
       )}

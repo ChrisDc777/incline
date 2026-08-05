@@ -5,9 +5,10 @@ import { useRouter } from 'expo-router';
 import { cn } from '@/lib/cn';
 import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
-import { Card } from '@/components/ui/card';
+import { PressableCard } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DIFFICULTY_LABELS } from '@/lib/labels';
+import { METRIC_ICONS } from '@/lib/metric-icons';
 import type { Difficulty, MuscleGroup } from '@/db/types';
 
 /**
@@ -40,8 +41,11 @@ export function WorkoutCard({
 }) {
   const router = useRouter();
   return (
-    <Card className={cn(className)}>
-      <Pressable onPress={() => router.push(`/workout/${id}`)} android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+    <View className={cn('rounded-3xl border border-border/60 bg-surface1 p-4', className)}>
+      <PressableCard
+        className="border-0 bg-transparent p-0 shadow-none"
+        onPress={() => router.push(`/workout/${id}`)}
+        accessibilityLabel={`Open ${name} routine`}>
         <View className="flex-row items-start justify-between gap-3">
           <View className="flex-1">
             <Text className="text-base font-semibold text-foreground">{name}</Text>
@@ -50,19 +54,24 @@ export function WorkoutCard({
             </Text>
           </View>
           {onMenuPress ? (
-            <Pressable onPress={onMenuPress} hitSlop={8} className="rounded-lg p-1">
+            <Pressable
+              onPress={onMenuPress}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel={`More options for ${name}`}
+              className="h-11 w-11 items-center justify-center rounded-lg">
               <Icon icon={MoreHorizontal} size={20} color="muted-foreground" />
             </Pressable>
           ) : (
-            <View className="h-10 w-10 items-center justify-center rounded-3xl bg-primary/15">
-              <Icon icon={Dumbbell} size={18} color="primary" />
+            <View className="h-10 w-10 items-center justify-center rounded-3xl bg-muted">
+              <Icon icon={Dumbbell} size={18} color="muted-foreground" />
             </View>
           )}
         </View>
 
         <View className="mt-3 flex-row items-center gap-4">
           <View className="flex-row items-center gap-1.5">
-            <Icon icon={Dumbbell} size={14} color="muted-foreground" />
+            <Icon icon={METRIC_ICONS.sets} size={14} color="muted-foreground" />
             <Text className="text-xs text-muted-foreground">{exerciseCount} exercises</Text>
           </View>
           <View className="flex-row items-center gap-1.5">
@@ -71,17 +80,18 @@ export function WorkoutCard({
           </View>
           <Text className="text-xs text-muted-foreground">· {DIFFICULTY_LABELS[difficulty]}</Text>
         </View>
-      </Pressable>
+      </PressableCard>
 
       {onStart ? (
         <Button
           className="mt-3"
           size="sm"
-          leftIcon={<Icon icon={Play} size={14} color="primary-foreground" />}
+          variant="tonal"
+          leftIcon={<Icon icon={Play} size={14} color="primary" />}
           onPress={onStart}>
           Start Routine
         </Button>
       ) : null}
-    </Card>
+    </View>
   );
 }

@@ -46,7 +46,7 @@ export function ResumeSessionDialog({ open, onOpenChange, onResume, onDiscard }:
       description="You have an unfinished session. Pick up where you left off, or discard it to start fresh."
       footer={
         <>
-          <Button variant="outline" onPress={onDiscard}>
+          <Button variant="destructiveTonal" onPress={onDiscard}>
             Discard
           </Button>
           <Button onPress={onResume}>Resume</Button>

@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Plus, Flame, TrendingUp, Dumbbell, ArrowRight } from 'lucide-react-native';
+import { Play, Plus, ArrowRight, Dumbbell } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Hero, Body, Caption } from '@/components/common/text';
@@ -23,6 +23,7 @@ import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
 import { startWorkout, discardWorkout, deleteWorkout } from '@/db/queries';
 import { formatVolume, formatFullDate } from '@/db/calc';
+import { METRIC_ICONS } from '@/lib/metric-icons';
 import type { FeedWorkoutLog, MuscleGroup } from '@/db/types';
 
 function greeting() {
@@ -120,6 +121,9 @@ export default function HomeScreen() {
   const name = profile?.name?.trim() || 'Athlete';
   const hasData = (stats?.totalSessions ?? 0) > 0;
   const streak = stats?.streak ?? 0;
+  const thisWeek = stats?.weeklyVolume?.[stats.weeklyVolume.length - 1];
+  const weekSessions = thisWeek?.sessions ?? 0;
+  const weekVolume = thisWeek?.volume ?? 0;
   const suggestedMuscles = (suggested?.exercises ?? [])
     .map((e) => e.exercise?.primaryMuscle)
     .filter((m, i, arr): m is MuscleGroup => !!m && arr.indexOf(m) === i);
@@ -130,7 +134,7 @@ export default function HomeScreen() {
         <Caption>{greeting()}</Caption>
         {hasData && streak > 0 ? (
           <Caption className="flex-row items-center text-warning">
-            <Icon icon={Flame} size={12} color="warning" /> {streak}w streak
+            <Icon icon={METRIC_ICONS.streak} size={12} color="warning" /> {streak}w streak
           </Caption>
         ) : null}
       </View>
@@ -142,7 +146,7 @@ export default function HomeScreen() {
           <CardSkeleton />
         ) : suggested ? (
           <Pressable onPress={() => router.push(`/workout/${suggested.id}`)}>
-            <Card>
+            <Card elevation="raised">
               <View className="flex-row items-center justify-between">
                 <Caption>Today&apos;s workout</Caption>
                 <Caption>{suggested.estimatedMinutes} min</Caption>
@@ -183,22 +187,22 @@ export default function HomeScreen() {
       </View>
 
       {hasData ? (
-        <View className="mt-8 flex-row gap-3">
-          <StatCard label="Streak" value={`${stats?.streak ?? 0}w`} icon={<Icon icon={Flame} size={16} color="warning" />} />
-          <StatCard label="Sessions" value={stats?.totalSessions ?? 0} icon={<Icon icon={Dumbbell} size={16} color="primary" />} />
+        <View className="mt-6 flex-row gap-3">
+          <StatCard label="This week" value={weekSessions} icon={<Icon icon={METRIC_ICONS.sessions} size={16} color="muted-foreground" />} />
           <StatCard
             label="Volume"
-            value={formatVolume(stats?.totalVolume ?? 0, unit)}
-            icon={<Icon icon={TrendingUp} size={16} color="info" />}
+            value={formatVolume(weekVolume, unit)}
+            icon={<Icon icon={METRIC_ICONS.volume} size={16} color="info" />}
           />
+          <StatCard label="Streak" value={`${streak}w`} icon={<Icon icon={METRIC_ICONS.streak} size={16} color="warning" />} />
         </View>
       ) : statsLoading ? (
-        <View className="mt-8"><CardSkeleton /></View>
+        <View className="mt-6"><CardSkeleton /></View>
       ) : (
-        <View className="mt-10">
+        <View className="mt-6">
           <Card className="items-center p-6">
-            <View className="h-14 w-14 items-center justify-center rounded-3xl bg-primary/15">
-              <Icon icon={Dumbbell} size={26} color="primary" />
+            <View className="h-14 w-14 items-center justify-center rounded-3xl bg-muted">
+              <Icon icon={Dumbbell} size={26} color="muted-foreground" />
             </View>
             <Body className="mt-4 text-center font-semibold text-foreground">No workouts yet 🏋️</Body>
             <Caption className="mt-1 text-center">
@@ -223,17 +227,17 @@ export default function HomeScreen() {
               <Caption className="text-center font-medium text-foreground">How it works</Caption>
               <View className="mt-3 flex-row items-center justify-center gap-4">
                 <View className="items-center gap-1">
-                  <Icon icon={Dumbbell} size={18} color="primary" />
+                  <Icon icon={METRIC_ICONS.sets} size={18} color="muted-foreground" />
                   <Caption>Log your sets</Caption>
                 </View>
                 <Icon icon={ArrowRight} size={14} color="muted-foreground" />
                 <View className="items-center gap-1">
-                  <Icon icon={TrendingUp} size={18} color="primary" />
+                  <Icon icon={METRIC_ICONS.volume} size={18} color="muted-foreground" />
                   <Caption>Track progress</Caption>
                 </View>
                 <Icon icon={ArrowRight} size={14} color="muted-foreground" />
                 <View className="items-center gap-1">
-                  <Icon icon={Flame} size={18} color="primary" />
+                  <Icon icon={METRIC_ICONS.streak} size={18} color="muted-foreground" />
                   <Caption>Build streaks</Caption>
                 </View>
               </View>
@@ -243,7 +247,7 @@ export default function HomeScreen() {
       )}
 
       {hasData && feed.items.length > 0 ? (
-        <Caption className="mt-8 mb-3 text-base font-semibold text-foreground">Recent workouts</Caption>
+        <Caption className="mb-3 mt-6 text-base font-semibold text-foreground">Recent workouts</Caption>
       ) : null}
     </View>
   );

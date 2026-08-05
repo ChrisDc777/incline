@@ -22,7 +22,7 @@ export type IconColor =
 
 const LIGHT_BASE: Record<Exclude<IconColor, 'primary' | 'primary-foreground'>, string> = {
   'secondary-foreground': 'hsl(240 5.9% 10%)',
-  'muted-foreground': 'hsl(240 3.8% 46.1%)',
+  'muted-foreground': 'hsl(240 4% 40%)',
   destructive: 'hsl(0 72% 51%)',
   'destructive-foreground': 'hsl(0 0% 98%)',
   success: 'hsl(142 64% 38%)',
@@ -39,7 +39,7 @@ const LIGHT_BASE: Record<Exclude<IconColor, 'primary' | 'primary-foreground'>, s
 
 const DARK_BASE: Record<Exclude<IconColor, 'primary' | 'primary-foreground'>, string> = {
   'secondary-foreground': 'hsl(0 0% 98%)',
-  'muted-foreground': 'hsl(240 5% 64.9%)',
+  'muted-foreground': 'hsl(240 5% 70%)',
   destructive: 'hsl(0 62.8% 50%)',
   'destructive-foreground': 'hsl(0 0% 98%)',
   success: 'hsl(142 60% 45%)',
@@ -51,7 +51,7 @@ const DARK_BASE: Record<Exclude<IconColor, 'primary' | 'primary-foreground'>, st
   foreground: 'hsl(0 0% 98%)',
   'card-foreground': 'hsl(0 0% 98%)',
   'accent-foreground': 'hsl(0 0% 98%)',
-  border: 'hsl(240 3.7% 16%)',
+  border: 'hsl(240 5% 15%)',
 };
 
 export function resolveIconColor(

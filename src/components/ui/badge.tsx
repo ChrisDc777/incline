@@ -9,6 +9,7 @@ const badgeVariants = cva('flex-row items-center rounded-full px-2.5 py-1', {
   variants: {
     variant: {
       default: 'bg-primary/15',
+      neutral: 'bg-muted',
       secondary: 'bg-secondary',
       destructive: 'bg-destructive/15',
       outline: 'border border-border bg-transparent',
@@ -24,6 +25,7 @@ const badgeTextVariants = cva('text-xs font-semibold', {
   variants: {
     variant: {
       default: 'text-primary',
+      neutral: 'text-muted-foreground',
       secondary: 'text-secondary-foreground',
       destructive: 'text-destructive',
       outline: 'text-muted-foreground',

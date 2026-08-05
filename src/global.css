@@ -15,8 +15,10 @@
  * Default accent: indigo (also applied via theme-indigo on the root View).
  */
 :root {
-  --background: 0 0% 100%;
+  --background: 240 20% 98%;
   --foreground: 240 10% 3.9%;
+  --surface-1: 0 0% 100%;
+  --surface-2: 240 4.8% 95.9%;
   --card: 0 0% 100%;
   --card-foreground: 240 10% 3.9%;
   --popover: 0 0% 100%;
@@ -26,7 +28,7 @@
   --secondary: 240 4.8% 95.9%;
   --secondary-foreground: 240 5.9% 10%;
   --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
+  --muted-foreground: 240 4% 40%;
   --accent: 240 4.8% 95.9%;
   --accent-foreground: 240 5.9% 10%;
   --destructive: 0 72% 51%;
@@ -49,18 +51,20 @@
 }
 
 .dark {
-  --background: 240 10% 3.9%;
+  --background: 240 8% 5%;
   --foreground: 0 0% 98%;
-  --card: 240 8% 6%;
+  --surface-1: 240 7% 9%;
+  --surface-2: 240 6% 12%;
+  --card: 240 7% 9%;
   --card-foreground: 0 0% 98%;
-  --popover: 240 8% 6%;
+  --popover: 240 6% 12%;
   --popover-foreground: 0 0% 98%;
   --primary: 246 85% 72%;
   --primary-foreground: 240 10% 4%;
   --secondary: 240 3.7% 15.9%;
   --secondary-foreground: 0 0% 98%;
   --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
+  --muted-foreground: 240 5% 70%;
   --accent: 240 3.7% 15.9%;
   --accent-foreground: 0 0% 98%;
   --destructive: 0 62.8% 50%;
@@ -71,7 +75,7 @@
   --warning-foreground: 0 0% 100%;
   --info: 217 88% 64%;
   --info-foreground: 240 10% 4%;
-  --border: 240 3.7% 16%;
+  --border: 240 5% 15%;
   --input: 240 3.7% 18%;
   --ring: 246 85% 72%;
   --chart-1: 246 75% 68%;

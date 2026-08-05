@@ -7,6 +7,7 @@ import { Icon } from '@/components/common/icon';
 import { Body } from '@/components/common/text';
 import { Button } from '@/components/ui/button';
 import { PlateCalculator } from '@/components/workout/plate-calculator';
+import { SCREEN_CONTENT } from '@/lib/layout';
 
 export default function PlateCalculatorScreen() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function PlateCalculatorScreen() {
         <Body className="text-base font-semibold text-foreground">Plate Calculator</Body>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ ...SCREEN_CONTENT, paddingBottom: 40 }}>
         <PlateCalculator className="mt-2" />
         <Button variant="outline" className="mt-6" onPress={() => router.back()}>
           Done

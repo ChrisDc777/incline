@@ -52,9 +52,9 @@ export function SegmentedControl<T extends string>({
   }));
 
   return (
-    <View className={cn('relative flex-row rounded-xl bg-card p-1', className)}>
+    <View className={cn('relative flex-row rounded-xl bg-surface1 p-1', className)}>
       <Animated.View
-        className="absolute top-1 bottom-1 rounded-lg bg-primary"
+        className="absolute top-1 bottom-1 rounded-lg border border-border bg-surface2"
         style={[indicatorStyle, { left: 4 }]}
       />
       {values.map((v, i) => {
@@ -69,7 +69,7 @@ export function SegmentedControl<T extends string>({
             <Text
               className={cn(
                 'text-sm font-medium',
-                isSelected ? 'text-primary-foreground' : 'text-muted-foreground',
+                isSelected ? 'text-foreground' : 'text-muted-foreground',
               )}>
               {v.label}
             </Text>

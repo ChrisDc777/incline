@@ -5,7 +5,6 @@ import { LineChart } from 'react-native-gifted-charts';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/cn';
 import { useThemeHex } from '@/lib/theme';
-import { useAppColorScheme } from '@/lib/use-color-scheme';
 import { formatWeight } from '@/db/calc';
 import type { Unit } from '@/db/types';
 
@@ -19,8 +18,6 @@ export const ProgressionChart = memo(function ProgressionChart({
   unit: Unit;
   className?: string;
 }) {
-  const scheme = useAppColorScheme();
-  const isDark = scheme === 'dark';
   const colors = useThemeHex();
   if (points.length < 2) {
     return <Text className="text-sm text-muted-foreground">Log a few sessions to see your trend.</Text>;
@@ -44,10 +41,11 @@ export const ProgressionChart = memo(function ProgressionChart({
         xAxisLabelTextStyle={{ fontSize: 9, color: colors.mutedForeground }}
         yAxisLabelWidth={38}
         xAxisLabelsHeight={16}
-        rulesColor={isDark ? '#27272a' : '#f4f4f5'}
+        rulesColor={colors.border}
         showVerticalLines
         verticalLinesColor={colors.border}
         adjustToWidth
+        isAnimated
         pointerConfig={{
           pointerStripHeight: 130,
           pointerLabelComponent: (items: { value: number }[]) => (

@@ -5,7 +5,7 @@ import { useRouter, type Href } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import * as ImagePicker from 'expo-image-picker';
 import { documentDirectory, makeDirectoryAsync, copyAsync } from 'expo-file-system/legacy';
-import { Settings as SettingsIcon, Pencil, ChevronRight, Trash2, Info, Dumbbell, Flame, Layers, BarChart3, Ruler, Calendar, LogOut, Camera, Calculator, Weight } from 'lucide-react-native';
+import { Settings as SettingsIcon, Pencil, ChevronRight, Trash2, Info, Dumbbell, BarChart3, Ruler, Calendar, LogOut, Camera, Calculator, Weight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '@/components/common/icon';
 
@@ -22,6 +22,8 @@ import { useToast } from '@/components/ui/toast';
 import { saveProfile, clearWorkoutHistory } from '@/db/queries';
 import { GOAL_LABELS } from '@/lib/labels';
 import { formatVolume } from '@/db/calc';
+import { SCREEN_CONTENT } from '@/lib/layout';
+import { METRIC_ICONS } from '@/lib/metric-icons';
 import { hexToRgba, usePrimaryHex } from '@/lib/theme';
 import type { Goal } from '@/db/types';
 
@@ -92,7 +94,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={SCREEN_CONTENT}>
         <Heading>Profile</Heading>
 
         <View className="mt-4 overflow-hidden rounded-3xl">
@@ -103,7 +105,7 @@ export default function ProfileScreen() {
           >
             <View className="p-4">
               <View className="flex-row items-start gap-4">
-                <Pressable onPress={pickAvatar} className="relative">
+                <Pressable onPress={pickAvatar} accessibilityRole="button" accessibilityLabel="Change profile photo" className="relative">
                   <InitialsAvatar name={profile?.name ?? ''} uri={profile?.avatarUrl} size={80} />
                   <View className="absolute bottom-0 right-0 h-6 w-6 items-center justify-center rounded-full bg-primary">
                     <Icon icon={Camera} size={12} color="primary-foreground" />
@@ -118,7 +120,7 @@ export default function ProfileScreen() {
                   </Caption>
                 </View>
               </View>
-              <Button variant="outline" size="sm" className="mt-4" leftIcon={<Icon icon={Pencil} size={14} color="primary" />} onPress={openEdit}>
+              <Button variant="outline" size="sm" className="mt-4" leftIcon={<Icon icon={Pencil} size={14} color="muted-foreground" />} onPress={openEdit}>
                 Edit profile
               </Button>
             </View>
@@ -126,54 +128,54 @@ export default function ProfileScreen() {
         </View>
 
         <View className="mt-6 flex-row gap-3">
-          <StatCard label="Sessions" value={stats?.totalSessions ?? 0} icon={<Icon icon={Dumbbell} size={16} color="primary" />} />
-          <StatCard label="Volume" value={formatVolume(stats?.totalVolume ?? 0, unit)} icon={<Icon icon={Layers} size={16} color="info" />} />
-          <StatCard label="Streak" value={`${stats?.streak ?? 0}w`} icon={<Icon icon={Flame} size={16} color="warning" />} />
+          <StatCard label="Sessions" value={stats?.totalSessions ?? 0} icon={<Icon icon={METRIC_ICONS.sessions} size={16} color="muted-foreground" />} />
+          <StatCard label="Volume" value={formatVolume(stats?.totalVolume ?? 0, unit)} icon={<Icon icon={METRIC_ICONS.volume} size={16} color="info" />} />
+          <StatCard label="Sets" value={stats?.totalSets ?? 0} icon={<Icon icon={METRIC_ICONS.sets} size={16} color="muted-foreground" />} />
         </View>
 
-        <Caption className="mt-8 mb-3">Dashboard</Caption>
+        <Caption className="mb-3 mt-6">Dashboard</Caption>
         <View className="flex-row gap-3">
-          <Pressable onPress={() => router.push('/(app)/(tabs)/progress')} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-            <Icon icon={BarChart3} size={20} color="primary" />
+          <Pressable onPress={() => router.push('/(app)/(tabs)/progress')} accessibilityRole="button" accessibilityLabel="Statistics" className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={BarChart3} size={20} color="muted-foreground" />
             <Body className="font-medium text-foreground">Statistics</Body>
           </Pressable>
-          <Pressable onPress={() => router.push('/(app)/exercises' as Href)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-            <Icon icon={Dumbbell} size={20} color="primary" />
+          <Pressable onPress={() => router.push('/(app)/exercises' as Href)} accessibilityRole="button" accessibilityLabel="Exercises" className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={Dumbbell} size={20} color="muted-foreground" />
             <Body className="font-medium text-foreground">Exercises</Body>
           </Pressable>
         </View>
         <View className="mt-3 flex-row gap-3">
-          <Pressable onPress={() => router.push('/(app)/bodyweight' as Href)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-            <Icon icon={Ruler} size={20} color="primary" />
+          <Pressable onPress={() => router.push('/(app)/bodyweight' as Href)} accessibilityRole="button" accessibilityLabel="Measurements" className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={Ruler} size={20} color="muted-foreground" />
             <Body className="font-medium text-foreground">Measures</Body>
           </Pressable>
-          <Pressable onPress={() => router.push('/(app)/calendar' as Href)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-            <Icon icon={Calendar} size={20} color="primary" />
+          <Pressable onPress={() => router.push('/(app)/calendar' as Href)} accessibilityRole="button" accessibilityLabel="Calendar" className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={Calendar} size={20} color="muted-foreground" />
             <Body className="font-medium text-foreground">Calendar</Body>
           </Pressable>
         </View>
 
-        <Caption className="mt-8 mb-3">Tools</Caption>
+        <Caption className="mb-3 mt-6">Tools</Caption>
         <View className="flex-row gap-3">
-          <Pressable onPress={() => router.push('/(app)/calculator' as Href)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-            <Icon icon={Calculator} size={20} color="primary" />
+          <Pressable onPress={() => router.push('/(app)/calculator' as Href)} accessibilityRole="button" accessibilityLabel="1RM calculator" className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={Calculator} size={20} color="muted-foreground" />
             <Body className="font-medium text-foreground">1RM Calc</Body>
           </Pressable>
-          <Pressable onPress={() => router.push('/(app)/plate-calculator' as Href)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-            <Icon icon={Weight} size={20} color="primary" />
+          <Pressable onPress={() => router.push('/(app)/plate-calculator' as Href)} accessibilityRole="button" accessibilityLabel="Plate calculator" className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={Weight} size={20} color="muted-foreground" />
             <Body className="font-medium text-foreground">Plates</Body>
           </Pressable>
         </View>
 
-        <Caption className="mt-8 mb-3">Settings</Caption>
+        <Caption className="mb-3 mt-6">Settings</Caption>
         <View className="gap-2">
-          <Pressable onPress={() => router.push('/(app)/settings')} className="flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-            <Icon icon={SettingsIcon} size={20} color="primary" />
+          <Pressable onPress={() => router.push('/(app)/settings')} accessibilityRole="button" accessibilityLabel="Settings" className="flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={SettingsIcon} size={20} color="muted-foreground" />
             <Body className="flex-1 font-medium text-foreground">Settings</Body>
             <Icon icon={ChevronRight} size={18} color="muted-foreground" />
           </Pressable>
 
-          <Pressable onPress={() => setClearOpen(true)} className="flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => setClearOpen(true)} accessibilityRole="button" accessibilityLabel="Clear workout history" className="flex-row items-center gap-3 rounded-3xl border border-destructive/20 bg-destructive/10 p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Trash2} size={20} color="destructive" />
             <Body className="flex-1 font-medium text-foreground">Clear workout history</Body>
             <Icon icon={ChevronRight} size={18} color="muted-foreground" />
@@ -202,8 +204,8 @@ export default function ProfileScreen() {
             </View>
           )}
 
-          <Pressable onPress={async () => { await signOut(); router.replace('/(auth)/sign-in' as Href); }} className="flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-            <Icon icon={LogOut} size={20} color="destructive" />
+          <Pressable onPress={async () => { await signOut(); router.replace('/(auth)/sign-in' as Href); }} accessibilityRole="button" accessibilityLabel="Sign out" className="flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={LogOut} size={20} color="muted-foreground" />
             <Body className="flex-1 font-medium text-foreground">Sign out</Body>
           </Pressable>
         </View>

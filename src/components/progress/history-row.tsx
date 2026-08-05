@@ -1,10 +1,11 @@
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { Dumbbell, Clock, Weight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 import { cn } from '@/lib/cn';
 import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
+import { PressableCard } from '@/components/ui/card';
 import { formatDuration, formatFullDate, formatVolume } from '@/db/calc';
 import type { Unit, WorkoutLog } from '@/db/types';
 
@@ -12,13 +13,13 @@ import type { Unit, WorkoutLog } from '@/db/types';
 export function HistoryRow({ log, unit, className, onLongPress }: { log: WorkoutLog; unit: Unit; className?: string; onLongPress?: () => void }) {
   const router = useRouter();
   return (
-    <Pressable
-      className={cn('flex-row items-center gap-3 rounded-xl bg-card/50 px-3 py-2.5', className)}
+    <PressableCard
+      className={cn('flex-row items-center gap-3 rounded-xl border-0 bg-card/50 p-0 px-3 py-2.5', className)}
       onPress={() => router.push(`/summary/${log.id}`)}
       onLongPress={onLongPress}
-      android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-      <View className="h-11 w-11 items-center justify-center rounded-3xl bg-primary/15">
-        <Icon icon={Dumbbell} size={18} color="primary" />
+      accessibilityLabel={`Open ${log.name} summary`}>
+      <View className="h-11 w-11 items-center justify-center rounded-3xl bg-muted">
+        <Icon icon={Dumbbell} size={18} color="muted-foreground" />
       </View>
       <View className="flex-1">
         <Text className="text-base font-semibold text-foreground">{log.name}</Text>
@@ -34,6 +35,6 @@ export function HistoryRow({ log, unit, className, onLongPress }: { log: Workout
           <Text className="text-xs text-muted-foreground">{formatDuration(log.durationSeconds)}</Text>
         </View>
       </View>
-    </Pressable>
+    </PressableCard>
   );
 }

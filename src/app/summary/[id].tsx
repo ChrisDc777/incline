@@ -1,36 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Clock, Weight, Dumbbell, Medal, MoreHorizontal, PencilLine } from 'lucide-react-native';
+import { ArrowLeft, Clock, Medal, MoreHorizontal, PencilLine } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Body, Caption } from '@/components/common/text';
 import { Button } from '@/components/ui/button';
 import { InitialsAvatar } from '@/components/common/initials-avatar';
 import { SummaryStat } from '@/components/workout/summary-stat';
+import { ExerciseThumb } from '@/components/exercise/exercise-media';
 import { getWorkoutLog, getWorkoutMuscleSplit, type SessionWorkout, type SessionSet, type MuscleSplit } from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
 import { useProfile } from '@/hooks/use-data';
 import { formatDuration, formatVolume, formatWeight, formatFullDateTime } from '@/db/calc';
 import { MUSCLE_LABELS, muscleColor } from '@/lib/labels';
+import { useChartPalette } from '@/lib/accent-themes';
+import { METRIC_ICONS } from '@/lib/metric-icons';
 
-function ExerciseThumb({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
-  if (imageUrl) {
-    return (
-      <Image source={{ uri: imageUrl }} className="h-11 w-11 rounded-full bg-muted" style={{ resizeMode: 'cover' }} />
-    );
-  }
-  return (
-    <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/15">
-      <Icon icon={Dumbbell} size={18} color="primary" />
-    </View>
-  );
-}
-
-function MuscleSplitBar({ split, total }: { split: MuscleSplit; total: number }) {
-  const color = muscleColor(split.muscle);
+function MuscleSplitBar({ split }: { split: MuscleSplit; total: number }) {
+  const palette = useChartPalette();
+  const color = muscleColor(split.muscle, palette);
   return (
     <View className="mb-3">
       <View className="flex-row items-center justify-between mb-1">
@@ -134,8 +125,8 @@ export default function SummaryScreen() {
         {/* Stats row */}
         <View className="flex-row gap-3 mb-4">
           <SummaryStat label="Time" value={formatDuration(log.durationSeconds)} icon={<Icon icon={Clock} size={18} color="primary" />} />
-          <SummaryStat label="Volume" value={formatVolume(log.totalVolume, unit)} icon={<Icon icon={Weight} size={18} color="info" />} />
-          <SummaryStat label="Sets" value={`${completedSets}`} icon={<Icon icon={Dumbbell} size={18} color="warning" />} />
+          <SummaryStat label="Volume" value={formatVolume(log.totalVolume, unit)} icon={<Icon icon={METRIC_ICONS.volume} size={18} color="info" />} />
+          <SummaryStat label="Sets" value={`${completedSets}`} icon={<Icon icon={METRIC_ICONS.sets} size={18} color="warning" />} />
           {prCount > 0 ? (
             <SummaryStat label="Records" value={`${prCount}`} icon={<Icon icon={Medal} size={18} color="warning" />} />
           ) : null}
@@ -173,7 +164,7 @@ export default function SummaryScreen() {
                 className="flex-row items-center gap-3 mb-2"
                 accessibilityRole="button"
                 accessibilityLabel={`Open ${b.exerciseName} details`}>
-                <ExerciseThumb imageUrl={b.imageUrl} name={b.exerciseName} />
+                <ExerciseThumb uri={b.imageUrl} />
                 <Body className="flex-1 text-base font-semibold text-primary">{b.exerciseName}</Body>
               </Pressable>
               {/* Set table header */}

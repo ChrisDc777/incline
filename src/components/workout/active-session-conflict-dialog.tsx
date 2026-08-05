@@ -27,8 +27,8 @@ export function ActiveSessionConflictDialog({
       description="If you start a new workout, your old workout will be permanently deleted."
       footer={
         <View className="w-full gap-2">
-          <Button onPress={onResume}>Resume workout in progress</Button>
-          <Button variant="destructive" onPress={onStartNew}>
+          <Button variant="secondary" onPress={onResume}>Resume workout in progress</Button>
+          <Button onPress={onStartNew}>
             Start new workout
           </Button>
           <Button
