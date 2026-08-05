@@ -3,13 +3,15 @@
 Status: **pre-alpha**. The core loop (onboarding → log → finish → progress) is implemented and local-first. Items below are intentionally **not implemented yet**; the architecture leaves clear extension points for them.
 
 ## Data & infrastructure
-- **Incremental, idempotent database migrations.** Today `client.ts` runs idempotent `CREATE TABLE IF NOT EXISTS` statements and tracks `schema_meta.version`. Replace with an ordered migration runner (`migrations/0001_init.sql`, …) before schema changes ship.
+- ~~Incremental, idempotent database migrations~~ — **done** (`src/db/migrations/` runner + `schema_meta.version`).
+- ~~Split `db/queries` by domain~~ — **done** (`src/db/queries/` modules + barrel `index.ts`).
+- ~~Account binding~~ — **done** (`schema_meta.owner_user_id` via `src/db/account.ts`; account switch clears local user data).
 - **Materialized / cached workout statistics & PR calculations.** `getProgressStats` computes aggregates live; for large datasets, add a `stats_cache` table or incremental triggers.
 - **Full-text search (SQLite FTS5).** Enable the `expo-sqlite` `enableFTS` config plugin + a trigram tokenizer once we move to custom dev builds (it requires a native rebuild and breaks Expo Go). The current `LIKE` + fuzzy ranker covers the MVP catalog.
 
 ## Sync & accounts
 - ~~Email/password auth~~ — **done** (Clerk).
-- **Cloud sync** of `workout_logs` / `set_entries` / `user_profile`. `updated_at` is already on every row and `set_entries` is normalized, so sync diffs are feasible. `db/queries.ts` is the single swap point for a remote-backed implementation.
+- **Cloud sync** of `workout_logs` / `set_entries` / `user_profile`. `updated_at` is already on every row and `set_entries` is normalized, so sync diffs are feasible. Domain modules under `db/queries/` are the swap point for a remote-backed implementation.
 - **Offline sync conflict resolution & optimistic updates** (last-write-wins or CRDT-style per set).
 
 ## Product features
@@ -23,5 +25,5 @@ Status: **pre-alpha**. The core loop (onboarding → log → finish → progress
 
 ## Engineering
 - **Lint / typecheck baseline** — configured (`npm run lint`, `npm run typecheck`); one pre-existing `env.ts` lint error to clean up.
-- **Snapshot/interaction tests** for the component library and `queries.ts` (with an in-memory SQLite fixture).
+- **Snapshot/interaction tests** for the component library and more `queries/` coverage (calc + migration fixtures exist under `src/db/__tests__`).
 - **E2E** for the core journey (onboarding → start → log → finish → progress).

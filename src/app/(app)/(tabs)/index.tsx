@@ -12,6 +12,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { StatCard } from '@/components/common/stat-card';
 import { WorkoutFeedCard } from '@/components/workout/workout-feed-card';
 import { TemplatePickerSheet } from '@/components/workout/template-picker-sheet';
+import { ActiveSessionConflictDialog } from '@/components/workout/active-session-conflict-dialog';
 import { MuscleBadge } from '@/components/exercise/muscle-badge';
 import { CardSkeleton } from '@/components/common/skeleton';
 import { useProfile, useSuggestedTemplate, useProgressStats, useWorkoutFeedLogs } from '@/hooks/use-data';
@@ -280,18 +281,12 @@ export default function HomeScreen() {
 
       <TemplatePickerSheet open={pickerOpen} onOpenChange={setPickerOpen} onStart={handleTemplateStart} />
 
-      <Dialog
+      <ActiveSessionConflictDialog
         open={conflictOpen}
         onOpenChange={setConflictOpen}
-        title="You have a workout in progress"
-        description="If you start a new workout, your old workout will be permanently deleted."
-        footer={
-          <View className="w-full gap-2">
-            <Button onPress={resumeActive}>Resume workout in progress</Button>
-            <Button variant="destructive" onPress={startNewAndDiscard}>Start new workout</Button>
-            <Button variant="outline" onPress={() => { setConflictOpen(false); setPendingStart(null); }}>Cancel</Button>
-          </View>
-        }
+        onResume={resumeActive}
+        onStartNew={startNewAndDiscard}
+        onCancel={() => setPendingStart(null)}
       />
 
       <Dialog

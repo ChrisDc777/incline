@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
+import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Flame, Dumbbell, Layers, TrendingUp } from 'lucide-react-native';
@@ -142,7 +143,7 @@ export default function ProgressScreen() {
         }
         ListFooterComponent={
           history.loading && history.items.length > 0 ? (
-            <View className="py-4"><ActivityIndicator color="#16a34a" /></View>
+            <View className="py-4"><PrimaryActivityIndicator /></View>
           ) : null
         }
       />

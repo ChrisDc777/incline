@@ -1,9 +1,12 @@
-import { Pressable, useColorScheme, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, Dumbbell, BarChart3, User } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
 import { cn } from '@/lib/cn';
+import { themeHex } from '@/lib/theme';
+import { useAppColorScheme } from '@/lib/use-color-scheme';
+import { useSettings } from '@/store/settings-store';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/common/icon';
 
@@ -37,12 +40,14 @@ interface TabBarProps {
  */
 export function AppTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
-  const scheme = useColorScheme();
+  const scheme = useAppColorScheme();
+  const accent = useSettings((s) => s.accentTheme);
   const isDark = scheme === 'dark';
+  const colors = themeHex(scheme, accent);
 
   const tabBarBg = isDark ? 'bg-[#1c1c1e]' : 'bg-card';
   const borderCol = isDark ? 'border-[#2c2c2e]' : 'border-border';
-  const activeColor = '#16a34a';
+  const activeColor = colors.primary;
   const inactiveColor = '#8e8e93';
 
   return (

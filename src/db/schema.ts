@@ -4,10 +4,11 @@
  * are normalized into child tables so they can be indexed and queried directly
  * rather than parsing JSON at query time.
  *
- * Migrations: for the MVP we bump SCHEMA_VERSION and (in client.ts) could run
- * incremental migrations. A formal migration runner is deferred — see ROADMAP.md.
+ * Incremental schema changes live in `src/db/migrations/` and are applied by
+ * `runMigrations` in `client.ts`. Keep SCHEMA_VERSION in sync with the latest
+ * migration version.
  */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export const SCHEMA_STATEMENTS: string[] = [
   // ---- exercises (catalog) ----

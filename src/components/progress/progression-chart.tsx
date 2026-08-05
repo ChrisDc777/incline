@@ -1,9 +1,11 @@
 import { memo } from 'react';
-import { View, useColorScheme } from 'react-native';
+import { View } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
 
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/cn';
+import { useThemeHex } from '@/lib/theme';
+import { useAppColorScheme } from '@/lib/use-color-scheme';
 import { formatWeight } from '@/db/calc';
 import type { Unit } from '@/db/types';
 
@@ -17,8 +19,9 @@ export const ProgressionChart = memo(function ProgressionChart({
   unit: Unit;
   className?: string;
 }) {
-  const scheme = useColorScheme();
+  const scheme = useAppColorScheme();
   const isDark = scheme === 'dark';
+  const colors = useThemeHex();
   if (points.length < 2) {
     return <Text className="text-sm text-muted-foreground">Log a few sessions to see your trend.</Text>;
   }
@@ -30,20 +33,20 @@ export const ProgressionChart = memo(function ProgressionChart({
         height={160}
         width={300}
         thickness={2.5}
-        color="#16a34a"
+        color={colors.primary}
         hideDataPoints={points.length > 12}
-        dataPointsColor="#16a34a"
+        dataPointsColor={colors.primary}
         dataPointsRadius={3}
         areaChart
-        startFillColor="rgba(22,163,74,0.25)"
-        endFillColor="rgba(22,163,74,0.02)"
-        yAxisTextStyle={{ fontSize: 10, color: isDark ? '#a1a1aa' : '#71717a' }}
-        xAxisLabelTextStyle={{ fontSize: 9, color: isDark ? '#a1a1aa' : '#71717a' }}
+        startFillColor={`${colors.primary}40`}
+        endFillColor={`${colors.primary}05`}
+        yAxisTextStyle={{ fontSize: 10, color: colors.mutedForeground }}
+        xAxisLabelTextStyle={{ fontSize: 9, color: colors.mutedForeground }}
         yAxisLabelWidth={38}
         xAxisLabelsHeight={16}
         rulesColor={isDark ? '#27272a' : '#f4f4f5'}
         showVerticalLines
-        verticalLinesColor={isDark ? '#27272a' : '#e4e4e7'}
+        verticalLinesColor={colors.border}
         adjustToWidth
         pointerConfig={{
           pointerStripHeight: 130,

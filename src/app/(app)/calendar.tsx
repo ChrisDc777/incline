@@ -1,9 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, LayoutChangeEvent, Pressable, View, type ViewToken } from 'react-native';
+import { FlatList, LayoutChangeEvent, Pressable, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronRight, Flame, Moon } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
+import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 
 import { Body, Caption } from '@/components/common/text';
 import { Text } from '@/components/ui/text';
@@ -314,7 +315,7 @@ export default function CalendarScreen() {
 
       {showSpinner ? (
         <View pointerEvents="auto" className="absolute inset-0 z-50 items-center justify-center bg-background">
-          <ActivityIndicator color="#16a34a" />
+          <PrimaryActivityIndicator />
         </View>
       ) : null}
     </SafeAreaView>

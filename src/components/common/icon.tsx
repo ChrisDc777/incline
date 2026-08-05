@@ -1,7 +1,6 @@
 import { type ComponentProps } from 'react';
 import { type LucideIcon } from 'lucide-react-native';
-import { resolveIconColor, type IconColor } from '@/lib/icon-color';
-import { useAppColorScheme } from '@/lib/use-color-scheme';
+import { useIconColor, type IconColor } from '@/lib/icon-color';
 
 type IconProps = Omit<ComponentProps<LucideIcon>, 'color'> & {
   icon: LucideIcon;
@@ -9,6 +8,8 @@ type IconProps = Omit<ComponentProps<LucideIcon>, 'color'> & {
 };
 
 export function Icon({ icon: LucideIcon, color = 'primary', size = 20, ...rest }: IconProps) {
-  const isDark = useAppColorScheme() === 'dark';
-  return <LucideIcon size={size} color={resolveIconColor(color, isDark)} {...rest} />;
+  // Resolves token names (e.g. "primary") against the Settings accent + scheme.
+  // Raw hex/rgb strings pass through unchanged.
+  const resolved = useIconColor(color);
+  return <LucideIcon size={size} color={resolved} {...rest} />;
 }

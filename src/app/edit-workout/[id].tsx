@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Clock, Weight, Dumbbell, Calendar, Camera, Plus, Flame, Undo2 } from 'lucide-react-native';
+import { X, Clock, Weight, Dumbbell, Calendar, Plus, Flame, Undo2 } from 'lucide-react-native';
 import { DateTimePicker } from '@expo/ui/community/datetime-picker';
 import { Icon } from '@/components/common/icon';
+import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 
 import { Body, Caption } from '@/components/common/text';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ import {
 import { openDatabase } from '@/db/client';
 import { formatDuration, formatVolume, formatFullDateTime } from '@/db/calc';
 import type { Exercise, SetEntry } from '@/db/types';
+import { usePrimaryHex } from '@/lib/theme';
 
 function ExerciseThumb({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
   if (imageUrl) {
@@ -59,6 +61,7 @@ export default function EditWorkoutScreen() {
   const { toast } = useToast();
   const { impact } = useHaptics();
   const { unit } = useSettings();
+  const accentColor = usePrimaryHex();
   const [log, setLog] = useState<SessionWorkout | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -223,7 +226,7 @@ export default function EditWorkoutScreen() {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#16a34a" />
+        <PrimaryActivityIndicator />
       </SafeAreaView>
     );
   }
@@ -296,12 +299,6 @@ export default function EditWorkoutScreen() {
           </View>
         ) : null}
 
-        {/* Add photo/video placeholder */}
-        <Pressable className="mb-5 items-center justify-center rounded-xl border-2 border-dashed border-border py-8">
-          <Icon icon={Camera} size={24} color="muted-foreground" />
-          <Body className="mt-2 text-sm text-muted-foreground">Add a photo / video</Body>
-        </Pressable>
-
         {/* Notes */}
         <View className="mb-5">
           <Caption className="mb-1">Description</Caption>
@@ -341,14 +338,14 @@ export default function EditWorkoutScreen() {
                 value={draftDate ?? new Date(log.startedAt)}
                 mode="datetime"
                 display="inline"
-                accentColor="#16a34a"
+                accentColor={accentColor}
                 onValueChange={(_, d) => commitDateTime(d)}
               />
             ) : pickerStep === 'date' ? (
               <DateTimePicker
                 value={draftDate ?? new Date(log.startedAt)}
                 mode="date"
-                accentColor="#16a34a"
+                accentColor={accentColor}
                 positiveButton={{ label: 'Next' }}
                 onValueChange={(_, d) => {
                   setDraftDate(d);
@@ -360,7 +357,7 @@ export default function EditWorkoutScreen() {
               <DateTimePicker
                 value={draftDate ?? new Date(log.startedAt)}
                 mode="time"
-                accentColor="#16a34a"
+                accentColor={accentColor}
                 positiveButton={{ label: 'Done' }}
                 onValueChange={(_, t) => {
                   const combined = new Date(draftDate ?? new Date(log.startedAt));

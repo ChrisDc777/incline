@@ -65,20 +65,20 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Geist', 'system-ui', 'sans-serif'],
       },
     },
   },
   plugins: [
-    // Map font-weight utilities to the exact registered Inter faces so weights
+    // Map font-weight utilities to the exact registered Geist faces so weights
     // render crisply on both platforms (RN ignores fontWeight for custom fonts
     // unless the variant face is referenced by name).
     plugin(({ addUtilities }) => {
       addUtilities({
-        '.font-medium': { fontFamily: 'Inter-Medium', fontWeight: '500' },
-        '.font-semibold': { fontFamily: 'Inter-SemiBold', fontWeight: '600' },
-        '.font-bold': { fontFamily: 'Inter-Bold', fontWeight: '700' },
-        '.font-extrabold': { fontFamily: 'Inter-Bold', fontWeight: '800' },
+        '.font-medium': { fontFamily: 'Geist-Medium', fontWeight: '500' },
+        '.font-semibold': { fontFamily: 'Geist-SemiBold', fontWeight: '600' },
+        '.font-bold': { fontFamily: 'Geist-Bold', fontWeight: '700' },
+        '.font-extrabold': { fontFamily: 'Geist-Bold', fontWeight: '800' },
       });
     }),
   ],

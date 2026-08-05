@@ -37,6 +37,7 @@ export type Category = 'strength' | 'cardio' | 'mobility' | 'accessory';
 export type Goal = 'build_muscle' | 'gain_strength' | 'lose_fat' | 'improve_endurance';
 export type Unit = 'metric' | 'imperial';
 export type ThemeMode = 'system' | 'light' | 'dark';
+export type AccentTheme = 'indigo' | 'teal' | 'copper' | 'coral' | 'emerald';
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 
@@ -156,6 +157,8 @@ export interface UserProfile {
 export interface Settings {
   unit: Unit;
   themeMode: ThemeMode;
+  /** Brand accent (primary color). Independent of light/dark mode. */
+  accentTheme: AccentTheme;
   hapticsEnabled: boolean;
   /** Play sound + haptic when the rest timer finishes. */
   restSoundEnabled: boolean;

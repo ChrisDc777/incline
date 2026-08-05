@@ -1,6 +1,6 @@
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Moon, Sun, Smartphone, Vibrate, Ruler, Dumbbell, Bell, BellOff, Timer, Zap } from 'lucide-react-native';
+import { Moon, Sun, Smartphone, Vibrate, Ruler, Dumbbell, Bell, BellOff, Timer, Zap, Palette } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
@@ -10,6 +10,9 @@ import { Chip } from '@/components/common/chip';
 import { useSettings, DEFAULT_REST_OPTIONS } from '@/store/settings-store';
 import { useProfile } from '@/hooks/use-data';
 import { saveProfile } from '@/db/queries';
+import { ACCENT_THEME_LIST } from '@/lib/accent-themes';
+import { useAppColorScheme } from '@/lib/use-color-scheme';
+import { cn } from '@/lib/cn';
 import type { Unit } from '@/db/types';
 
 function Row({ icon, title, subtitle, children }: { icon: React.ReactNode; title: string; subtitle?: string; children: React.ReactNode }) {
@@ -27,11 +30,13 @@ function Row({ icon, title, subtitle, children }: { icon: React.ReactNode; title
 
 export default function SettingsScreen() {
   const {
-    unit, themeMode, hapticsEnabled,
+    unit, themeMode, accentTheme, hapticsEnabled,
     restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets,
-    setUnit, setThemeMode, setHaptics, setRestSound, setAutoStartRest, setDefaultRestSeconds, setShowWarmUpSets,
+    setUnit, setThemeMode, setAccentTheme, setHaptics, setRestSound, setAutoStartRest, setDefaultRestSeconds, setShowWarmUpSets,
   } = useSettings();
   const { data: profile, refetch } = useProfile();
+  const scheme = useAppColorScheme();
+  const selectedAccent = ACCENT_THEME_LIST.find((t) => t.id === accentTheme) ?? ACCENT_THEME_LIST[0];
 
   const changeUnit = (u: Unit) => {
     setUnit(u);
@@ -85,6 +90,45 @@ export default function SettingsScreen() {
               <Chip label="Dark" selected={themeMode === 'dark'} onPress={() => setThemeMode('dark')} />
             </View>
           </Row>
+          <View className="h-px bg-border/60" />
+          <View className="py-3">
+            <View className="mb-3 flex-row items-center gap-3">
+              <View className="h-9 w-9 items-center justify-center rounded-xl bg-muted">
+                <Icon icon={Palette} size={18} color="primary" />
+              </View>
+              <View className="flex-1">
+                <Body className="font-medium text-foreground">Accent</Body>
+                <Caption className="mt-0.5">{selectedAccent.description}</Caption>
+              </View>
+            </View>
+            <View className="flex-row flex-wrap gap-3 px-1">
+              {ACCENT_THEME_LIST.map((theme) => {
+                const selected = accentTheme === theme.id;
+                const swatch = scheme === 'dark' ? theme.hex.dark : theme.hex.light;
+                return (
+                  <Pressable
+                    key={theme.id}
+                    onPress={() => setAccentTheme(theme.id)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`${theme.label} accent`}
+                    className="items-center gap-1.5"
+                    style={{ width: 56 }}>
+                    <View
+                      className={cn(
+                        'h-10 w-10 items-center justify-center rounded-full border-2',
+                        selected ? 'border-foreground' : 'border-transparent',
+                      )}>
+                      <View className="h-8 w-8 rounded-full" style={{ backgroundColor: swatch }} />
+                    </View>
+                    <Caption className={cn('text-center text-[11px]', selected ? 'font-semibold text-foreground' : '')}>
+                      {theme.label}
+                    </Caption>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
         </Card>
 
         <Caption className="mb-1 mt-5 font-semibold uppercase tracking-wide">Feedback</Caption>

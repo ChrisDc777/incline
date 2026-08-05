@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { AppState, Pressable, useColorScheme, View } from 'react-native';
+import { AppState, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronUp, Trash2 } from 'lucide-react-native';
 
 import { cn } from '@/lib/cn';
+import { useThemeHex } from '@/lib/theme';
+import { useAppColorScheme } from '@/lib/use-color-scheme';
 import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
 import { formatDuration } from '@/db/calc';
@@ -30,8 +32,9 @@ export function ActiveSessionBar({
   className?: string;
 }) {
   const router = useRouter();
-  const scheme = useColorScheme();
+  const scheme = useAppColorScheme();
   const isDark = scheme === 'dark';
+  const colors = useThemeHex();
   const [elapsed, setElapsed] = useState(() => (startedAt ? Math.floor((Date.now() - startedAt) / 1000) : 0));
 
   useEffect(() => {
@@ -67,7 +70,7 @@ export function ActiveSessionBar({
         accessibilityLabel="Open workout"
         className={cn('h-14 w-14 items-center justify-center rounded-full', iconBg)}
         android_ripple={{ color: rippleColor }}>
-        <Icon icon={ChevronUp} size={30} color={isDark ? 'white' : '#16a34a'} />
+        <Icon icon={ChevronUp} size={30} color={isDark ? 'white' : colors.primary} />
       </Pressable>
 
       <Pressable

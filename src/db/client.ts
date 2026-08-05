@@ -1,12 +1,19 @@
 import * as SQLite from 'expo-sqlite';
 
 import { DB_NAME } from '@/constants/config';
+import { LATEST_SCHEMA_VERSION, runMigrations } from './migrations';
 import { SCHEMA_STATEMENTS, SCHEMA_VERSION } from './schema';
 import { seedDatabase } from './seed';
 import { seedFromSupabase } from './seed-supabase';
 
 let _db: SQLite.SQLiteDatabase | null = null;
 let _ready: Promise<SQLite.SQLiteDatabase> | null = null;
+
+if (SCHEMA_VERSION !== LATEST_SCHEMA_VERSION) {
+  console.warn(
+    `[db] SCHEMA_VERSION (${SCHEMA_VERSION}) != LATEST_SCHEMA_VERSION (${LATEST_SCHEMA_VERSION})`,
+  );
+}
 
 /**
  * Open (and lazily migrate + seed) the database. Returns a cached connection,
@@ -32,81 +39,15 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
       "SELECT value FROM schema_meta WHERE key = 'version'",
     );
     const current = meta ? Number(meta.value) : 0;
-    if (current < SCHEMA_VERSION) {
-      // v1 → v2: add is_custom column to exercises
-      if (current < 2) {
-        try {
-          await database.execAsync('ALTER TABLE exercises ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0');
-        } catch { /* column may already exist */ }
-        try {
-          await database.execAsync('ALTER TABLE exercises ADD COLUMN default_rest_seconds INTEGER NOT NULL DEFAULT 90');
-        } catch { /* column may already exist */ }
-        try {
-          await database.execAsync('ALTER TABLE user_profile ADD COLUMN experience_level TEXT NOT NULL DEFAULT \'intermediate\'');
-        } catch { /* column may already exist */ }
-      }
-      // v2 → v3: add ExerciseDB columns + exercise_images table
-      if (current < 3) {
-        try {
-          await database.execAsync('ALTER TABLE exercises ADD COLUMN source TEXT NOT NULL DEFAULT \'seed\'');
-        } catch { /* column may already exist */ }
-        try {
-          await database.execAsync('ALTER TABLE exercises ADD COLUMN external_id TEXT');
-        } catch { /* column may already exist */ }
-        try {
-          await database.execAsync('ALTER TABLE exercises ADD COLUMN difficulty TEXT NOT NULL DEFAULT \'intermediate\'');
-        } catch { /* column may already exist */ }
-        try {
-          await database.execAsync(`CREATE TABLE IF NOT EXISTS exercise_images (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            exercise_id INTEGER NOT NULL,
-            url TEXT NOT NULL,
-            is_primary INTEGER NOT NULL DEFAULT 0,
-            sort_order INTEGER NOT NULL DEFAULT 0,
-            FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
-          )`);
-          await database.execAsync('CREATE INDEX IF NOT EXISTS idx_exercise_images_exercise ON exercise_images(exercise_id, sort_order)');
-        } catch { /* table may already exist */ }
-      }
-      // v3 → v4: add avatar_url to user_profile
-      if (current < 4) {
-        try {
-          await database.execAsync('ALTER TABLE user_profile ADD COLUMN avatar_url TEXT');
-        } catch { /* column may already exist */ }
-      }
-      // v4 → v5: Rebuild exercises table with nullable columns for ExerciseGymGifsDB.
-      // SQLite can't ALTER column nullability, so we drop + recreate.
-      if (current < 5) {
-        await database.execAsync('DELETE FROM exercise_images');
-        await database.execAsync('DELETE FROM exercise_instructions');
-        await database.execAsync('DELETE FROM exercise_secondary_muscles');
-        await database.execAsync('DELETE FROM exercise_aliases');
-        await database.execAsync('DELETE FROM exercises');
-        await database.execAsync("DELETE FROM schema_meta WHERE key = 'seeded'");
-        await database.execAsync("DELETE FROM schema_meta WHERE key = 'supabase_seeded'");
-        // Recreate with correct schema
-        await database.execAsync(`CREATE TABLE IF NOT EXISTS exercises (
-          id INTEGER PRIMARY KEY,
-          name TEXT NOT NULL,
-          primary_muscle TEXT NOT NULL,
-          movement_pattern TEXT,
-          equipment TEXT NOT NULL,
-          category TEXT NOT NULL,
-          is_compound INTEGER NOT NULL DEFAULT 0,
-          is_custom INTEGER NOT NULL DEFAULT 0,
-          source TEXT NOT NULL DEFAULT 'seed',
-          external_id TEXT,
-          difficulty TEXT,
-          default_rest_seconds INTEGER NOT NULL DEFAULT 90,
-          tips TEXT,
-          created_at INTEGER NOT NULL,
-          updated_at INTEGER NOT NULL
-        )`);
-      }
+
+    if (current === 0) {
+      // Fresh install: CREATE IF NOT EXISTS already applied the latest schema.
       await database.runAsync(
         "INSERT INTO schema_meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         String(SCHEMA_VERSION),
       );
+    } else if (current < SCHEMA_VERSION) {
+      await runMigrations(database, current);
     }
 
     const seeded = await database.getFirstAsync<{ value: string }>(
@@ -119,11 +60,13 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
       );
     }
 
-    // Sync Supabase exercises into local SQLite for offline use.
-    // Runs on every launch — idempotent, backfills missing images/instructions for existing exercises.
-    await seedFromSupabase(database);
-
     _db = database;
+
+    // Catalog sync is offline-friendly and idempotent — do not block DB readiness.
+    void seedFromSupabase(database).catch((err) => {
+      console.warn('[db] Supabase exercise seed failed', err);
+    });
+
     return database;
   })();
   return _ready;
@@ -132,4 +75,10 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
 /** True once openDatabase() has resolved at least once. */
 export function isDatabaseReady(): boolean {
   return _db !== null;
+}
+
+/** Test helper: clear the cached connection (does not delete the file). */
+export function __resetDatabaseCacheForTests(): void {
+  _db = null;
+  _ready = null;
 }

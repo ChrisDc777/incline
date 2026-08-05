@@ -8,6 +8,12 @@
   }
 }
 
+/*
+ * Neutrals + semantic colors live on :root / .dark.
+ * Brand accent (primary / ring / chart-1) is set by theme-* classes so Settings
+ * can swap accents without touching the rest of the palette.
+ * Default accent: indigo (also applied via theme-indigo on the root View).
+ */
 :root {
   --background: 0 0% 100%;
   --foreground: 240 10% 3.9%;
@@ -15,8 +21,8 @@
   --card-foreground: 240 10% 3.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 240 10% 3.9%;
-  --primary: 142 69% 45%;
-  --primary-foreground: 240 10% 4%;
+  --primary: 246 90% 66%;
+  --primary-foreground: 0 0% 100%;
   --secondary: 240 4.8% 95.9%;
   --secondary-foreground: 240 5.9% 10%;
   --muted: 240 4.8% 95.9%;
@@ -33,8 +39,8 @@
   --info-foreground: 0 0% 100%;
   --border: 240 5.9% 90%;
   --input: 240 5.9% 90%;
-  --ring: 142 69% 45%;
-  --chart-1: 142 64% 45%;
+  --ring: 246 90% 66%;
+  --chart-1: 246 80% 60%;
   --chart-2: 217 91% 60%;
   --chart-3: 38 92% 50%;
   --chart-4: 280 65% 60%;
@@ -49,7 +55,7 @@
   --card-foreground: 0 0% 98%;
   --popover: 240 8% 6%;
   --popover-foreground: 0 0% 98%;
-  --primary: 142 69% 47%;
+  --primary: 246 85% 72%;
   --primary-foreground: 240 10% 4%;
   --secondary: 240 3.7% 15.9%;
   --secondary-foreground: 0 0% 98%;
@@ -67,11 +73,78 @@
   --info-foreground: 240 10% 4%;
   --border: 240 3.7% 16%;
   --input: 240 3.7% 18%;
-  --ring: 142 69% 47%;
-  --chart-1: 142 64% 48%;
+  --ring: 246 85% 72%;
+  --chart-1: 246 75% 68%;
   --chart-2: 217 91% 64%;
   --chart-3: 38 92% 56%;
   --chart-4: 280 65% 64%;
   --chart-5: 0 72% 58%;
   --radius: 0.9rem;
+}
+
+/* ---- Accent themes (override primary / ring / chart-1 only) ---- */
+
+.theme-indigo {
+  --primary: 246 90% 66%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 246 90% 66%;
+  --chart-1: 246 80% 60%;
+}
+.dark.theme-indigo {
+  --primary: 246 85% 72%;
+  --primary-foreground: 240 10% 4%;
+  --ring: 246 85% 72%;
+  --chart-1: 246 75% 68%;
+}
+
+.theme-teal {
+  --primary: 173 80% 32%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 173 80% 32%;
+  --chart-1: 173 70% 38%;
+}
+.dark.theme-teal {
+  --primary: 172 66% 50%;
+  --primary-foreground: 240 10% 4%;
+  --ring: 172 66% 50%;
+  --chart-1: 172 60% 52%;
+}
+
+.theme-copper {
+  --primary: 32 80% 57%;
+  --primary-foreground: 240 10% 4%;
+  --ring: 32 80% 57%;
+  --chart-1: 32 75% 52%;
+}
+.dark.theme-copper {
+  --primary: 32 85% 62%;
+  --primary-foreground: 240 10% 4%;
+  --ring: 32 85% 62%;
+  --chart-1: 32 80% 58%;
+}
+
+.theme-coral {
+  --primary: 0 100% 68%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 0 100% 68%;
+  --chart-1: 0 85% 62%;
+}
+.dark.theme-coral {
+  --primary: 0 90% 72%;
+  --primary-foreground: 240 10% 4%;
+  --ring: 0 90% 72%;
+  --chart-1: 0 80% 68%;
+}
+
+.theme-emerald {
+  --primary: 142 69% 45%;
+  --primary-foreground: 240 10% 4%;
+  --ring: 142 69% 45%;
+  --chart-1: 142 64% 45%;
+}
+.dark.theme-emerald {
+  --primary: 142 69% 47%;
+  --primary-foreground: 240 10% 4%;
+  --ring: 142 69% 47%;
+  --chart-1: 142 64% 48%;
 }

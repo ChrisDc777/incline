@@ -3,11 +3,13 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 
 import { STORAGE_KEYS } from '@/constants/config';
 import { kvStorage } from '@/db/kv';
-import type { Settings, Unit, ThemeMode } from '@/db/types';
+import type { Settings, Unit, ThemeMode, AccentTheme } from '@/db/types';
+import { DEFAULT_ACCENT_THEME, isAccentTheme } from '@/lib/accent-themes';
 
 interface SettingsState extends Settings {
   setUnit: (unit: Unit) => void;
   setThemeMode: (mode: ThemeMode) => void;
+  setAccentTheme: (accent: AccentTheme) => void;
   setHaptics: (enabled: boolean) => void;
   setRestSound: (enabled: boolean) => void;
   setAutoStartRest: (enabled: boolean) => void;
@@ -26,6 +28,7 @@ export const useSettings = create<SettingsState>()(
     (set) => ({
       unit: 'metric',
       themeMode: 'system',
+      accentTheme: DEFAULT_ACCENT_THEME,
       hapticsEnabled: true,
       restSoundEnabled: true,
       autoStartRest: true,
@@ -33,6 +36,7 @@ export const useSettings = create<SettingsState>()(
       showWarmUpSets: true,
       setUnit: (unit) => set({ unit }),
       setThemeMode: (themeMode) => set({ themeMode }),
+      setAccentTheme: (accentTheme) => set({ accentTheme }),
       setHaptics: (enabled) => set({ hapticsEnabled: enabled }),
       setRestSound: (enabled) => set({ restSoundEnabled: enabled }),
       setAutoStartRest: (enabled) => set({ autoStartRest: enabled }),
@@ -45,12 +49,21 @@ export const useSettings = create<SettingsState>()(
       partialize: (s) => ({
         unit: s.unit,
         themeMode: s.themeMode,
+        accentTheme: s.accentTheme,
         hapticsEnabled: s.hapticsEnabled,
         restSoundEnabled: s.restSoundEnabled,
         autoStartRest: s.autoStartRest,
         defaultRestSeconds: s.defaultRestSeconds,
         showWarmUpSets: s.showWarmUpSets,
       }),
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<Settings>;
+        return {
+          ...current,
+          ...p,
+          accentTheme: isAccentTheme(p.accentTheme) ? p.accentTheme : DEFAULT_ACCENT_THEME,
+        };
+      },
     },
   ),
 );

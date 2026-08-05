@@ -5,8 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppTabBar } from '@/components/common/app-tab-bar';
 import { ActiveSessionBar } from '@/components/workout/active-session-bar';
-import { Dialog } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { DiscardSessionDialog, ResumeSessionDialog } from '@/components/workout/discard-session-dialog';
 import { useActiveSession } from '@/hooks/use-active-session';
 import { discardWorkout } from '@/db/queries';
 import { useActiveWorkout } from '@/store/active-workout-store';
@@ -38,7 +37,7 @@ export default function TabsLayout() {
     setOpen(false);
     if (session) router.push(`/session/${session.id}`);
   };
-  const discard = async () => {
+  const discardFromPrompt = async () => {
     setOpen(false);
     if (session) {
       await discardWorkout(session.id);
@@ -79,32 +78,17 @@ export default function TabsLayout() {
         </View>
       ) : null}
 
-      <Dialog
+      <ResumeSessionDialog
         open={open}
         onOpenChange={setOpen}
-        title="Resume your workout?"
-        description="You have an unfinished session. Pick up where you left off, or discard it to start fresh."
-        footer={
-          <>
-            <Button variant="outline" onPress={discard}>
-              Discard
-            </Button>
-            <Button onPress={resume}>Resume</Button>
-          </>
-        }
+        onResume={resume}
+        onDiscard={discardFromPrompt}
       />
 
-      <Dialog
+      <DiscardSessionDialog
         open={discardOpen}
         onOpenChange={setDiscardOpen}
-        title="Discard workout?"
-        description="This session and all logged sets will be permanently deleted."
-        footer={
-          <>
-            <Button variant="outline" onPress={() => setDiscardOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onPress={handleDiscard}>Discard</Button>
-          </>
-        }
+        onConfirm={handleDiscard}
       />
     </>
   );

@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check, MessageSquarePlus, Pause, Play, Plus, Undo2, X, Dumbbell } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Body, Caption } from '@/components/common/text';
+import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Sheet } from '@/components/ui/sheet';
 import { ExerciseBlock } from '@/components/workout/exercise-block';
 import { ExercisePickerSheet } from '@/components/workout/exercise-picker-sheet';
+import { DiscardSessionDialog } from '@/components/workout/discard-session-dialog';
 import { RestTimer } from '@/components/workout/rest-timer';
 import { RestPresetBar } from '@/components/workout/rest-preset-bar';
 import { useRestTimer } from '@/hooks/use-rest-timer';
@@ -193,8 +195,22 @@ export default function SessionScreen() {
   }, [session, activeGroupIndex, loading]);
 
   const reload = () => load();
-  const onChangeWeight = async (setId: number, v: number) => { await updateSet(setId, { weight: v }); reload(); };
-  const onChangeReps = async (setId: number, v: number) => { await updateSet(setId, { reps: v }); reload(); };
+  const onChangeWeight = async (setId: number, v: number) => {
+    try {
+      await updateSet(setId, { weight: v });
+      reload();
+    } catch {
+      toast({ title: 'Could not save weight', variant: 'destructive' });
+    }
+  };
+  const onChangeReps = async (setId: number, v: number) => {
+    try {
+      await updateSet(setId, { reps: v });
+      reload();
+    } catch {
+      toast({ title: 'Could not save reps', variant: 'destructive' });
+    }
+  };
   const onChangeRestSeconds = (exerciseId: number, seconds: number) => {
     setRestSecondsMap((prev) => ({ ...prev, [exerciseId]: seconds }));
   };
@@ -222,7 +238,10 @@ export default function SessionScreen() {
           }
         : prev,
     );
-    updateSet(setId, { completed: next, restSeconds: restSec }).catch(() => {});
+    updateSet(setId, { completed: next, restSeconds: restSec }).catch(() => {
+      toast({ title: 'Could not save set', description: 'Please try again.', variant: 'destructive' });
+      reload();
+    });
     impact();
     if (next) {
       // Celebrate only a genuine record: heavier weight or better estimated
@@ -325,7 +344,7 @@ export default function SessionScreen() {
   if (loading)
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#16a34a" />
+        <PrimaryActivityIndicator />
       </SafeAreaView>
     );
   if (!session) {
@@ -430,7 +449,7 @@ export default function SessionScreen() {
         )}
 
         <Pressable
-          onPress={() => router.push('/(app)/plate-calculator' as any)}
+          onPress={() => router.push('/(app)/plate-calculator' as Href)}
           className="mb-3 flex-row items-center gap-2 rounded-xl bg-card px-4 py-3">
           <Icon icon={Dumbbell} size={16} color="primary" />
           <Body className="text-sm text-foreground">Plate calculator</Body>
@@ -507,18 +526,7 @@ export default function SessionScreen() {
           </>
         }
       />
-      <Dialog
-        open={discardOpen}
-        onOpenChange={setDiscardOpen}
-        title="Discard workout?"
-        description="This session and all logged sets will be permanently deleted."
-        footer={
-          <>
-            <Button variant="outline" onPress={() => setDiscardOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onPress={discard}>Discard</Button>
-          </>
-        }
-      />
+      <DiscardSessionDialog open={discardOpen} onOpenChange={setDiscardOpen} onConfirm={discard} />
 
       <Sheet open={timerSheetOpen} onOpenChange={setTimerSheetOpen} title="Workout Timer" snapPoints={['25%', '75%']} dynamicSizing={false}>
         <View className="items-center gap-3 py-2">

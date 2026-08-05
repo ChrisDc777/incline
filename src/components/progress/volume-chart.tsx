@@ -1,9 +1,11 @@
 import { memo } from 'react';
-import { View, useColorScheme } from 'react-native';
+import { View } from 'react-native';
 import { BarChart } from 'react-native-gifted-charts';
 
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/cn';
+import { useThemeHex } from '@/lib/theme';
+import { useAppColorScheme } from '@/lib/use-color-scheme';
 import { formatVolume } from '@/db/calc';
 import type { Unit } from '@/db/types';
 
@@ -19,8 +21,9 @@ export const VolumeChart = memo(function VolumeChart({
   height?: number;
   className?: string;
 }) {
-  const scheme = useColorScheme();
+  const scheme = useAppColorScheme();
   const isDark = scheme === 'dark';
+  const colors = useThemeHex();
   const max = Math.max(1, ...data.map((d) => d.value));
 
   if (data.length === 0) {
@@ -33,7 +36,7 @@ export const VolumeChart = memo(function VolumeChart({
     <View className={cn('overflow-hidden', className)}>
       <BarChart
         height={height}
-        data={data.map((d) => ({ value: d.value, label: d.label, frontColor: d.value > 0 ? '#16a34a' : (isDark ? '#3f3f46' : '#e4e4e7') }))}
+        data={data.map((d) => ({ value: d.value, label: d.label, frontColor: d.value > 0 ? colors.primary : colors.muted }))}
         barWidth={data.length > 12 ? 10 : 22}
         spacing={data.length > 12 ? 8 : 16}
         barBorderRadius={4}

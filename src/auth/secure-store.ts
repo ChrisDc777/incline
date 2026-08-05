@@ -14,22 +14,24 @@ export const secureTokenCache: TokenCache = {
   async getToken(key: string) {
     try {
       return await SecureStore.getItemAsync(key);
-    } catch {
+    } catch (err) {
+      console.warn('[secure-store] getToken failed', err);
       return null;
     }
   },
   async saveToken(key: string, value: string) {
     try {
       await SecureStore.setItemAsync(key, value);
-    } catch {
-      // Silently fail — Clerk will fall back to in-memory
+    } catch (err) {
+      // Clerk falls back to in-memory if persistence fails.
+      console.warn('[secure-store] saveToken failed', err);
     }
   },
   clearToken(key: string) {
     try {
       SecureStore.deleteItemAsync(key);
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.warn('[secure-store] clearToken failed', err);
     }
   },
 };
