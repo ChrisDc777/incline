@@ -28,6 +28,6 @@ export const CLERK_PUBLISHABLE_KEY = requireEnv(
 export const EXERCISEDB_API_KEY = optionalEnv(process.env.EXPO_PUBLIC_EXERCISEDB_API_KEY);
 export const EXERCISEDB_API_HOST = optionalEnv(process.env.EXPO_PUBLIC_EXERCISEDB_API_HOST);
 
-/* ---- Supabase (required for exercise library) ---- */
+/* ---- Supabase (optional — bundled fallback when unset) ---- */
 export const SUPABASE_URL = optionalEnv(process.env.EXPO_PUBLIC_SUPABASE_URL);
 export const SUPABASE_ANON_KEY = optionalEnv(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);

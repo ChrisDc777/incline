@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Image, Pressable, ScrollView, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Clock, Weight, Dumbbell, Medal, MoreHorizontal, PencilLine } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
@@ -86,7 +87,7 @@ export default function SummaryScreen() {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#16a34a" />
+        <PrimaryActivityIndicator />
       </SafeAreaView>
     );
   }
@@ -154,7 +155,7 @@ export default function SummaryScreen() {
         <View className="flex-row items-center justify-between mb-3">
           <Caption className="text-base font-semibold text-foreground">Workout</Caption>
           <Pressable
-            onPress={() => router.push({ pathname: '/edit-workout/[id]' as any, params: { id: String(logId) } })}
+            onPress={() => router.push({ pathname: '/edit-workout/[id]', params: { id: String(logId) } } as Href)}
             style={({ pressed }) => (pressed ? { opacity: 0.6 } : undefined)}
             className="flex-row items-center gap-1">
             <Icon icon={PencilLine} size={14} color="primary" />

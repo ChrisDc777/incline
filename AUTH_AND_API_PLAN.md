@@ -1,5 +1,7 @@
 # Incline — Auth & Exercise API Plan
 
+> **HISTORICAL / superseded.** Clerk auth shipped; accounts are mandatory. See `ROADMAP.md` for current direction.
+
 > Reference document captured on 2026-07-30 after a full project review.
 > This records the **current project state**, the **holistic fixes already
 > applied**, and the **plan + next steps** for adding authentication and an

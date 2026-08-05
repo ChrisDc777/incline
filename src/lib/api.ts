@@ -1,3 +1,4 @@
+// Offline import scripts / tooling only — not wired into the app UI.
 import { EXERCISEDB_API_KEY, EXERCISEDB_API_HOST } from './env';
 
 /* ---- Free tier types ---- */
@@ -78,7 +79,7 @@ async function paidFetch<T>(path: string): Promise<T> {
   const response = await fetch(`https://${host}${path}`, {
     headers: {
       'X-RapidAPI-Key': EXERCISEDB_API_KEY,
-      'X-RapidAPI-Host': EXERCISEDB_API_HOST,
+      'X-RapidAPI-Host': host,
     },
   });
   if (!response.ok) {

@@ -10,11 +10,11 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@expo/ui/community/bottom-sheet';
 import { ClerkProvider } from '@clerk/clerk-expo';
 import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from '@expo-google-fonts/inter';
+  Geist_400Regular,
+  Geist_500Medium,
+  Geist_600SemiBold,
+  Geist_700Bold,
+} from '@expo-google-fonts/geist';
 
 import { cn } from '@/lib/cn';
 import { CLERK_PUBLISHABLE_KEY } from '@/lib/env';
@@ -23,18 +23,29 @@ import { ToastProvider } from '@/components/ui/toast';
 import { ErrorBoundary } from '@/components/common/error-boundary';
 import { useDatabaseReady } from '@/hooks/use-database';
 import { useAppColorScheme } from '@/lib/use-color-scheme';
+import { useSettings } from '@/store/settings-store';
+import type { AccentTheme } from '@/db/types';
 
 SplashScreen.preventAutoHideAsync();
 
+const ACCENT_CLASS: Record<AccentTheme, string> = {
+  indigo: 'theme-indigo',
+  teal: 'theme-teal',
+  copper: 'theme-copper',
+  coral: 'theme-coral',
+  emerald: 'theme-emerald',
+};
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    Inter: Inter_400Regular,
-    'Inter-Medium': Inter_500Medium,
-    'Inter-SemiBold': Inter_600SemiBold,
-    'Inter-Bold': Inter_700Bold,
+    Geist: Geist_400Regular,
+    'Geist-Medium': Geist_500Medium,
+    'Geist-SemiBold': Geist_600SemiBold,
+    'Geist-Bold': Geist_700Bold,
   });
   const dbReady = useDatabaseReady();
   const scheme = useAppColorScheme();
+  const accentTheme = useSettings((s) => s.accentTheme);
 
   useEffect(() => {
     if (fontsLoaded && dbReady) SplashScreen.hideAsync();
@@ -53,7 +64,7 @@ export default function RootLayout() {
           <StatusBar style={isDark ? 'light' : 'dark'} />
           <GestureHandlerRootView style={{ flex: 1 }}>
             <BottomSheetModalProvider>
-              <View className={cn('flex-1', isDark && 'dark')}>
+              <View className={cn('flex-1', isDark && 'dark', ACCENT_CLASS[accentTheme])}>
                 <ToastProvider>
                   <Stack screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="index" />
@@ -64,6 +75,7 @@ export default function RootLayout() {
                     <Stack.Screen name="workout/[id]" options={{ headerShown: true, title: 'Workout' }} />
                     <Stack.Screen name="session/[id]" options={{ headerShown: true, title: 'Workout' }} />
                     <Stack.Screen name="summary/[id]" options={{ headerShown: true, title: 'Summary' }} />
+                    <Stack.Screen name="edit-workout/[id]" options={{ headerShown: true, title: 'Edit Workout' }} />
                     <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
                   </Stack>
                 </ToastProvider>

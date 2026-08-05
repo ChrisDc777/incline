@@ -16,7 +16,7 @@ A workout tracker built with React Native + Expo. Log sets with per-exercise res
 - **Exercise library** — Large catalog with muscles, equipment, and instructions (Supabase-backed, with a bundled fallback catalog)
 - **Home feed** — Recent workout history with stats and a "no workouts yet" first-run state
 - **Tools** — Plate calculator (bar type + include-bar toggle), 1RM / bodyweight calculators, calendar
-- **Preferences** — kg/lb unit toggle, dark/light/system theme, haptics, warm-up sets, auto-start rest, default rest duration
+- **Preferences** — kg/lb unit toggle, dark/light/system theme, accent color (indigo default + alternatives), haptics, warm-up sets, auto-start rest, default rest duration
 - **Offline-first** — Everything is stored locally in SQLite; works without internet
 
 ## Tech Stack
@@ -34,7 +34,7 @@ A workout tracker built with React Native + Expo. Log sets with per-exercise res
 | Animations | React Native Reanimated |
 | Charts | react-native-gifted-charts |
 | Lists | FlashList |
-| Fonts | Inter (`@expo-google-fonts`) |
+| Fonts | Geist (`@expo-google-fonts/geist`) |
 
 ## Getting Started
 
@@ -113,6 +113,7 @@ Local SQLite database (all user data lives on-device):
 npm run typecheck    # TypeScript type checking
 npm run lint         # ESLint
 npm run lint:fix     # ESLint with auto-fix
+npm test             # Unit tests (calc helpers, migrations, session SQL)
 ```
 
 ## License

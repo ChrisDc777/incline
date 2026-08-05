@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Dumbbell, Plus, Search, ClipboardList, Play, Pencil, Trash2 } from 'lucide-react-native';
@@ -15,6 +15,7 @@ import { EmptyState, ErrorState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
 import { WorkoutCard } from '@/components/workout/workout-card';
 import { ProgramCard } from '@/components/workout/program-card';
+import { ActiveSessionConflictDialog } from '@/components/workout/active-session-conflict-dialog';
 import { useTemplateSummaries, usePrograms } from '@/hooks/use-data';
 import { useActiveSession } from '@/hooks/use-active-session';
 import { useActiveWorkout } from '@/store/active-workout-store';
@@ -99,7 +100,7 @@ export default function WorkoutsScreen() {
     }
   };
 
-  const openNewRoutine = () => router.push({ pathname: '/(app)/template/[id]' as any, params: { id: 'new' } });
+  const openNewRoutine = () => router.push({ pathname: '/(app)/template/[id]', params: { id: 'new' } } as Href);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
@@ -186,7 +187,7 @@ export default function WorkoutsScreen() {
         <FlashList
           data={programs.data ?? []}
           renderItem={({ item }) => (
-            <Pressable onPress={() => router.push({ pathname: '/(app)/program/[id]' as any, params: { id: String(item.id) } })}>
+            <Pressable onPress={() => router.push({ pathname: '/(app)/program/[id]', params: { id: String(item.id) } } as Href)}>
               <ProgramCard program={item} />
             </Pressable>
           )}
@@ -217,7 +218,7 @@ export default function WorkoutsScreen() {
           </Pressable>
           <Pressable
             onPress={() => {
-              if (menuTarget) router.push({ pathname: '/(app)/template/[id]' as any, params: { id: String(menuTarget.template.id) } });
+              if (menuTarget) router.push({ pathname: '/(app)/template/[id]', params: { id: String(menuTarget.template.id) } } as Href);
               setMenuTarget(null);
             }}
             className="flex-row items-center gap-3 rounded-xl p-3"
@@ -238,18 +239,12 @@ export default function WorkoutsScreen() {
         </View>
       </Sheet>
 
-      <Dialog
+      <ActiveSessionConflictDialog
         open={conflictOpen}
         onOpenChange={setConflictOpen}
-        title="You have a workout in progress"
-        description="If you start a new workout, your old workout will be permanently deleted."
-        footer={
-          <View className="w-full gap-2">
-            <Button onPress={resumeActive}>Resume workout in progress</Button>
-            <Button variant="destructive" onPress={startNewAndDiscard}>Start new workout</Button>
-            <Button variant="outline" onPress={() => { setConflictOpen(false); setPendingStart(null); }}>Cancel</Button>
-          </View>
-        }
+        onResume={resumeActive}
+        onStartNew={startNewAndDiscard}
+        onCancel={() => setPendingStart(null)}
       />
 
       <Dialog

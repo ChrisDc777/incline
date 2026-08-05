@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, View, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import * as ImagePicker from 'expo-image-picker';
 import { documentDirectory, makeDirectoryAsync, copyAsync } from 'expo-file-system/legacy';
@@ -22,12 +22,14 @@ import { useToast } from '@/components/ui/toast';
 import { saveProfile, clearWorkoutHistory } from '@/db/queries';
 import { GOAL_LABELS } from '@/lib/labels';
 import { formatVolume } from '@/db/calc';
+import { hexToRgba, usePrimaryHex } from '@/lib/theme';
 import type { Goal } from '@/db/types';
 
 const GOALS: Goal[] = ['build_muscle', 'gain_strength', 'lose_fat', 'improve_endurance'];
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const primary = usePrimaryHex();
   const { toast } = useToast();
   const { unit } = useSettings();
   const { data: profile, refetch } = useProfile();
@@ -95,7 +97,7 @@ export default function ProfileScreen() {
 
         <View className="mt-4 overflow-hidden rounded-3xl">
           <LinearGradient
-            colors={['rgba(22,163,74,0.12)', 'rgba(22,163,74,0.02)']}
+            colors={[hexToRgba(primary, 0.14), hexToRgba(primary, 0.02)]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
@@ -135,17 +137,17 @@ export default function ProfileScreen() {
             <Icon icon={BarChart3} size={20} color="primary" />
             <Body className="font-medium text-foreground">Statistics</Body>
           </Pressable>
-          <Pressable onPress={() => router.push('/(app)/exercises' as any)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => router.push('/(app)/exercises' as Href)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Dumbbell} size={20} color="primary" />
             <Body className="font-medium text-foreground">Exercises</Body>
           </Pressable>
         </View>
         <View className="mt-3 flex-row gap-3">
-          <Pressable onPress={() => router.push('/(app)/bodyweight' as any)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => router.push('/(app)/bodyweight' as Href)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Ruler} size={20} color="primary" />
             <Body className="font-medium text-foreground">Measures</Body>
           </Pressable>
-          <Pressable onPress={() => router.push('/(app)/calendar' as any)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => router.push('/(app)/calendar' as Href)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Calendar} size={20} color="primary" />
             <Body className="font-medium text-foreground">Calendar</Body>
           </Pressable>
@@ -153,11 +155,11 @@ export default function ProfileScreen() {
 
         <Caption className="mt-8 mb-3">Tools</Caption>
         <View className="flex-row gap-3">
-          <Pressable onPress={() => router.push('/(app)/calculator' as any)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => router.push('/(app)/calculator' as Href)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Calculator} size={20} color="primary" />
             <Body className="font-medium text-foreground">1RM Calc</Body>
           </Pressable>
-          <Pressable onPress={() => router.push('/(app)/plate-calculator' as any)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={() => router.push('/(app)/plate-calculator' as Href)} className="flex-1 flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Weight} size={20} color="primary" />
             <Body className="font-medium text-foreground">Plates</Body>
           </Pressable>
@@ -200,7 +202,7 @@ export default function ProfileScreen() {
             </View>
           )}
 
-          <Pressable onPress={async () => { await signOut(); router.replace('/(auth)/sign-in' as any); }} className="flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+          <Pressable onPress={async () => { await signOut(); router.replace('/(auth)/sign-in' as Href); }} className="flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={LogOut} size={20} color="destructive" />
             <Body className="flex-1 font-medium text-foreground">Sign out</Body>
           </Pressable>

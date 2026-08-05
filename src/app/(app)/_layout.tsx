@@ -9,6 +9,11 @@ export default function AppLayout() {
       <Stack.Screen name="settings" options={{ headerShown: true, title: 'Settings' }} />
       <Stack.Screen name="template/[id]" options={{ headerShown: true, title: 'Routine' }} />
       <Stack.Screen name="program/[id]" options={{ headerShown: true, title: 'Program' }} />
+      <Stack.Screen name="bodyweight" options={{ headerShown: true, title: 'Measurements' }} />
+      <Stack.Screen name="calendar" options={{ headerShown: true, title: 'Calendar' }} />
+      <Stack.Screen name="calculator" options={{ headerShown: true, title: '1RM Calculator' }} />
+      <Stack.Screen name="plate-calculator" options={{ headerShown: true, title: 'Plate Calculator' }} />
+      <Stack.Screen name="day/[ms]" options={{ headerShown: true, title: 'Day' }} />
     </Stack>
   );
 }

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useRouter, useNavigation, type Href } from 'expo-router';
 import { Clock, Dumbbell, Play } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
@@ -8,10 +8,10 @@ import { Heading, Body, Caption } from '@/components/common/text';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog } from '@/components/ui/dialog';
 import { ErrorState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
 import { MuscleBadge } from '@/components/exercise/muscle-badge';
+import { ActiveSessionConflictDialog } from '@/components/workout/active-session-conflict-dialog';
 import { useTemplate } from '@/hooks/use-data';
 import { useActiveSession } from '@/hooks/use-active-session';
 import { useActiveWorkout } from '@/store/active-workout-store';
@@ -128,23 +128,16 @@ export default function WorkoutPreviewScreen() {
         <Button size="lg" leftIcon={<Icon icon={Play} size={18} color="primary-foreground" />} onPress={start} disabled={starting}>
           {starting ? 'Starting…' : 'Start workout'}
         </Button>
-        <Button variant="outline" className="mt-2" onPress={() => router.push({ pathname: '/(app)/template/[id]' as any, params: { id: String(templateId) } })}>
+        <Button variant="outline" className="mt-2" onPress={() => router.push({ pathname: '/(app)/template/[id]', params: { id: String(templateId) } } as Href)}>
           Edit routine
         </Button>
       </View>
 
-      <Dialog
+      <ActiveSessionConflictDialog
         open={conflictOpen}
         onOpenChange={setConflictOpen}
-        title="You have a workout in progress"
-        description="If you start a new workout, your old workout will be permanently deleted."
-        footer={
-          <View className="w-full gap-2">
-            <Button onPress={resumeActive}>Resume workout in progress</Button>
-            <Button variant="destructive" onPress={startNewAndDiscard}>Start new workout</Button>
-            <Button variant="outline" onPress={() => setConflictOpen(false)}>Cancel</Button>
-          </View>
-        }
+        onResume={resumeActive}
+        onStartNew={startNewAndDiscard}
       />
     </ScrollView>
   );

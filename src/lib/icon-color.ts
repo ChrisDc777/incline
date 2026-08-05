@@ -1,10 +1,26 @@
+import { ACCENT_THEMES, DEFAULT_ACCENT_THEME, type AccentTheme } from '@/lib/accent-themes';
+import { useSettings } from '@/store/settings-store';
 import { useAppColorScheme } from '@/lib/use-color-scheme';
 
-export type IconColor = 'primary' | 'primary-foreground' | 'secondary-foreground' | 'muted-foreground' | 'destructive' | 'destructive-foreground' | 'success' | 'success-foreground' | 'warning' | 'warning-foreground' | 'info' | 'info-foreground' | 'foreground' | 'card-foreground' | 'accent-foreground' | 'border';
+export type IconColor =
+  | 'primary'
+  | 'primary-foreground'
+  | 'secondary-foreground'
+  | 'muted-foreground'
+  | 'destructive'
+  | 'destructive-foreground'
+  | 'success'
+  | 'success-foreground'
+  | 'warning'
+  | 'warning-foreground'
+  | 'info'
+  | 'info-foreground'
+  | 'foreground'
+  | 'card-foreground'
+  | 'accent-foreground'
+  | 'border';
 
-const LIGHT: Record<IconColor, string> = {
-  primary: 'hsl(142 69% 45%)',
-  'primary-foreground': 'hsl(240 10% 4%)',
+const LIGHT_BASE: Record<Exclude<IconColor, 'primary' | 'primary-foreground'>, string> = {
   'secondary-foreground': 'hsl(240 5.9% 10%)',
   'muted-foreground': 'hsl(240 3.8% 46.1%)',
   destructive: 'hsl(0 72% 51%)',
@@ -21,9 +37,7 @@ const LIGHT: Record<IconColor, string> = {
   border: 'hsl(240 5.9% 90%)',
 };
 
-const DARK: Record<IconColor, string> = {
-  primary: 'hsl(142 69% 47%)',
-  'primary-foreground': 'hsl(240 10% 4%)',
+const DARK_BASE: Record<Exclude<IconColor, 'primary' | 'primary-foreground'>, string> = {
   'secondary-foreground': 'hsl(0 0% 98%)',
   'muted-foreground': 'hsl(240 5% 64.9%)',
   destructive: 'hsl(0 62.8% 50%)',
@@ -40,12 +54,30 @@ const DARK: Record<IconColor, string> = {
   border: 'hsl(240 3.7% 16%)',
 };
 
-export function resolveIconColor(color: IconColor | string, isDark: boolean): string {
-  const map = isDark ? DARK : LIGHT;
-  return map[color as IconColor] ?? color;
+export function resolveIconColor(
+  color: IconColor | string,
+  isDark: boolean,
+  accent: AccentTheme = DEFAULT_ACCENT_THEME,
+): string {
+  if (color === 'primary') {
+    const channels = isDark
+      ? (ACCENT_THEMES[accent] ?? ACCENT_THEMES.indigo).dark.primary
+      : (ACCENT_THEMES[accent] ?? ACCENT_THEMES.indigo).light.primary;
+    return `hsl(${channels})`;
+  }
+  if (color === 'primary-foreground') {
+    // Match CSS per accent: dark ink on copper/emerald (light) and most dark primaries;
+    // white on indigo/teal/coral in light mode.
+    if (isDark) return 'hsl(240 10% 4%)';
+    if (accent === 'copper' || accent === 'emerald') return 'hsl(240 10% 4%)';
+    return 'hsl(0 0% 100%)';
+  }
+  const map = isDark ? DARK_BASE : LIGHT_BASE;
+  return map[color as keyof typeof map] ?? color;
 }
 
 export function useIconColor(color: IconColor | string): string {
   const isDark = useAppColorScheme() === 'dark';
-  return resolveIconColor(color, isDark);
+  const accent = useSettings((s) => s.accentTheme);
+  return resolveIconColor(color, isDark, accent);
 }

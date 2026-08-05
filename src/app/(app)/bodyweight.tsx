@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
 import { addBodyweightEntry, getBodyweightEntries, deleteBodyweightEntry } from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
+import { hexToRgba, useThemeHex } from '@/lib/theme';
 import { cn } from '@/lib/cn';
 
 interface Entry {
@@ -44,6 +45,7 @@ function getRangeMs(range: TimeRange): number {
 }
 
 function MiniChart({ data, unit }: { data: Entry[]; unit: string }) {
+  const colors = useThemeHex();
   if (data.length < 2) {
     return (
       <View className="mt-4 items-center justify-center rounded-2xl border border-border/60 bg-card px-4 py-10">
@@ -67,16 +69,16 @@ function MiniChart({ data, unit }: { data: Entry[]; unit: string }) {
         height={120}
         width={300}
         thickness={2}
-        color="#3b82f6"
+        color={colors.primary}
         areaChart
-        startFillColor="rgba(59,130,246,0.25)"
-        endFillColor="rgba(59,130,246,0.02)"
+        startFillColor={hexToRgba(colors.primary, 0.25)}
+        endFillColor={hexToRgba(colors.primary, 0.02)}
         hideDataPoints={points.length > 15}
         adjustToWidth
-        yAxisTextStyle={{ fontSize: 10, color: '#71717a' }}
-        xAxisLabelTextStyle={{ fontSize: 9, color: '#9ca3af' }}
+        yAxisTextStyle={{ fontSize: 10, color: colors.mutedForeground }}
+        xAxisLabelTextStyle={{ fontSize: 9, color: colors.mutedForeground }}
         yAxisLabelWidth={40}
-        rulesColor="#27272a"
+        rulesColor={colors.border}
       />
       <View className="mt-2 flex-row justify-between">
         <Caption>{minW.toFixed(1)} {unit}</Caption>
@@ -96,8 +98,8 @@ function TimeRangeDropdown({ value, onChange }: { value: TimeRange; onChange: (v
         onPress={() => setOpen(true)}
         className="flex-row items-center gap-1"
       >
-        <Text className="text-sm font-medium text-blue-500">{label}</Text>
-        <Icon icon={ChevronDown} size={14} color="blue-500" />
+        <Text className="text-sm font-medium text-primary">{label}</Text>
+        <Icon icon={ChevronDown} size={14} color="primary" />
       </Pressable>
 
       <Dialog open={open} onOpenChange={setOpen} title="Time range">

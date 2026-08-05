@@ -1,3 +1,4 @@
+// Offline import scripts / tooling only — not wired into the app UI.
 import { openDatabase } from './client';
 import { fetchExercises, type ExerciseDbExercise } from '@/lib/api';
 import type { Equipment, MuscleGroup, MovementPattern } from './types';

@@ -1,11 +1,7 @@
 import { Switch as NativeSwitch } from 'react-native';
 
+import { useThemeHex } from '@/lib/theme';
 import { useAppColorScheme } from '@/lib/use-color-scheme';
-
-const PRIMARY_LIGHT = '#16a34a';
-const PRIMARY_DARK = '#22c55e';
-const TRACK_OFF_LIGHT = '#e4e4e7';
-const TRACK_OFF_DARK = '#27272a';
 
 /**
  * Native platform switch. Immediate response, no custom animation —
@@ -22,7 +18,8 @@ export function Switch({
   disabled?: boolean;
   accessibilityLabel?: string;
 }) {
-  const isDark = useAppColorScheme() === 'dark';
+  const scheme = useAppColorScheme();
+  const colors = useThemeHex();
   return (
     <NativeSwitch
       value={value}
@@ -30,8 +27,8 @@ export function Switch({
       disabled={disabled}
       accessibilityLabel={accessibilityLabel}
       trackColor={{
-        true: isDark ? PRIMARY_DARK : PRIMARY_LIGHT,
-        false: isDark ? TRACK_OFF_DARK : TRACK_OFF_LIGHT,
+        true: colors.primary,
+        false: scheme === 'dark' ? '#27272a' : colors.muted,
       }}
       thumbColor="#ffffff"
     />

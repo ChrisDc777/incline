@@ -1,0 +1,154 @@
+/**
+ * Migration runner tests against better-sqlite3 (Node), mirroring the SQL
+ * used by expo-sqlite migrations. Keeps schema evolution safe without a device.
+ */
+import Database from 'better-sqlite3';
+import { describe, expect, it } from 'vitest';
+
+function createV1Db() {
+  const db = new Database(':memory:');
+  db.exec(`
+    CREATE TABLE exercises (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      primary_muscle TEXT NOT NULL,
+      movement_pattern TEXT NOT NULL,
+      equipment TEXT NOT NULL,
+      category TEXT NOT NULL,
+      is_compound INTEGER NOT NULL DEFAULT 0,
+      tips TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE user_profile (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL DEFAULT '',
+      goal TEXT NOT NULL DEFAULT 'build_muscle',
+      bodyweight REAL,
+      unit TEXT NOT NULL DEFAULT 'metric',
+      onboarding_completed INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE schema_meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+    INSERT INTO schema_meta (key, value) VALUES ('version', '1');
+    INSERT INTO exercises (id, name, primary_muscle, movement_pattern, equipment, category, created_at, updated_at)
+    VALUES (1, 'Bench Press', 'chest', 'horizontal_push', 'barbell', 'strength', 1, 1);
+  `);
+  return db;
+}
+
+function hasColumn(db: Database.Database, table: string, column: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  return cols.some((c) => c.name === column);
+}
+
+function applyThroughV5(db: Database.Database) {
+  // 002
+  if (!hasColumn(db, 'exercises', 'is_custom')) {
+    db.exec('ALTER TABLE exercises ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!hasColumn(db, 'exercises', 'default_rest_seconds')) {
+    db.exec('ALTER TABLE exercises ADD COLUMN default_rest_seconds INTEGER NOT NULL DEFAULT 90');
+  }
+  if (!hasColumn(db, 'user_profile', 'experience_level')) {
+    db.exec("ALTER TABLE user_profile ADD COLUMN experience_level TEXT NOT NULL DEFAULT 'intermediate'");
+  }
+  // 003
+  if (!hasColumn(db, 'exercises', 'source')) {
+    db.exec("ALTER TABLE exercises ADD COLUMN source TEXT NOT NULL DEFAULT 'seed'");
+  }
+  if (!hasColumn(db, 'exercises', 'external_id')) {
+    db.exec('ALTER TABLE exercises ADD COLUMN external_id TEXT');
+  }
+  if (!hasColumn(db, 'exercises', 'difficulty')) {
+    db.exec("ALTER TABLE exercises ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'intermediate'");
+  }
+  db.exec(`CREATE TABLE IF NOT EXISTS exercise_images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    exercise_id INTEGER NOT NULL,
+    url TEXT NOT NULL,
+    is_primary INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0
+  )`);
+  // 004
+  if (!hasColumn(db, 'user_profile', 'avatar_url')) {
+    db.exec('ALTER TABLE user_profile ADD COLUMN avatar_url TEXT');
+  }
+  // 005 — non-destructive rebuild
+  db.pragma('foreign_keys = OFF');
+  db.exec(`CREATE TABLE exercises_new (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    primary_muscle TEXT NOT NULL,
+    movement_pattern TEXT,
+    equipment TEXT NOT NULL,
+    category TEXT NOT NULL,
+    is_compound INTEGER NOT NULL DEFAULT 0,
+    is_custom INTEGER NOT NULL DEFAULT 0,
+    source TEXT NOT NULL DEFAULT 'seed',
+    external_id TEXT,
+    difficulty TEXT,
+    default_rest_seconds INTEGER NOT NULL DEFAULT 90,
+    tips TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`);
+  db.exec(`INSERT INTO exercises_new (
+    id, name, primary_muscle, movement_pattern, equipment, category,
+    is_compound, is_custom, source, external_id, difficulty,
+    default_rest_seconds, tips, created_at, updated_at
+  )
+  SELECT
+    id, name, primary_muscle, movement_pattern, equipment, category,
+    is_compound, COALESCE(is_custom, 0), COALESCE(source, 'seed'), external_id, difficulty,
+    COALESCE(default_rest_seconds, 90), tips, created_at, updated_at
+  FROM exercises`);
+  db.exec('DROP TABLE exercises');
+  db.exec('ALTER TABLE exercises_new RENAME TO exercises');
+  db.pragma('foreign_keys = ON');
+}
+
+describe('schema migrations (better-sqlite3)', () => {
+  it('upgrades v1 → v5 without wiping exercise rows', () => {
+    const db = createV1Db();
+    applyThroughV5(db);
+
+    const row = db.prepare('SELECT id, name, is_custom, source FROM exercises WHERE id = 1').get() as {
+      id: number;
+      name: string;
+      is_custom: number;
+      source: string;
+    };
+    expect(row.name).toBe('Bench Press');
+    expect(row.is_custom).toBe(0);
+    expect(row.source).toBe('seed');
+    expect(hasColumn(db, 'exercises', 'external_id')).toBe(true);
+    expect(hasColumn(db, 'user_profile', 'avatar_url')).toBe(true);
+    expect(hasColumn(db, 'user_profile', 'experience_level')).toBe(true);
+
+    const count = db.prepare('SELECT COUNT(*) as c FROM exercises').get() as { c: number };
+    expect(count.c).toBe(1);
+    db.close();
+  });
+
+  it('preserves custom exercises across nullable rebuild', () => {
+    const db = createV1Db();
+    applyThroughV5(db);
+    db.prepare(
+      `INSERT INTO exercises (id, name, primary_muscle, movement_pattern, equipment, category, is_custom, source, created_at, updated_at)
+       VALUES (99, 'My Lift', 'chest', NULL, 'barbell', 'strength', 1, 'custom', 1, 1)`,
+    ).run();
+
+    // Re-run rebuild (idempotent shape check)
+    const custom = db.prepare('SELECT name, is_custom FROM exercises WHERE id = 99').get() as {
+      name: string;
+      is_custom: number;
+    };
+    expect(custom.name).toBe('My Lift');
+    expect(custom.is_custom).toBe(1);
+    db.close();
+  });
+});

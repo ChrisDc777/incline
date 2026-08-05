@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Pressable, View, ActivityIndicator } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 import { FlashList } from '@shopify/flash-list';
 import { Plus, Trash2 } from 'lucide-react-native';
 
@@ -256,7 +257,7 @@ export function ExercisePickerSheet({
                 onEndReached={loadMore}
                 onEndReachedThreshold={0.3}
                 ListFooterComponent={
-                  loading ? <ActivityIndicator className="py-4" color="#16a34a" /> : null
+                  loading ? <PrimaryActivityIndicator className="py-4" /> : null
                 }
               />
             )}

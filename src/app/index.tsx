@@ -1,8 +1,10 @@
-import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 
+import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
+import { bindLocalAccount } from '@/db/account';
 import { useDatabaseReady } from '@/hooks/use-database';
 import { useProfile } from '@/hooks/use-data';
 
@@ -12,13 +14,35 @@ import { useProfile } from '@/hooks/use-data';
  */
 export default function Gate() {
   const ready = useDatabaseReady();
-  const { isSignedIn, isLoaded: authLoaded } = useAuth();
-  const { data: profile, loading: profileLoading } = useProfile();
+  const { isSignedIn, isLoaded: authLoaded, userId } = useAuth();
+  const { data: profile, loading: profileLoading, refetch: refetchProfile } = useProfile();
   const router = useRouter();
   const segments = useSegments();
+  const [bound, setBound] = useState(false);
+
+  // Bind Clerk identity to local SQLite owner before routing into the app.
+  useEffect(() => {
+    if (!ready || !authLoaded || !isSignedIn || !userId) {
+      setBound(!isSignedIn);
+      return;
+    }
+    let active = true;
+    bindLocalAccount(userId)
+      .then(async (result) => {
+        if (result.switched) await refetchProfile();
+        if (active) setBound(true);
+      })
+      .catch((err) => {
+        console.warn('[gate] bindLocalAccount failed', err);
+        if (active) setBound(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [ready, authLoaded, isSignedIn, userId, refetchProfile]);
 
   useEffect(() => {
-    if (!ready || !authLoaded || profileLoading) return;
+    if (!ready || !authLoaded || !bound || (isSignedIn && profileLoading)) return;
 
     const inAuth = segments[0] === '(auth)';
     const inOnboarding = segments[0] === '(onboarding)';
@@ -26,7 +50,7 @@ export default function Gate() {
 
     // Not signed in → auth screen
     if (!isSignedIn) {
-      if (!inAuth) router.replace('/(auth)/sign-in' as any);
+      if (!inAuth) router.replace('/(auth)/sign-in');
       return;
     }
 
@@ -44,11 +68,11 @@ export default function Gate() {
     } else if ((profile.onboardingCompleted || profile.name) && !inApp) {
       router.replace('/(app)/(tabs)');
     }
-  }, [ready, authLoaded, isSignedIn, profileLoading, profile, segments, router]);
+  }, [ready, authLoaded, bound, isSignedIn, profileLoading, profile, segments, router]);
 
   return (
     <View className="flex-1 items-center justify-center bg-background">
-      <ActivityIndicator color="#16a34a" />
+      <PrimaryActivityIndicator />
     </View>
   );
 }

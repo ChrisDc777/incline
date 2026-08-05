@@ -65,9 +65,9 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   advanced: 'Advanced',
 };
 
-/** Palette used by charts, cycling by index. */
+/** Palette used by charts, cycling by index. First slot follows brand indigo. */
 export const CHART_PALETTE = [
-  '#16a34a',
+  '#6D5DF6',
   '#3b82f6',
   '#f59e0b',
   '#a855f7',

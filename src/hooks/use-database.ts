@@ -14,7 +14,8 @@ export function useDatabaseReady(): boolean {
       .then(() => {
         if (active) setReady(true);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('[db] openDatabase failed', err);
         // Don't block the UI on a db error; data hooks will surface error states.
         if (active) setReady(true);
       });
