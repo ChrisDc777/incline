@@ -12,6 +12,7 @@ import {
   getProgressStats,
   getSuggestedTemplate,
   getTemplate,
+  getTodayProgramSlot,
   getWorkoutLog,
   listExercises,
   listPrograms,
@@ -21,6 +22,7 @@ import {
   searchExercises,
   type ExerciseFilters,
   type SessionWorkout,
+  type TodayProgramSlot,
 } from '@/db/queries';
 import type { Exercise, FeedWorkoutLog, MuscleGroup, PR, PeriodStats, ProgressRange, Program, ProgressStats, SearchHit, UserProfile, WorkoutLog, WorkoutTemplate } from '@/db/types';
 import { useSettings } from '@/store/settings-store';
@@ -57,6 +59,9 @@ export function usePrograms() {
 }
 export function useProgram(id: number) {
   return useAsync<Program | null>(() => getProgram(id), [id]);
+}
+export function useTodayProgramSlot() {
+  return useAsync<TodayProgramSlot | null>(() => getTodayProgramSlot(), []);
 }
 
 /* ---- progress & profile ---- */

@@ -66,8 +66,28 @@ export interface TemplateExerciseRow {
   updated_at: number | null;
   deleted_at: number | null;
 }
-export interface ProgramRow { id: number; name: string; description: string; weeks: number; created_at: number; updated_at: number }
-export interface ProgramWorkoutRow { id: number; program_id: number; template_id: number; week: number; day: number; sort_order: number }
+export interface ProgramRow {
+  id: number;
+  name: string;
+  description: string;
+  weeks: number;
+  is_custom: number;
+  uuid: string | null;
+  deleted_at: number | null;
+  created_at: number;
+  updated_at: number;
+}
+export interface ProgramWorkoutRow {
+  id: number;
+  program_id: number;
+  template_id: number;
+  week: number;
+  day: number;
+  sort_order: number;
+  uuid: string | null;
+  deleted_at: number | null;
+}
+
 export interface LogRow {
   id: number;
   template_id: number | null;

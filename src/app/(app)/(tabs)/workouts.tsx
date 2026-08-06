@@ -194,8 +194,29 @@ export default function WorkoutsScreen() {
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={SCREEN_CONTENT}
           ItemSeparatorComponent={() => <View className="h-3" />}
+          ListHeaderComponent={
+            <View className="mb-4 flex-row items-center justify-between">
+              <Body className="font-semibold text-foreground">Programs</Body>
+              <Pressable
+                onPress={() => router.push('/program/edit/new' as Href)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="New program">
+                <Icon icon={Plus} size={22} color="primary" />
+              </Pressable>
+            </View>
+          }
           ListEmptyComponent={
-            programs.loading ? <ListSkeleton count={2} /> : <EmptyState title="No programs yet" description="Training programs will appear here." />
+            programs.loading ? (
+              <ListSkeleton count={2} />
+            ) : (
+              <EmptyState
+                title="No programs yet"
+                description="Build a multi-week plan from your routines."
+                actionLabel="New program"
+                onAction={() => router.push('/program/edit/new' as Href)}
+              />
+            )
           }
         />
       ) : null}

@@ -17,13 +17,13 @@ Status: **pre-alpha**. The core loop (onboarding → log → finish → progress
 - **Stronger conflict resolution** — field-level LWW or merge when concurrent multi-device logging is a product goal.
 
 ## Product features
-- **Program builder** — create/edit multi-week programs and assign template workouts to day slots (tracked in issue #65). Programs are currently view-only informational cards.
+- ~~**Program builder**~~ — **done** (custom programs, day-slot editor, activate + Home today CTA). Seed programs remain view + activate.
 - **Workout notifications** — system-level reminders. (In-session rest-timer completion sound is already implemented.)
 - **Wearable integrations** — Apple Health / Google Fit (read workouts, write sessions, bodyweight).
 - **AI-powered workout recommendations** — suggest next session, auto-regulate load from recent logs (carry-over data already exists via `getLastSetsForExercise`).
 - **Advanced analytics** — volume/intensity trends, fatigue, deload suggestions, exercise substitution.
 - **Exercise & template authoring** — user-created exercises/templates/programs (schema already supports it).
-- **Custom branding / icon** and a proper splash animation. (Splash is configured with the app glyph; store-ready assets still needed.)
+- **Custom branding / icon** — use existing `icon.png` / `icon-preview.png`; APK share for friend testing (store listing later).
 
 ## Engineering
 - **Lint / typecheck baseline** — configured (`npm run lint`, `npm run typecheck`); one pre-existing `env.ts` lint error to clean up.

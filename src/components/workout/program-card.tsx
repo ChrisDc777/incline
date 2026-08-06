@@ -14,7 +14,12 @@ export function ProgramCard({ program }: { program: Program }) {
     : 0;
   return (
     <Card>
-      <Text className="text-base font-semibold text-foreground">{program.name}</Text>
+      <View className="flex-row items-center justify-between gap-2">
+        <Text className="flex-1 text-base font-semibold text-foreground">{program.name}</Text>
+        {program.isCustom ? (
+          <Caption className="text-muted-foreground">Custom</Caption>
+        ) : null}
+      </View>
       <Body className="mt-1 text-sm text-muted-foreground" numberOfLines={2}>
         {program.description}
       </Body>
@@ -23,7 +28,7 @@ export function ProgramCard({ program }: { program: Program }) {
           <Icon icon={CalendarDays} size={14} color="muted-foreground" />
           <Caption>{program.weeks} weeks</Caption>
         </View>
-        <Caption>· {daysPerWeek} days / week</Caption>
+        {daysPerWeek > 0 ? <Caption>· {daysPerWeek} days / week</Caption> : null}
         <Caption>· {program.workouts?.length ?? 0} workouts</Caption>
       </View>
     </Card>

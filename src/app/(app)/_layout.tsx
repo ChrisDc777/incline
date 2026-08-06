@@ -12,6 +12,7 @@ export default function AppLayout() {
         <Stack.Screen name="settings" options={{ headerShown: true, title: 'Settings' }} />
         <Stack.Screen name="template/[id]" options={{ headerShown: true, title: 'Routine' }} />
         <Stack.Screen name="program/[id]" options={{ headerShown: true, title: 'Program' }} />
+      <Stack.Screen name="program/edit/[id]" options={{ headerShown: true, title: 'Edit program' }} />
         <Stack.Screen name="bodyweight" options={{ headerShown: true, title: 'Measurements' }} />
         <Stack.Screen name="calendar" options={{ headerShown: true, title: 'Calendar' }} />
         <Stack.Screen name="calculator" options={{ headerShown: false }} />
