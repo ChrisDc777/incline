@@ -20,7 +20,7 @@ import {
 /** Consecutive weeks (ending this week) that contain at least one session. */
 export async function getStreak(): Promise<number> {
   const db = await openDatabase();
-  const rows = await db.getAllAsync<{ started_at: number }>('SELECT started_at FROM workout_logs WHERE ended_at IS NOT NULL ORDER BY started_at DESC');
+  const rows = await db.getAllAsync<{ started_at: number }>('SELECT started_at FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL ORDER BY started_at DESC');
   if (rows.length === 0) return 0;
   const weeks = new Set(rows.map((r) => isoDate(startOfWeek(r.started_at))));
   const thisWeek = isoDate(startOfWeek(Date.now()));
@@ -42,14 +42,14 @@ export async function getProgressStats(weeks = 8): Promise<ProgressStats> {
   const since = weekStart - (weeks - 1) * 7 * 86_400_000;
 
   const totals = await db.getFirstAsync<{ c: number; v: number; last: number | null }>(
-    'SELECT COUNT(*) as c, COALESCE(SUM(total_volume), 0) as v, MAX(started_at) as last FROM workout_logs WHERE ended_at IS NOT NULL',
+    'SELECT COUNT(*) as c, COALESCE(SUM(total_volume), 0) as v, MAX(started_at) as last FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL',
   );
   const setCount = await db.getFirstAsync<{ c: number }>(
-    'SELECT COUNT(*) as c FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id WHERE w.ended_at IS NOT NULL AND s.completed = 1',
+    'SELECT COUNT(*) as c FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1',
   );
 
   const logs = await db.getAllAsync<{ started_at: number; total_volume: number }>(
-    'SELECT started_at, total_volume FROM workout_logs WHERE ended_at IS NOT NULL AND started_at >= ? ORDER BY started_at',
+    'SELECT started_at, total_volume FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL AND started_at >= ? ORDER BY started_at',
     since,
   );
   const buckets: WeeklyVolume[] = [];
@@ -66,7 +66,7 @@ export async function getProgressStats(weeks = 8): Promise<ProgressStats> {
   const muscleRows = await db.getAllAsync<{ primary_muscle: string; sets: number; volume: number }>(
     `SELECT e.primary_muscle, COUNT(s.id) as sets, COALESCE(SUM(s.weight * s.reps), 0) as volume
      FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id JOIN exercises e ON e.id = s.exercise_id
-     WHERE w.ended_at IS NOT NULL AND s.completed = 1 AND w.started_at >= ?
+     WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1 AND w.started_at >= ?
      GROUP BY e.primary_muscle ORDER BY sets DESC`,
     since,
   );
@@ -75,7 +75,7 @@ export async function getProgressStats(weeks = 8): Promise<ProgressStats> {
   const prRows = await db.getAllAsync<{ id: number; name: string; weight: number; reps: number; created_at: number; best_volume: number }>(
     `SELECT e.id, e.name, s.weight, s.reps, s.created_at, (s.weight * s.reps) as best_volume
      FROM set_entries s JOIN exercises e ON e.id = s.exercise_id JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE w.ended_at IS NOT NULL AND s.completed = 1 AND s.weight > 0`,
+     WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1 AND s.weight > 0`,
   );
   const bestMap = new Map<number, PR>();
   for (const r of prRows) {
@@ -146,7 +146,7 @@ export async function getPeriodStats(range: ProgressRange): Promise<PeriodStats>
   }
 
   const logs = await db.getAllAsync<{ started_at: number; total_volume: number }>(
-    'SELECT started_at, total_volume FROM workout_logs WHERE ended_at IS NOT NULL AND started_at >= ? ORDER BY started_at',
+    'SELECT started_at, total_volume FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL AND started_at >= ? ORDER BY started_at',
     since,
   );
 
@@ -167,14 +167,14 @@ export async function getPeriodStats(range: ProgressRange): Promise<PeriodStats>
   const monthly = [...monthlyMap.values()].sort((a, b) => a.month.localeCompare(b.month));
 
   const setCount = await db.getFirstAsync<{ c: number }>(
-    'SELECT COUNT(*) as c FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id WHERE w.ended_at IS NOT NULL AND s.completed = 1 AND w.started_at >= ?',
+    'SELECT COUNT(*) as c FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1 AND w.started_at >= ?',
     since,
   );
 
   const muscleRows = await db.getAllAsync<{ primary_muscle: string; sets: number; volume: number }>(
     `SELECT e.primary_muscle, COUNT(s.id) as sets, COALESCE(SUM(s.weight * s.reps), 0) as volume
      FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id JOIN exercises e ON e.id = s.exercise_id
-     WHERE w.ended_at IS NOT NULL AND s.completed = 1 AND w.started_at >= ?
+     WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1 AND w.started_at >= ?
      GROUP BY e.primary_muscle ORDER BY sets DESC`,
     since,
   );
@@ -184,7 +184,7 @@ export async function getPeriodStats(range: ProgressRange): Promise<PeriodStats>
   const prRows = await db.getAllAsync<{ exerciseId: number; name: string; weight: number; reps: number; created_at: number }>(
     `SELECT e.id as exerciseId, e.name, s.weight, s.reps, s.created_at
      FROM set_entries s JOIN exercises e ON e.id = s.exercise_id JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE w.ended_at IS NOT NULL AND s.completed = 1 AND s.weight > 0 AND s.created_at >= ?`,
+     WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1 AND s.weight > 0 AND s.created_at >= ?`,
     since,
   );
   const bestMap = new Map<number, { exerciseId: number; name: string; oneRM: number; at: number }>();
@@ -236,7 +236,7 @@ function computeTrend(logs: { started_at: number; total_volume: number }[], now:
 export async function getWorkoutDays(): Promise<number[]> {
   const db = await openDatabase();
   const rows = await db.getAllAsync<{ started_at: number }>(
-    'SELECT started_at FROM workout_logs WHERE ended_at IS NOT NULL ORDER BY started_at',
+    'SELECT started_at FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL ORDER BY started_at',
   );
   const seen = new Set<string>();
   const days: number[] = [];
@@ -254,7 +254,7 @@ export async function getWorkoutDays(): Promise<number[]> {
 export async function getWorkoutsByDateRange(startMs: number, endMs: number): Promise<WorkoutLog[]> {
   const db = await openDatabase();
   const rows = await db.getAllAsync<LogRow>(
-    `SELECT * FROM workout_logs WHERE ended_at IS NOT NULL AND started_at >= ? AND started_at < ? ORDER BY started_at`,
+    `SELECT * FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL AND started_at >= ? AND started_at < ? ORDER BY started_at`,
     startMs, endMs,
   );
   return rows.map(mapLog);
@@ -265,7 +265,7 @@ export async function getWorkoutsForDay(dayMs: number): Promise<WorkoutLog[]> {
   const db = await openDatabase();
   const nextDay = dayMs + 86400000;
   const rows = await db.getAllAsync<LogRow>(
-    `SELECT * FROM workout_logs WHERE ended_at IS NOT NULL AND started_at >= ? AND started_at < ? ORDER BY started_at`,
+    `SELECT * FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL AND started_at >= ? AND started_at < ? ORDER BY started_at`,
     dayMs, nextDay,
   );
   return rows.map(mapLog);
@@ -275,7 +275,7 @@ export async function getWorkoutsForDay(dayMs: number): Promise<WorkoutLog[]> {
 export async function getWorkoutCountInRange(startMs: number, endMs: number): Promise<number> {
   const db = await openDatabase();
   const row = await db.getFirstAsync<{ c: number }>(
-    `SELECT COUNT(DISTINCT (started_at / 86400000) * 86400000) as c FROM workout_logs WHERE ended_at IS NOT NULL AND started_at >= ? AND started_at < ?`,
+    `SELECT COUNT(DISTINCT (started_at / 86400000) * 86400000) as c FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL AND started_at >= ? AND started_at < ?`,
     startMs, endMs,
   );
   return row?.c ?? 0;

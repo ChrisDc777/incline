@@ -11,8 +11,10 @@ Status: **pre-alpha**. The core loop (onboarding → log → finish → progress
 
 ## Sync & accounts
 - ~~Email/password auth~~ — **done** (Clerk).
-- **Cloud sync** of `workout_logs` / `set_entries` / `user_profile`. `updated_at` is already on every row and `set_entries` is normalized, so sync diffs are feasible. Domain modules under `db/queries/` are the swap point for a remote-backed implementation.
-- **Offline sync conflict resolution & optimistic updates** (last-write-wins or CRDT-style per set).
+- ~~Cloud sync foundation~~ — **done** (local UUIDs / soft deletes / outbox; Supabase user tables + RLS in `supabase/sync-schema.sql`; sync engine in `src/sync/`).
+- **Operationalize sync** — run `supabase/sync-schema.sql`, configure Clerk JWT template `supabase` + Supabase third-party auth, verify multi-device backup/restore.
+- **Tombstone GC** — Edge Function / cron to hard-delete rows with `deleted_at` older than 90 days (see comments in sync-schema).
+- **Stronger conflict resolution** — field-level LWW or merge when concurrent multi-device logging is a product goal.
 
 ## Product features
 - **Program builder** — create/edit multi-week programs and assign template workouts to day slots (tracked in issue #65). Programs are currently view-only informational cards.

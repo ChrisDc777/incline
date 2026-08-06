@@ -8,10 +8,10 @@
  * `runMigrations` in `client.ts`. Keep SCHEMA_VERSION in sync with the latest
  * migration version.
  */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export const SCHEMA_STATEMENTS: string[] = [
-  // ---- exercises (catalog) ----
+  // ---- exercises (catalog + custom) ----
   `CREATE TABLE IF NOT EXISTS exercises (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -26,6 +26,8 @@ export const SCHEMA_STATEMENTS: string[] = [
     difficulty TEXT,
     default_rest_seconds INTEGER NOT NULL DEFAULT 90,
     tips TEXT,
+    uuid TEXT,
+    deleted_at INTEGER,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
@@ -70,6 +72,9 @@ export const SCHEMA_STATEMENTS: string[] = [
     category TEXT NOT NULL DEFAULT 'strength',
     difficulty TEXT NOT NULL DEFAULT 'intermediate',
     estimated_minutes INTEGER NOT NULL DEFAULT 45,
+    is_custom INTEGER NOT NULL DEFAULT 0,
+    uuid TEXT,
+    deleted_at INTEGER,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
@@ -84,6 +89,9 @@ export const SCHEMA_STATEMENTS: string[] = [
     target_reps_max INTEGER NOT NULL,
     rest_seconds INTEGER NOT NULL DEFAULT 90,
     notes TEXT NOT NULL DEFAULT '',
+    uuid TEXT,
+    updated_at INTEGER,
+    deleted_at INTEGER,
     FOREIGN KEY (template_id) REFERENCES workout_templates(id) ON DELETE CASCADE,
     FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
   )`,
@@ -120,6 +128,8 @@ export const SCHEMA_STATEMENTS: string[] = [
     total_volume REAL NOT NULL DEFAULT 0,
     unit TEXT NOT NULL DEFAULT 'metric',
     notes TEXT NOT NULL DEFAULT '',
+    uuid TEXT,
+    deleted_at INTEGER,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
@@ -133,9 +143,10 @@ export const SCHEMA_STATEMENTS: string[] = [
     reps INTEGER NOT NULL DEFAULT 0,
     completed INTEGER NOT NULL DEFAULT 0,
     rest_seconds INTEGER,
+    uuid TEXT,
+    deleted_at INTEGER,
     created_at INTEGER NOT NULL,
-    FOREIGN KEY (workout_log_id) REFERENCES workout_logs(id) ON DELETE CASCADE,
-    FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
+    updated_at INTEGER NOT NULL DEFAULT 0
   )`,
 
   // ---- profile ----
@@ -148,6 +159,8 @@ export const SCHEMA_STATEMENTS: string[] = [
     experience_level TEXT NOT NULL DEFAULT 'intermediate',
     onboarding_completed INTEGER NOT NULL DEFAULT 0,
     avatar_url TEXT,
+    uuid TEXT,
+    deleted_at INTEGER,
     updated_at INTEGER NOT NULL
   )`,
 
@@ -157,9 +170,24 @@ export const SCHEMA_STATEMENTS: string[] = [
     weight REAL NOT NULL,
     unit TEXT NOT NULL DEFAULT 'kg',
     recorded_at INTEGER NOT NULL,
-    created_at INTEGER NOT NULL
+    uuid TEXT,
+    deleted_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL DEFAULT 0
   )`,
   `CREATE INDEX IF NOT EXISTS idx_bodyweight_recorded ON bodyweight_entries(recorded_at DESC)`,
+
+  // ---- sync outbox ----
+  `CREATE TABLE IF NOT EXISTS sync_outbox (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_name TEXT NOT NULL,
+    row_uuid TEXT NOT NULL,
+    op TEXT NOT NULL,
+    payload TEXT,
+    created_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_sync_outbox_order ON sync_outbox(id)`,
 
   // ---- key/value (Zustand persist + flags) ----
   `CREATE TABLE IF NOT EXISTS kv (
@@ -177,6 +205,8 @@ export const SCHEMA_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_exercises_primary_muscle ON exercises(primary_muscle)`,
   `CREATE INDEX IF NOT EXISTS idx_exercises_movement ON exercises(movement_pattern)`,
   `CREATE INDEX IF NOT EXISTS idx_exercises_equipment ON exercises(equipment)`,
+  // UUID unique indexes are created in migration 007 / ensureSyncSchema after columns exist.
+  // Creating them here breaks upgrades: CREATE TABLE IF NOT EXISTS leaves old tables without uuid.
   `CREATE INDEX IF NOT EXISTS idx_aliases_alias ON exercise_aliases(alias)`,
   `CREATE INDEX IF NOT EXISTS idx_aliases_exercise ON exercise_aliases(exercise_id)`,
   `CREATE INDEX IF NOT EXISTS idx_secondary_exercise ON exercise_secondary_muscles(exercise_id)`,
@@ -188,4 +218,3 @@ export const SCHEMA_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_set_entries_log ON set_entries(workout_log_id, set_index)`,
   `CREATE INDEX IF NOT EXISTS idx_set_entries_exercise ON set_entries(exercise_id, created_at DESC)`,
 ];
-

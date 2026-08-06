@@ -16,8 +16,8 @@ export function useDatabaseReady(): boolean {
       })
       .catch((err) => {
         console.error('[db] openDatabase failed', err);
-        // Don't block the UI on a db error; data hooks will surface error states.
-        if (active) setReady(true);
+        // Keep ready=false so the gate does not route into onboarding on a broken DB.
+        // openDatabase clears its cache on failure so a remount can retry.
       });
     return () => {
       active = false;

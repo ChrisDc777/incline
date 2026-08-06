@@ -1,6 +1,8 @@
 import * as SQLite from 'expo-sqlite';
 
 import { DB_NAME } from '@/constants/config';
+import { ensureSyncSchema } from './ensure-sync-schema';
+import { ensureSyncUuids } from './ensure-uuids';
 import { LATEST_SCHEMA_VERSION, runMigrations } from './migrations';
 import { SCHEMA_STATEMENTS, SCHEMA_VERSION } from './schema';
 import { seedDatabase } from './seed';
@@ -27,47 +29,64 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (_db) return _db;
   if (_ready) return _ready;
   _ready = (async () => {
-    const database = await SQLite.openDatabaseAsync(DB_NAME);
-    await database.execAsync('PRAGMA journal_mode = WAL');
-    await database.execAsync('PRAGMA foreign_keys = ON');
+    try {
+      const database = await SQLite.openDatabaseAsync(DB_NAME);
+      await database.execAsync('PRAGMA journal_mode = WAL');
+      await database.execAsync('PRAGMA foreign_keys = ON');
 
-    for (const stmt of SCHEMA_STATEMENTS) {
-      await database.execAsync(stmt);
-    }
+      for (const stmt of SCHEMA_STATEMENTS) {
+        await database.execAsync(stmt);
+      }
 
-    const meta = await database.getFirstAsync<{ value: string }>(
-      "SELECT value FROM schema_meta WHERE key = 'version'",
-    );
-    const current = meta ? Number(meta.value) : 0;
+      const meta = await database.getFirstAsync<{ value: string }>(
+        "SELECT value FROM schema_meta WHERE key = 'version'",
+      );
+      const current = meta ? Number(meta.value) : 0;
 
-    if (current === 0) {
-      // Fresh install: CREATE IF NOT EXISTS already applied the latest schema.
+      if (current === 0) {
+        // Fresh install: CREATE IF NOT EXISTS already applied the latest schema.
+        await database.runAsync(
+          "INSERT INTO schema_meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+          String(SCHEMA_VERSION),
+        );
+      } else if (current < SCHEMA_VERSION) {
+        await runMigrations(database, current);
+      }
+
+      // Always repair sync columns/indexes (handles CREATE IF NOT EXISTS upgrades).
+      await ensureSyncSchema(database);
+
+      const seeded = await database.getFirstAsync<{ value: string }>(
+        "SELECT value FROM schema_meta WHERE key = 'seeded'",
+      );
+      if (!seeded) {
+        await seedDatabase(database);
+        await database.runAsync(
+          "INSERT INTO schema_meta (key, value) VALUES ('seeded', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        );
+      }
+
+      await ensureSyncUuids(database);
+
+      // Ensure version meta matches after repair (e.g. stamped early without columns).
       await database.runAsync(
         "INSERT INTO schema_meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         String(SCHEMA_VERSION),
       );
-    } else if (current < SCHEMA_VERSION) {
-      await runMigrations(database, current);
+
+      _db = database;
+
+      // Catalog sync is offline-friendly and idempotent — do not block DB readiness.
+      void seedFromSupabase(database).catch((err) => {
+        console.warn('[db] Supabase exercise seed failed', err);
+      });
+
+      return database;
+    } catch (err) {
+      // Allow a later openDatabase() call to retry after a failed boot.
+      _ready = null;
+      throw err;
     }
-
-    const seeded = await database.getFirstAsync<{ value: string }>(
-      "SELECT value FROM schema_meta WHERE key = 'seeded'",
-    );
-    if (!seeded) {
-      await seedDatabase(database);
-      await database.runAsync(
-        "INSERT INTO schema_meta (key, value) VALUES ('seeded', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-      );
-    }
-
-    _db = database;
-
-    // Catalog sync is offline-friendly and idempotent — do not block DB readiness.
-    void seedFromSupabase(database).catch((err) => {
-      console.warn('[db] Supabase exercise seed failed', err);
-    });
-
-    return database;
   })();
   return _ready;
 }

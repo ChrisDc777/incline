@@ -31,6 +31,8 @@ export interface ExerciseRow {
   difficulty: string | null;
   default_rest_seconds: number;
   tips: string | null;
+  uuid: string | null;
+  deleted_at: number | null;
   created_at: number;
   updated_at: number;
 }
@@ -44,6 +46,9 @@ export interface TemplateRow {
   category: string;
   difficulty: string;
   estimated_minutes: number;
+  is_custom: number;
+  uuid: string | null;
+  deleted_at: number | null;
   created_at: number;
   updated_at: number;
 }
@@ -57,6 +62,9 @@ export interface TemplateExerciseRow {
   target_reps_max: number;
   rest_seconds: number;
   notes: string;
+  uuid: string | null;
+  updated_at: number | null;
+  deleted_at: number | null;
 }
 export interface ProgramRow { id: number; name: string; description: string; weeks: number; created_at: number; updated_at: number }
 export interface ProgramWorkoutRow { id: number; program_id: number; template_id: number; week: number; day: number; sort_order: number }
@@ -70,6 +78,8 @@ export interface LogRow {
   total_volume: number;
   unit: string;
   notes: string;
+  uuid: string | null;
+  deleted_at: number | null;
   created_at: number;
   updated_at: number;
 }
@@ -82,9 +92,24 @@ export interface SetRow {
   reps: number;
   completed: number;
   rest_seconds: number | null;
+  uuid: string | null;
+  deleted_at: number | null;
   created_at: number;
+  updated_at: number;
 }
-export interface ProfileRow { id: number; name: string; goal: string; bodyweight: number | null; unit: string; experience_level: string; onboarding_completed: number; avatar_url: string | null; updated_at: number }
+export interface ProfileRow {
+  id: number;
+  name: string;
+  goal: string;
+  bodyweight: number | null;
+  unit: string;
+  experience_level: string;
+  onboarding_completed: number;
+  avatar_url: string | null;
+  uuid: string | null;
+  deleted_at: number | null;
+  updated_at: number;
+}
 
 /* ------------------------------- session types ------------------------------- */
 export interface SessionSet extends SetEntry {
@@ -178,6 +203,7 @@ export function mapTemplate(t: TemplateRow, exercises: TemplateExercise[]): Work
     category: t.category,
     difficulty: t.difficulty as Difficulty,
     estimatedMinutes: t.estimated_minutes,
+    isCustom: !!t.is_custom,
     createdAt: t.created_at,
     updatedAt: t.updated_at,
     exercises,
@@ -196,7 +222,7 @@ export function isSubsequence(needle: string, hay: string): boolean {
 export async function recomputeVolume(logId: number): Promise<void> {
   const db = await openDatabase();
   const r = await db.getFirstAsync<{ v: number }>(
-    'SELECT COALESCE(SUM(weight * reps), 0) as v FROM set_entries WHERE workout_log_id = ? AND completed = 1',
+    'SELECT COALESCE(SUM(weight * reps), 0) as v FROM set_entries WHERE workout_log_id = ? AND completed = 1 AND deleted_at IS NULL',
     logId,
   );
   await db.runAsync('UPDATE workout_logs SET total_volume = ?, updated_at = ? WHERE id = ?', r?.v ?? 0, Date.now(), logId);
@@ -205,7 +231,7 @@ export async function recomputeVolume(logId: number): Promise<void> {
 export async function getSessionSets(logId: number): Promise<SessionSet[]> {
   const db = await openDatabase();
   const rows = await db.getAllAsync<SetRow & { exercise_name: string }>(
-    `SELECT s.*, e.name as exercise_name FROM set_entries s JOIN exercises e ON e.id = s.exercise_id WHERE s.workout_log_id = ? ORDER BY s.id, s.set_index`,
+    `SELECT s.*, e.name as exercise_name FROM set_entries s JOIN exercises e ON e.id = s.exercise_id WHERE s.workout_log_id = ? AND s.deleted_at IS NULL ORDER BY s.id, s.set_index`,
     logId,
   );
   return rows.map((r) => ({ ...mapSet(r), exerciseName: r.exercise_name }));

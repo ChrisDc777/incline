@@ -1,4 +1,6 @@
 import { openDatabase } from '../client';
+import { newUuid } from '@/lib/uuid';
+import { enqueueSync } from '@/sync/outbox';
 import type {
   Category,
   Equipment,
@@ -19,19 +21,27 @@ import {
 
 export async function listExercises(): Promise<Exercise[]> {
   const db = await openDatabase();
-  const rows = await db.getAllAsync<ExerciseRow>('SELECT * FROM exercises ORDER BY name');
+  const rows = await db.getAllAsync<ExerciseRow>(
+    'SELECT * FROM exercises WHERE deleted_at IS NULL ORDER BY name',
+  );
   return Promise.all(rows.map((r) => mapExercise(db, r)));
 }
 
 export async function getExercise(id: number): Promise<Exercise | null> {
   const db = await openDatabase();
-  const row = await db.getFirstAsync<ExerciseRow>('SELECT * FROM exercises WHERE id = ?', id);
+  const row = await db.getFirstAsync<ExerciseRow>(
+    'SELECT * FROM exercises WHERE id = ? AND deleted_at IS NULL',
+    id,
+  );
   return row ? mapExercise(db, row) : null;
 }
 
 export async function getExerciseByExternalId(externalId: string): Promise<Exercise | null> {
   const db = await openDatabase();
-  const row = await db.getFirstAsync<ExerciseRow>('SELECT * FROM exercises WHERE external_id = ?', externalId);
+  const row = await db.getFirstAsync<ExerciseRow>(
+    'SELECT * FROM exercises WHERE external_id = ? AND deleted_at IS NULL',
+    externalId,
+  );
   return row ? mapExercise(db, row) : null;
 }
 
@@ -55,7 +65,8 @@ export async function searchExercises(query: string, filters?: ExerciseFilters):
   if (filters?.equipment) { where.push('equipment = ?'); args.push(filters.equipment); }
   if (filters?.pattern) { where.push('movement_pattern = ?'); args.push(filters.pattern); }
   let sql = 'SELECT * FROM exercises';
-  if (where.length) sql += ' WHERE ' + where.join(' AND ');
+  if (where.length) sql += ' WHERE ' + where.join(' AND ') + ' AND deleted_at IS NULL';
+  else sql += ' WHERE deleted_at IS NULL';
   sql += ' ORDER BY name';
   const rows = await db.getAllAsync<ExerciseRow>(sql, ...args);
 
@@ -164,9 +175,10 @@ export interface CreateCustomExerciseInput {
 export async function createCustomExercise(input: CreateCustomExerciseInput): Promise<number> {
   const db = await openDatabase();
   const now = Date.now();
+  const uuid = newUuid();
   const res = await db.runAsync(
-    `INSERT INTO exercises (name, primary_muscle, movement_pattern, equipment, category, is_compound, is_custom, tips, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
-    input.name, input.primaryMuscle, input.movementPattern, input.equipment, input.category, input.isCompound ? 1 : 0, input.tips ?? '', now, now,
+    `INSERT INTO exercises (name, primary_muscle, movement_pattern, equipment, category, is_compound, is_custom, source, tips, uuid, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, 'custom', ?, ?, ?, ?)`,
+    input.name, input.primaryMuscle, input.movementPattern, input.equipment, input.category, input.isCompound ? 1 : 0, input.tips ?? '', uuid, now, now,
   );
   const id = res.lastInsertRowId as number;
   for (const alias of (input.aliases ?? [])) {
@@ -178,18 +190,49 @@ export async function createCustomExercise(input: CreateCustomExerciseInput): Pr
   for (let i = 0; i < (input.instructions ?? []).length; i++) {
     await db.runAsync(`INSERT INTO exercise_instructions (exercise_id, step, text) VALUES (?, ?, ?)`, id, i + 1, input.instructions![i]);
   }
+  await enqueueSync('user_exercises', uuid, 'upsert', {
+    name: input.name,
+    primary_muscle: input.primaryMuscle,
+    movement_pattern: input.movementPattern,
+    equipment: input.equipment,
+    category: input.category,
+    is_compound: input.isCompound ? 1 : 0,
+    tips: input.tips ?? '',
+    aliases: input.aliases ?? [],
+    secondary_muscles: input.secondaryMuscles ?? [],
+    instructions: input.instructions ?? [],
+    created_at: now,
+    updated_at: now,
+    deleted_at: null,
+  });
   return id;
 }
 
 export async function deleteCustomExercise(id: number): Promise<void> {
   const db = await openDatabase();
-  await db.runAsync('DELETE FROM exercises WHERE id = ? AND is_custom = 1', id);
+  const row = await db.getFirstAsync<{ uuid: string | null }>(
+    'SELECT uuid FROM exercises WHERE id = ? AND is_custom = 1',
+    id,
+  );
+  const now = Date.now();
+  await db.runAsync(
+    'UPDATE exercises SET deleted_at = ?, updated_at = ? WHERE id = ? AND is_custom = 1',
+    now, now, id,
+  );
+  if (row?.uuid) {
+    await enqueueSync('user_exercises', row.uuid, 'delete', {
+      updated_at: now,
+      deleted_at: now,
+    });
+  }
 }
 
 /** List only user-created exercises (local SQLite), sorted by name. */
 export async function listCustomExercises(): Promise<Exercise[]> {
   const db = await openDatabase();
-  const rows = await db.getAllAsync<ExerciseRow>('SELECT * FROM exercises WHERE is_custom = 1 ORDER BY name');
+  const rows = await db.getAllAsync<ExerciseRow>(
+    'SELECT * FROM exercises WHERE is_custom = 1 AND deleted_at IS NULL ORDER BY name',
+  );
   return Promise.all(rows.map((row) => mapExercise(db, row)));
 }
 
@@ -197,7 +240,9 @@ export async function listCustomExercises(): Promise<Exercise[]> {
 export async function getCustomExerciseUsage(exerciseId: number): Promise<number> {
   const db = await openDatabase();
   const row = await db.getFirstAsync<{ c: number }>(
-    `SELECT (SELECT COUNT(*) FROM set_entries WHERE exercise_id = ?) + (SELECT COUNT(*) FROM template_exercises WHERE exercise_id = ?) AS c`,
+    `SELECT
+       (SELECT COUNT(*) FROM set_entries WHERE exercise_id = ? AND deleted_at IS NULL) +
+       (SELECT COUNT(*) FROM template_exercises WHERE exercise_id = ? AND deleted_at IS NULL) AS c`,
     exerciseId, exerciseId,
   );
   return row?.c ?? 0;
@@ -277,11 +322,11 @@ export async function ensureExerciseExists(
 export async function getLastSetsForExercise(exerciseId: number): Promise<SetEntry[]> {
   const db = await openDatabase();
   const log = await db.getFirstAsync<{ id: number }>(
-    `SELECT w.id FROM workout_logs w WHERE w.ended_at IS NOT NULL AND EXISTS (SELECT 1 FROM set_entries s WHERE s.workout_log_id = w.id AND s.exercise_id = ? AND s.completed = 1) ORDER BY w.started_at DESC LIMIT 1`,
+    `SELECT w.id FROM workout_logs w WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND EXISTS (SELECT 1 FROM set_entries s WHERE s.workout_log_id = w.id AND s.exercise_id = ? AND s.completed = 1 AND s.deleted_at IS NULL) ORDER BY w.started_at DESC LIMIT 1`,
     exerciseId,
   );
   if (!log) return [];
-  const rows = await db.getAllAsync<SetRow>('SELECT * FROM set_entries WHERE workout_log_id = ? AND exercise_id = ? AND completed = 1 ORDER BY set_index', log.id, exerciseId);
+  const rows = await db.getAllAsync<SetRow>('SELECT * FROM set_entries WHERE workout_log_id = ? AND exercise_id = ? AND completed = 1 AND deleted_at IS NULL ORDER BY set_index', log.id, exerciseId);
   return rows.map(mapSet);
 }
 
@@ -290,7 +335,7 @@ export async function getExerciseHistory(exerciseId: number, limit = 10): Promis
   return db.getAllAsync<ExerciseHistoryRow>(
     `SELECT w.id as workoutLogId, w.name as workoutName, w.started_at as startedAt, s.set_index as setIndex, s.weight, s.reps, s.completed as completed
      FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND s.completed = 1
+     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1
      ORDER BY w.started_at DESC, s.set_index LIMIT ?`,
     exerciseId, limit,
   );
@@ -312,7 +357,7 @@ export async function getExercisePRSummary(exerciseId: number): Promise<Exercise
                      ELSE s.weight * (1.0 + s.reps / 30.0) END) as best_1rm,
             MAX(s.weight * s.reps) as best_set_vol
      FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND s.completed = 1`,
+     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1`,
     exerciseId,
   );
   const maxWeight = base?.max_weight ?? 0;
@@ -323,7 +368,7 @@ export async function getExercisePRSummary(exerciseId: number): Promise<Exercise
   const sessionVol = await db.getFirstAsync<{ vol: number }>(
     `SELECT SUM(s.weight * s.reps) as vol
      FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND s.completed = 1
+     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1
      GROUP BY w.id ORDER BY vol DESC LIMIT 1`,
     exerciseId,
   );
@@ -331,7 +376,7 @@ export async function getExercisePRSummary(exerciseId: number): Promise<Exercise
   // When was heaviest weight achieved
   const atMax = await db.getFirstAsync<{ created_at: number }>(
     `SELECT s.created_at FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE s.exercise_id = ? AND s.completed = 1 AND w.ended_at IS NOT NULL AND s.weight = ?
+     WHERE s.exercise_id = ? AND s.completed = 1 AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.weight = ?
      ORDER BY s.created_at DESC LIMIT 1`,
     exerciseId, maxWeight,
   );
@@ -355,7 +400,7 @@ export async function getExerciseRepRecords(exerciseId: number): Promise<RepReco
   const rows = await db.getAllAsync<{ reps: number; weight: number }>(
     `SELECT s.reps, MAX(s.weight) as weight
      FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND s.completed = 1 AND s.reps > 0
+     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1 AND s.reps > 0
      GROUP BY s.reps ORDER BY s.reps`,
     exerciseId,
   );
@@ -372,7 +417,7 @@ export async function getExerciseProgression(exerciseId: number): Promise<Progre
   const rows = await db.getAllAsync<{ w: string; weight: number }>(
     `SELECT strftime('%Y-%m-%d', s.created_at / 1000, 'unixepoch') as w, MAX(s.weight) as weight
      FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND s.completed = 1
+     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1
      GROUP BY w ORDER BY w`,
     exerciseId,
   );
