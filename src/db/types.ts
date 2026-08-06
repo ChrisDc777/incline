@@ -84,6 +84,7 @@ export interface WorkoutTemplate {
   category: string;
   difficulty: Difficulty;
   estimatedMinutes: number;
+  isCustom: boolean;
   createdAt: number;
   updatedAt: number;
   /** Joined exercises ordered by sort_order (populated by queries). */

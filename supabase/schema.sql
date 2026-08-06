@@ -33,8 +33,11 @@ CREATE POLICY "Allow anonymous read" ON exercises
   TO anon
   USING (true);
 
--- Allow authenticated read access
+# Allow authenticated read access
 CREATE POLICY "Allow authenticated read" ON exercises
   FOR SELECT
   TO authenticated
   USING (true);
+
+-- User-data sync tables (profiles, workout_logs, custom exercises, etc.):
+-- see supabase/sync-schema.sql

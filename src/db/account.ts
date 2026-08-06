@@ -10,10 +10,10 @@ const OWNER_KEY = 'owner_user_id';
  * Local SQLite is single-device and historically had no Clerk user id on rows.
  * We store the owning Clerk user id in `schema_meta`. On first bind, claim the
  * DB. If a different account signs in, wipe user-owned data (logs, profile,
- * bodyweight) so accounts do not share history. The exercise catalog and
- * bundled templates are kept.
+ * bodyweight, custom exercises, custom templates, sync outbox) so accounts do
+ * not share history. The exercise catalog and bundled templates are kept.
  *
- * Cloud sync (when added) should key rows by this same owner id.
+ * Cloud sync keys rows by this same owner id (Clerk JWT `sub`).
  */
 export async function bindLocalAccount(clerkUserId: string): Promise<{ switched: boolean }> {
   const db = await openDatabase();
@@ -43,6 +43,12 @@ export async function bindLocalAccount(clerkUserId: string): Promise<{ switched:
     OWNER_KEY,
     clerkUserId,
   );
+  try {
+    const { clearAuthedSupabase } = await import('@/sync/supabase-auth');
+    clearAuthedSupabase();
+  } catch {
+    // sync module optional at bind time
+  }
   return { switched: true };
 }
 

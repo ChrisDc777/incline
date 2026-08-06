@@ -1,14 +1,16 @@
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Moon, Sun, Smartphone, Vibrate, Ruler, Bell, BellOff, Timer, Zap, Palette } from 'lucide-react-native';
+import { Moon, Sun, Smartphone, Vibrate, Ruler, Bell, BellOff, Timer, Zap, Palette, Cloud, RefreshCw } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Body, Caption } from '@/components/common/text';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Chip } from '@/components/common/chip';
+import { Button } from '@/components/ui/button';
 import { useSettings, DEFAULT_REST_OPTIONS } from '@/store/settings-store';
 import { useProfile } from '@/hooks/use-data';
+import { useCloudSync } from '@/hooks/use-cloud-sync';
 import { saveProfile } from '@/db/queries';
 import { ACCENT_THEME_LIST } from '@/lib/accent-themes';
 import { SCREEN_CONTENT } from '@/lib/layout';
@@ -30,6 +32,15 @@ function Row({ icon, title, subtitle, children }: { icon: React.ReactNode; title
   );
 }
 
+function formatSyncTime(ms: number | null | undefined): string {
+  if (!ms) return 'Never';
+  try {
+    return new Date(ms).toLocaleString();
+  } catch {
+    return 'Never';
+  }
+}
+
 export default function SettingsScreen() {
   const {
     unit, themeMode, accentTheme, hapticsEnabled,
@@ -39,16 +50,42 @@ export default function SettingsScreen() {
   const { data: profile, refetch } = useProfile();
   const scheme = useAppColorScheme();
   const selectedAccent = ACCENT_THEME_LIST.find((t) => t.id === accentTheme) ?? ACCENT_THEME_LIST[0];
+  const { status, pending, syncing, enabled, syncNow } = useCloudSync({ auto: false });
 
   const changeUnit = (u: Unit) => {
     setUnit(u);
     if (profile) saveProfile({ unit: u }).then(refetch);
   };
 
+  const syncSubtitle = !enabled
+    ? 'Configure Supabase + Clerk JWT to enable backup'
+    : status?.lastError
+      ? status.lastError
+      : pending > 0
+        ? `${pending} change${pending === 1 ? '' : 's'} waiting to upload`
+        : `Last synced ${formatSyncTime(status?.lastPullAt ?? status?.lastPushAt)}`;
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={SCREEN_CONTENT}>
-        <Caption className="mb-1 mt-1 font-semibold uppercase tracking-wide">Units</Caption>
+        <Caption className="mb-1 mt-1 font-semibold uppercase tracking-wide">Cloud sync</Caption>
+        <Card>
+          <Row
+            icon={<Icon icon={Cloud} size={18} color="muted-foreground" />}
+            title={syncing ? 'Syncing…' : status?.status === 'error' ? 'Sync error' : 'Backup & restore'}
+            subtitle={syncSubtitle}>
+            <Button
+              size="icon"
+              variant="tonal"
+              disabled={!enabled || syncing}
+              onPress={() => void syncNow()}
+              accessibilityLabel="Sync now">
+              <Icon icon={RefreshCw} size={16} color="primary" />
+            </Button>
+          </Row>
+        </Card>
+
+        <Caption className="mb-1 mt-5 font-semibold uppercase tracking-wide">Units</Caption>
         <Card>
           <Row icon={<Icon icon={Ruler} size={18} color="muted-foreground" />} title="Measurement" subtitle="Displayed across workouts and stats">
             <View className="flex-row gap-2">
