@@ -16,7 +16,7 @@ import { useSettings } from '@/store/settings-store';
 import { useProfile } from '@/hooks/use-data';
 import { formatDuration, formatVolume, formatWeight, formatFullDateTime } from '@/db/calc';
 import { MUSCLE_LABELS, muscleColor } from '@/lib/labels';
-import { useChartPalette } from '@/lib/accent-themes';
+import { useChartPalette } from '@/lib/use-chart-palette';
 import { METRIC_ICONS } from '@/lib/metric-icons';
 
 function MuscleSplitBar({ split }: { split: MuscleSplit; total: number }) {

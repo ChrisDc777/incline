@@ -15,7 +15,7 @@ import { TemplatePickerSheet } from '@/components/workout/template-picker-sheet'
 import { ActiveSessionConflictDialog } from '@/components/workout/active-session-conflict-dialog';
 import { MuscleBadge } from '@/components/exercise/muscle-badge';
 import { CardSkeleton } from '@/components/common/skeleton';
-import { useProfile, useSuggestedTemplate, useProgressStats, useWorkoutFeedLogs } from '@/hooks/use-data';
+import { useProfile, useSuggestedTemplate, useProgressStats, useWorkoutFeedLogs, useTodayProgramSlot } from '@/hooks/use-data';
 import { useActiveSession } from '@/hooks/use-active-session';
 import { useSettings } from '@/store/settings-store';
 import { useActiveWorkout } from '@/store/active-workout-store';
@@ -40,6 +40,7 @@ export default function HomeScreen() {
   const { unit } = useSettings();
   const { data: profile, refetch: refetchProfile } = useProfile();
   const { data: suggested, loading: sugLoading } = useSuggestedTemplate();
+  const { data: todaySlot, loading: todayLoading, refetch: refetchToday } = useTodayProgramSlot();
   const { data: stats, loading: statsLoading } = useProgressStats();
   const { session } = useActiveSession();
   const clear = useActiveWorkout((s) => s.clear);
@@ -58,10 +59,11 @@ export default function HomeScreen() {
       if (didFocus.current) {
         refetchProfile();
         refreshFeed();
+        refetchToday();
       } else {
         didFocus.current = true;
       }
-    }, [refetchProfile, refreshFeed]),
+    }, [refetchProfile, refreshFeed, refetchToday]),
   );
 
   const doStart = async (templateId: number | null, name: string) => {
@@ -128,6 +130,9 @@ export default function HomeScreen() {
     .map((e) => e.exercise?.primaryMuscle)
     .filter((m, i, arr): m is MuscleGroup => !!m && arr.indexOf(m) === i);
 
+  const programWorkout = todaySlot && !todaySlot.isRestDay ? todaySlot.workout : null;
+  const heroLoading = sugLoading || todayLoading;
+
   const renderHeader = () => (
     <View className="px-4">
       <View className="flex-row items-center gap-2">
@@ -142,8 +147,48 @@ export default function HomeScreen() {
       <Body className="mt-1 text-muted-foreground">{today}</Body>
 
       <View className="mt-6 gap-3">
-        {sugLoading ? (
+        {heroLoading ? (
           <CardSkeleton />
+        ) : programWorkout ? (
+          <Pressable onPress={() => router.push(`/workout/${programWorkout.templateId}`)}>
+            <Card elevation="raised">
+              <View className="flex-row items-center justify-between">
+                <Caption>Today · {todaySlot!.program.name}</Caption>
+                {programWorkout.estimatedMinutes ? (
+                  <Caption>{programWorkout.estimatedMinutes} min</Caption>
+                ) : null}
+              </View>
+              <Body className="mt-2 font-semibold text-foreground">
+                {programWorkout.templateName ?? 'Workout'}
+              </Body>
+              <Caption className="mt-1">Week {todaySlot!.week}</Caption>
+              <Button
+                className="mt-4"
+                leftIcon={<Icon icon={Play} size={16} color="primary-foreground" />}
+                onPress={() =>
+                  beginTemplate(programWorkout.templateId, programWorkout.templateName ?? todaySlot!.program.name)
+                }
+                disabled={starting}>
+                Start workout
+              </Button>
+            </Card>
+          </Pressable>
+        ) : todaySlot?.isRestDay ? (
+          <Card elevation="raised">
+            <Caption>Today · {todaySlot.program.name}</Caption>
+            <Body className="mt-2 font-semibold text-foreground">Rest day</Body>
+            <Body className="mt-1 text-sm text-muted-foreground">
+              No session scheduled. Start something else when you&apos;re ready.
+            </Body>
+            <Button
+              className="mt-4"
+              variant="outline"
+              leftIcon={<Icon icon={Plus} size={16} color="primary" />}
+              onPress={quickStart}
+              disabled={starting}>
+              Quick start
+            </Button>
+          </Card>
         ) : suggested ? (
           <Pressable onPress={() => router.push(`/workout/${suggested.id}`)}>
             <Card elevation="raised">
@@ -174,7 +219,7 @@ export default function HomeScreen() {
           </Pressable>
         ) : null}
 
-        {hasData ? (
+        {hasData && !todaySlot?.isRestDay ? (
           <Button
             variant="outline"
             size="lg"

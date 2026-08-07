@@ -26,6 +26,12 @@ export function startOfWeek(ms: number): number {
   return d.getTime();
 }
 
+/** Monday=1 … Sunday=7 (ISO-style weekday for program day slots). */
+export function weekdayMon1(ms: number): number {
+  const d = new Date(ms).getDay();
+  return d === 0 ? 7 : d;
+}
+
 /** Estimated one-rep max via the Epley formula. */
 export function estimated1RM(weight: number, reps: number): number {
   if (reps <= 0 || weight <= 0) return 0;

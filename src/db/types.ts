@@ -108,6 +108,7 @@ export interface Program {
   name: string;
   description: string;
   weeks: number;
+  isCustom: boolean;
   createdAt: number;
   updatedAt: number;
   workouts?: ProgramWorkout[];

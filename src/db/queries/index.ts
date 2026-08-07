@@ -42,6 +42,19 @@ export {
 export {
   listPrograms,
   getProgram,
+  createProgram,
+  updateProgram,
+  deleteProgram,
+  setProgramDay,
+  clearProgramDay,
+  applyWeek1ToAllWeeks,
+  getActiveProgramState,
+  setActiveProgram,
+  clearActiveProgram,
+  getTodayProgramSlot,
+  weekdayMon1,
+  type ActiveProgramState,
+  type TodayProgramSlot,
 } from './programs';
 
 export {

@@ -6,6 +6,7 @@ import { migration004 } from './004_avatar_url';
 import { migration005 } from './005_nullable_exercise_cols';
 import { migration006 } from './006_owner_user_id';
 import { migration007 } from './007_sync_readiness';
+import { migration008 } from './008_program_builder';
 import type { Migration } from './types';
 
 export type { Migration } from './types';
@@ -19,6 +20,7 @@ export const MIGRATIONS: Migration[] = [
   migration005,
   migration006,
   migration007,
+  migration008,
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 1;

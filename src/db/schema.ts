@@ -8,7 +8,7 @@
  * `runMigrations` in `client.ts`. Keep SCHEMA_VERSION in sync with the latest
  * migration version.
  */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export const SCHEMA_STATEMENTS: string[] = [
   // ---- exercises (catalog + custom) ----
@@ -102,6 +102,9 @@ export const SCHEMA_STATEMENTS: string[] = [
     name TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
     weeks INTEGER NOT NULL DEFAULT 4,
+    is_custom INTEGER NOT NULL DEFAULT 0,
+    uuid TEXT,
+    deleted_at INTEGER,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
@@ -113,6 +116,8 @@ export const SCHEMA_STATEMENTS: string[] = [
     week INTEGER NOT NULL,
     day INTEGER NOT NULL,
     sort_order INTEGER NOT NULL,
+    uuid TEXT,
+    deleted_at INTEGER,
     FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE,
     FOREIGN KEY (template_id) REFERENCES workout_templates(id) ON DELETE CASCADE
   )`,
@@ -217,4 +222,6 @@ export const SCHEMA_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_workout_logs_template ON workout_logs(template_id)`,
   `CREATE INDEX IF NOT EXISTS idx_set_entries_log ON set_entries(workout_log_id, set_index)`,
   `CREATE INDEX IF NOT EXISTS idx_set_entries_exercise ON set_entries(exercise_id, created_at DESC)`,
+  // Program uuid unique indexes: migration 008 / ensureProgramBuilderSchema (not here —
+  // CREATE IF NOT EXISTS upgrades keep old programs tables without uuid).
 ];

@@ -2,12 +2,12 @@ import * as SQLite from 'expo-sqlite';
 
 import { DB_NAME } from '@/constants/config';
 import { ensureSyncSchema } from './ensure-sync-schema';
+import { ensureProgramBuilderSchema } from './ensure-program-schema';
 import { ensureSyncUuids } from './ensure-uuids';
 import { LATEST_SCHEMA_VERSION, runMigrations } from './migrations';
 import { SCHEMA_STATEMENTS, SCHEMA_VERSION } from './schema';
 import { seedDatabase } from './seed';
 import { seedFromSupabase } from './seed-supabase';
-
 let _db: SQLite.SQLiteDatabase | null = null;
 let _ready: Promise<SQLite.SQLiteDatabase> | null = null;
 
@@ -55,6 +55,7 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
 
       // Always repair sync columns/indexes (handles CREATE IF NOT EXISTS upgrades).
       await ensureSyncSchema(database);
+      await ensureProgramBuilderSchema(database);
 
       const seeded = await database.getFirstAsync<{ value: string }>(
         "SELECT value FROM schema_meta WHERE key = 'seeded'",

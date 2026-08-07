@@ -137,8 +137,22 @@ export async function resetUserData(): Promise<void> {
   `);
   await db.execAsync('DELETE FROM exercises WHERE is_custom = 1');
 
+  // Custom programs
+  await db.execAsync(`
+    DELETE FROM program_workouts WHERE program_id IN (
+      SELECT id FROM programs WHERE is_custom = 1
+    )
+  `);
+  await db.execAsync('DELETE FROM programs WHERE is_custom = 1');
+
   await clearOutbox();
   await resetSyncState();
+  try {
+    const { clearActiveProgram } = await import('./programs');
+    await clearActiveProgram();
+  } catch {
+    // ignore
+  }
 }
 
 /**

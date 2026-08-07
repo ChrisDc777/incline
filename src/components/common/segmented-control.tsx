@@ -1,6 +1,6 @@
 import { Pressable, View, LayoutChangeEvent } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { cn } from '@/lib/cn';
 import { Text } from '@/components/ui/text';
@@ -19,7 +19,7 @@ export function SegmentedControl<T extends string>({
   onChange: (value: T) => void;
   className?: string;
 }) {
-  const selectedIndex = values.findIndex((v) => v.value === value);
+  const selectedIndex = Math.max(0, values.findIndex((v) => v.value === value));
   const [widths, setWidths] = useState<number[]>(values.map(() => 0));
   const [offsets, setOffsets] = useState<number[]>(values.map(() => 0));
 
@@ -40,11 +40,13 @@ export function SegmentedControl<T extends string>({
     });
   };
 
-  // Update indicator when selection changes
-  if (offsets[selectedIndex] !== undefined && widths[selectedIndex] > 0) {
-    indicatorX.value = withSpring(offsets[selectedIndex], { damping: 40, stiffness: 150 });
-    indicatorWidth.value = withSpring(widths[selectedIndex], { damping: 40, stiffness: 150 });
-  }
+  useEffect(() => {
+    const w = widths[selectedIndex] ?? 0;
+    const x = offsets[selectedIndex] ?? 0;
+    if (w <= 0) return;
+    indicatorX.value = withSpring(x, { damping: 40, stiffness: 150 });
+    indicatorWidth.value = withSpring(w, { damping: 40, stiffness: 150 });
+  }, [selectedIndex, widths, offsets, indicatorX, indicatorWidth]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: indicatorX.value }],
@@ -52,10 +54,10 @@ export function SegmentedControl<T extends string>({
   }));
 
   return (
-    <View className={cn('relative flex-row rounded-xl bg-surface1 p-1', className)}>
+    <View className={cn('relative flex-row rounded-xl border border-border bg-muted/60 p-1', className)}>
       <Animated.View
-        className="absolute top-1 bottom-1 rounded-lg border border-border bg-surface2"
-        style={[indicatorStyle, { left: 4 }]}
+        className="absolute top-1 bottom-1 rounded-lg border border-primary/35 bg-primary/15"
+        style={[indicatorStyle, { left: 0 }]}
       />
       {values.map((v, i) => {
         const isSelected = v.value === value;
@@ -65,11 +67,13 @@ export function SegmentedControl<T extends string>({
             onPress={() => onChange(v.value)}
             onLayout={(e) => onLayout(i, e)}
             className="flex-1 items-center justify-center py-2"
-            style={{ minHeight: 36, zIndex: 1 }}>
+            style={{ minHeight: 36, zIndex: 1 }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isSelected }}>
             <Text
               className={cn(
-                'text-sm font-medium',
-                isSelected ? 'text-foreground' : 'text-muted-foreground',
+                'text-sm font-semibold',
+                isSelected ? 'text-primary' : 'text-muted-foreground',
               )}>
               {v.label}
             </Text>
