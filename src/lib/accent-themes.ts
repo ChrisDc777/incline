@@ -3,7 +3,7 @@
  * Success stays emerald across themes so "set complete" stays familiar.
  *
  * CSS class: `theme-${id}` on the root (see global.css).
- * Hex maps stay in sync for charts, Switch, ActivityIndicator, icons.
+ * Hex maps stay in sync for charts, ActivityIndicator, icons.
  */
 
 import type { AccentTheme } from '@/db/types';

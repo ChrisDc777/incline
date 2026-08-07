@@ -1,11 +1,9 @@
-import { Switch as NativeSwitch } from 'react-native';
-
-import { useThemeHex } from '@/lib/theme';
-import { useAppColorScheme } from '@/lib/use-color-scheme';
+import { View } from 'react-native';
+import { Host, Switch as ExpoSwitch } from '@expo/ui';
 
 /**
- * Native platform switch. Immediate response, no custom animation —
- * delegates to the OS rendering for a snappy, native feel.
+ * Platform-native toggle via Expo UI (Material 3 Switch on Android, SwiftUI Toggle on iOS).
+ * Matches the OS control size/shape better than React Native's Switch.
  */
 export function Switch({
   value,
@@ -18,19 +16,11 @@ export function Switch({
   disabled?: boolean;
   accessibilityLabel?: string;
 }) {
-  const scheme = useAppColorScheme();
-  const colors = useThemeHex();
   return (
-    <NativeSwitch
-      value={value}
-      onValueChange={onValueChange}
-      disabled={disabled}
-      accessibilityLabel={accessibilityLabel}
-      trackColor={{
-        true: colors.primary,
-        false: scheme === 'dark' ? '#27272a' : colors.muted,
-      }}
-      thumbColor="#ffffff"
-    />
+    <View accessible accessibilityLabel={accessibilityLabel} accessibilityRole="switch" accessibilityState={{ checked: value, disabled: !!disabled }}>
+      <Host matchContents>
+        <ExpoSwitch value={value} onValueChange={onValueChange} disabled={disabled} />
+      </Host>
+    </View>
   );
 }

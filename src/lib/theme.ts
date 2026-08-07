@@ -1,6 +1,6 @@
 /**
  * Theme hex tokens for native props that cannot use Tailwind classNames
- * (ActivityIndicator, chart libs, Switch track colors, etc.).
+ * (ActivityIndicator, chart libs, etc.).
  * Accent primary comes from the selected brand theme; neutrals stay fixed.
  */
 import { ACCENT_THEMES, DEFAULT_ACCENT_THEME, type AccentTheme } from '@/lib/accent-themes';
