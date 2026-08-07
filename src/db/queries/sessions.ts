@@ -476,6 +476,35 @@ async function enrichWorkoutFeed(db: SQLiteDatabase, rows: LogRow[]): Promise<Fe
   });
 }
 
+/** Count exercises in this finished session that match the all-time heaviest weight. */
+export async function getWorkoutPrCount(logId: number): Promise<number> {
+  const db = await openDatabase();
+  const logSets = await db.getAllAsync<{ exercise_id: number; weight: number }>(
+    `SELECT exercise_id, weight FROM set_entries
+     WHERE workout_log_id = ? AND completed = 1 AND deleted_at IS NULL`,
+    logId,
+  );
+  if (logSets.length === 0) return 0;
+  const exerciseMax = new Map<number, number>();
+  for (const s of logSets) {
+    const prev = exerciseMax.get(s.exercise_id) ?? 0;
+    if (s.weight > prev) exerciseMax.set(s.exercise_id, s.weight);
+  }
+  let count = 0;
+  for (const [exId, maxW] of exerciseMax) {
+    if (maxW <= 0) continue;
+    const best = await db.getFirstAsync<{ max_weight: number }>(
+      `SELECT MAX(s.weight) as max_weight FROM set_entries s
+       JOIN workout_logs w ON w.id = s.workout_log_id
+       WHERE s.exercise_id = ? AND s.completed = 1 AND s.deleted_at IS NULL
+         AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL`,
+      exId,
+    );
+    if ((best?.max_weight ?? 0) === maxW) count++;
+  }
+  return count;
+}
+
 export async function deleteWorkout(logId: number): Promise<void> {
   await discardWorkout(logId);
 }

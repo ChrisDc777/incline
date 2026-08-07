@@ -420,6 +420,7 @@ export default function SessionScreen() {
                   sets={g.sets}
                   unit={unit}
                   lastSets={lastSetsMap[g.exerciseId] ?? []}
+                  prSummary={prMap[g.exerciseId] ?? null}
                   restSeconds={restSecondsMap[g.exerciseId] ?? 0}
                   onChangeRestSeconds={(s) => onChangeRestSeconds(g.exerciseId, s)}
                   onChangeWeight={onChangeWeight}

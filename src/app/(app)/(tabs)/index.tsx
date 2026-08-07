@@ -24,6 +24,7 @@ import { useHaptics } from '@/hooks/use-haptics';
 import { startWorkout, discardWorkout, deleteWorkout } from '@/db/queries';
 import { formatVolume, formatFullDate } from '@/db/calc';
 import { METRIC_ICONS } from '@/lib/metric-icons';
+import { weekInsightFromStats } from '@/lib/week-insight';
 import type { FeedWorkoutLog, MuscleGroup } from '@/db/types';
 
 function greeting() {
@@ -126,6 +127,7 @@ export default function HomeScreen() {
   const thisWeek = stats?.weeklyVolume?.[stats.weeklyVolume.length - 1];
   const weekSessions = thisWeek?.sessions ?? 0;
   const weekVolume = thisWeek?.volume ?? 0;
+  const weekInsight = weekInsightFromStats(stats, unit);
   const suggestedMuscles = (suggested?.exercises ?? [])
     .map((e) => e.exercise?.primaryMuscle)
     .filter((m, i, arr): m is MuscleGroup => !!m && arr.indexOf(m) === i);
@@ -145,6 +147,9 @@ export default function HomeScreen() {
       </View>
       <Hero className="mt-0.5">Let&apos;s train, {name.split(' ')[0]}</Hero>
       <Body className="mt-1 text-muted-foreground">{today}</Body>
+      {hasData && weekInsight ? (
+        <Caption className="mt-2 text-foreground/80">{weekInsight.line}</Caption>
+      ) : null}
 
       <View className="mt-6 gap-3">
         {heroLoading ? (

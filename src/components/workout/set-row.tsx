@@ -26,6 +26,7 @@ export function SetRow({
   unit,
   onChangeWeight,
   onChangeReps,
+  onApplyPrevious,
   onToggleComplete,
   onRemove,
   onSubmitReps,
@@ -40,6 +41,8 @@ export function SetRow({
   unit: Unit;
   onChangeWeight: (v: number) => void;
   onChangeReps: (v: number) => void;
+  /** Fill this row from the previous-session values shown in the left column. */
+  onApplyPrevious?: () => void;
   onToggleComplete?: () => void;
   onRemove?: () => void;
   /** Called when the reps field is submitted (advance to next row). */
@@ -61,15 +64,21 @@ export function SetRow({
         <Text className="text-sm font-bold text-muted-foreground">{index + 1}</Text>
       </View>
 
-      <View className="w-[72px] items-center">
+      <Pressable
+        className="w-[72px] items-center"
+        disabled={!hasPrevious || !onApplyPrevious}
+        onPress={onApplyPrevious}
+        accessibilityRole={hasPrevious ? 'button' : undefined}
+        accessibilityLabel={hasPrevious ? 'Use previous weight and reps' : undefined}
+        hitSlop={6}>
         {hasPrevious ? (
-          <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+          <Text className="text-xs text-primary" numberOfLines={1}>
             {formatWeight(previousWeight!, unit)} × {previousReps}
           </Text>
         ) : (
           <Text className="text-xs text-muted-foreground">—</Text>
         )}
-      </View>
+      </Pressable>
 
       <NumberStepper
         ref={weightRef}

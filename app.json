@@ -35,7 +35,8 @@
         }
       ],
       "expo-audio",
-      "expo-image"
+      "expo-image",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true

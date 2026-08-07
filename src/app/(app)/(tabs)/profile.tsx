@@ -25,6 +25,8 @@ import { formatVolume } from '@/db/calc';
 import { SCREEN_CONTENT } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
 import { hexToRgba, usePrimaryHex } from '@/lib/theme';
+import { evaluateAchievements } from '@/lib/achievements';
+import { AchievementTile } from '@/components/profile/achievement-tile';
 import type { Goal } from '@/db/types';
 
 const GOALS: Goal[] = ['build_muscle', 'gain_strength', 'lose_fat', 'improve_endurance'];
@@ -92,6 +94,9 @@ export default function ProfileScreen() {
     toast({ title: 'Workout history cleared', variant: 'info' });
   };
 
+  const achievements = evaluateAchievements(stats);
+  const unlockedCount = achievements.filter((a) => a.unlocked).length;
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={SCREEN_CONTENT}>
@@ -131,6 +136,20 @@ export default function ProfileScreen() {
           <StatCard label="Sessions" value={stats?.totalSessions ?? 0} icon={<Icon icon={METRIC_ICONS.sessions} size={16} color="muted-foreground" />} />
           <StatCard label="Volume" value={formatVolume(stats?.totalVolume ?? 0, unit)} icon={<Icon icon={METRIC_ICONS.volume} size={16} color="info" />} />
           <StatCard label="Sets" value={stats?.totalSets ?? 0} icon={<Icon icon={METRIC_ICONS.sets} size={16} color="muted-foreground" />} />
+        </View>
+
+        <View className="mt-6">
+          <View className="mb-3 flex-row items-baseline justify-between">
+            <Caption className="text-base font-semibold text-foreground">Milestones</Caption>
+            <Caption>
+              {unlockedCount}/{achievements.length}
+            </Caption>
+          </View>
+          <View className="flex-row flex-wrap gap-3">
+            {achievements.map((a) => (
+              <AchievementTile key={a.id} achievement={a} />
+            ))}
+          </View>
         </View>
 
         <Caption className="mb-3 mt-6">Dashboard</Caption>

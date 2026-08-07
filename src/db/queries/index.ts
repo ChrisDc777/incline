@@ -77,6 +77,7 @@ export {
   listWorkoutLogs,
   listWorkoutFeedLogs,
   getWorkoutFeedForDay,
+  getWorkoutPrCount,
   deleteWorkout,
   clearWorkoutHistory,
   type MuscleSplit,

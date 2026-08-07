@@ -5,8 +5,11 @@ import { cn } from '@/lib/cn';
 import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
 import { SetRow, type SetRowHandle } from './set-row';
+import { PreviousBestBadge } from './previous-best-badge';
 import { RestTimerPickerSheet } from './rest-timer-picker-sheet';
+import { formatWeight } from '@/db/calc';
 import type { SetEntry, Unit } from '@/db/types';
+import type { ExercisePRSummary } from '@/db/queries';
 import { Plus, Clock, Flame } from 'lucide-react-native';
 
 /**
@@ -19,6 +22,7 @@ export function ExerciseBlock({
   sets,
   unit,
   lastSets,
+  prSummary,
   restSeconds,
   onChangeRestSeconds,
   onChangeWeight,
@@ -36,6 +40,7 @@ export function ExerciseBlock({
   sets: SetEntry[];
   unit: Unit;
   lastSets: SetEntry[];
+  prSummary?: ExercisePRSummary | null;
   restSeconds: number;
   onChangeRestSeconds: (seconds: number) => void;
   onChangeWeight: (setId: number, v: number) => void;
@@ -53,6 +58,15 @@ export function ExerciseBlock({
   const rowRefs = useRef<(SetRowHandle | null)[]>([]);
   const completedCount = sets.filter((s) => s.completed).length;
 
+  const workingWeight = sets.find((s) => !s.completed && s.weight > 0)?.weight
+    ?? sets.filter((s) => s.completed).at(-1)?.weight
+    ?? lastSets[0]?.weight
+    ?? 0;
+  const prGap =
+    prSummary && prSummary.heaviestWeight > 0
+      ? prSummary.heaviestWeight - workingWeight
+      : null;
+
   return (
     <View
       className={cn(
@@ -61,7 +75,21 @@ export function ExerciseBlock({
         className,
       )}>
       <View className="flex-row items-center justify-between px-1">
-        <Text className="text-base font-semibold text-foreground">{name}</Text>
+        <View className="min-w-0 flex-1 pr-2">
+          <Text className="text-base font-semibold text-foreground" numberOfLines={1}>{name}</Text>
+          <View className="mt-1 flex-row flex-wrap items-center gap-x-3 gap-y-1">
+            <PreviousBestBadge lastSets={lastSets} unit={unit} />
+            {prGap !== null && workingWeight > 0 ? (
+              <Text className="text-xs text-muted-foreground">
+                {prGap > 0
+                  ? `${formatWeight(prGap, unit)} to PR`
+                  : prGap === 0
+                    ? 'At PR weight'
+                    : `${formatWeight(Math.abs(prGap), unit)} over PR`}
+              </Text>
+            ) : null}
+          </View>
+        </View>
         <View className="flex-row items-center gap-3">
           <Text className="text-xs text-muted-foreground">
             {completedCount}/{sets.length}
@@ -93,6 +121,14 @@ export function ExerciseBlock({
             unit={unit}
             onChangeWeight={(v) => onChangeWeight(s.id, v)}
             onChangeReps={(v) => onChangeReps(s.id, v)}
+            onApplyPrevious={
+              lastSets[i] && lastSets[i].weight > 0
+                ? () => {
+                    onChangeWeight(s.id, lastSets[i].weight);
+                    onChangeReps(s.id, lastSets[i].reps);
+                  }
+                : undefined
+            }
             onToggleComplete={() => onToggleComplete(s.id)}
             onRemove={sets.length > 1 ? () => onRemoveSet(s.id) : undefined}
             onSubmitReps={i + 1 < sets.length ? () => rowRefs.current[i + 1]?.focusWeight() : undefined}
