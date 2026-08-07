@@ -102,7 +102,7 @@ export function SetRow({
             'h-12 w-12 items-center justify-center rounded-full',
             completed ? 'bg-success' : 'border-2 border-border',
           )}>
-          <Icon icon={Check} size={20} color="success-foreground" />
+          <Icon icon={Check} size={20} color={completed ? 'success-foreground' : 'muted-foreground'} />
         </Pressable>
       ) : (
         <View

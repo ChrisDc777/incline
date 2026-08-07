@@ -28,6 +28,7 @@ export function ExerciseBlock({
   onAddSet,
   onAddWarmUp,
   showWarmUpSets = true,
+  active = false,
   className,
 }: {
   name: string;
@@ -44,6 +45,8 @@ export function ExerciseBlock({
   onAddSet: () => void;
   onAddWarmUp: () => void;
   showWarmUpSets?: boolean;
+  /** Subtle focus for the exercise currently being logged. */
+  active?: boolean;
   className?: string;
 }) {
   const [restPickerOpen, setRestPickerOpen] = useState(false);
@@ -51,7 +54,12 @@ export function ExerciseBlock({
   const completedCount = sets.filter((s) => s.completed).length;
 
   return (
-    <View className={cn('gap-2', className)}>
+    <View
+      className={cn(
+        'gap-2 rounded-2xl px-1 py-1',
+        active && 'border border-primary/25 bg-primary/5',
+        className,
+      )}>
       <View className="flex-row items-center justify-between px-1">
         <Text className="text-base font-semibold text-foreground">{name}</Text>
         <View className="flex-row items-center gap-3">

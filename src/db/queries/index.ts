@@ -68,6 +68,7 @@ export {
   addSet,
   updateSet,
   removeSet,
+  restoreSet,
   updateWorkoutNotes,
   updateWorkoutLogStartedAt,
   updateWorkoutDuration,

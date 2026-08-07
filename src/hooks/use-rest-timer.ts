@@ -84,5 +84,15 @@ export function useRestTimer() {
 
   const justFinished = total > 0 && remaining === 0 && !running;
 
+  // Keep "Done" visible briefly so completion isn't a silent disappear.
+  useEffect(() => {
+    if (!justFinished) return;
+    const t = setTimeout(() => {
+      setTotal(0);
+      deadlineRef.current = 0;
+    }, 1400);
+    return () => clearTimeout(t);
+  }, [justFinished]);
+
   return { remaining, total, running, justFinished, start, stop, add };
 }

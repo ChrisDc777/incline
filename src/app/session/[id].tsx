@@ -33,12 +33,12 @@ import {
   getRestDefaultsForSession,
   getWorkoutLog,
   removeSet,
+  restoreSet,
   updateSet,
   updateWorkoutNotes,
   type ExercisePRSummary,
   type SessionWorkout,
 } from '@/db/queries';
-import { openDatabase } from '@/db/client';
 import { estimated1RM, formatClock, formatVolume, formatWeight } from '@/db/calc';
 import { SCREEN_CONTENT_CTA } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
@@ -298,13 +298,7 @@ export default function SessionScreen() {
   const onUndoRemove = async () => {
     if (!removedSet) return;
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    const { setEntry, logId: lid } = removedSet;
-    const db = await openDatabase();
-    // Re-insert the set with its original values
-    await db.runAsync(
-      `INSERT INTO set_entries (workout_log_id, exercise_id, set_index, weight, reps, completed, rest_seconds, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      lid, setEntry.exerciseId, setEntry.setIndex, setEntry.weight, setEntry.reps, setEntry.completed ? 1 : 0, setEntry.restSeconds, setEntry.createdAt,
-    );
+    await restoreSet(removedSet.setEntry.id);
     setRemovedSet(null);
     reload();
   };
@@ -321,17 +315,9 @@ export default function SessionScreen() {
   const finish = async () => {
     setFinishOpen(false);
     if (notes.trim()) await updateWorkoutNotes(logId, notes.trim());
-    // If paused, account for the paused time in duration
     const pauseBonus = pausedAt ? Date.now() - pausedAt : 0;
-    if (totalPausedMsRef.current > 0 || pauseBonus > 0) {
-      const db = await openDatabase();
-      const log = await db.getFirstAsync<{ started_at: number }>('SELECT started_at FROM workout_logs WHERE id = ?', logId);
-      if (log) {
-        const realDuration = Math.max(0, Date.now() - log.started_at - totalPausedMsRef.current - pauseBonus);
-        await db.runAsync('UPDATE workout_logs SET duration_seconds = ? WHERE id = ?', Math.floor(realDuration / 1000), logId);
-      }
-    }
-    await finishWorkout(logId);
+    const pausedMs = totalPausedMsRef.current + pauseBonus;
+    await finishWorkout(logId, { pausedMs });
     clear();
     toast({ title: 'Workout saved', description: 'Great session — check your progress.', variant: 'success' });
     router.replace(`/summary/${logId}`);
@@ -371,7 +357,7 @@ export default function SessionScreen() {
         </Pressable>
         <View className="items-center">
           <Body className="font-semibold text-foreground">{session.name}</Body>
-          <Caption>{formatClock(elapsed)}</Caption>
+          {pausedAt ? <Caption className="text-amber-500">Paused</Caption> : null}
         </View>
         <Button size="sm" variant="success" leftIcon={<Icon icon={Check} size={16} color="success-foreground" />} onPress={() => setFinishOpen(true)}>
           Finish
@@ -418,12 +404,44 @@ export default function SessionScreen() {
           Add exercise
         </Button>
 
-        {session.sets.length > 0 && (
-          <View className="mb-4 rounded-2xl bg-card p-3">
+        {groups.length === 0 ? (
+          <View className="items-center py-16">
+            <Body className="font-semibold text-foreground">No exercises yet</Body>
+            <Caption className="mt-1 text-center">Add an exercise to start logging sets.</Caption>
+          </View>
+        ) : (
+          <View className="gap-5">
+            {groups.map((g, i) => (
+              <View key={g.exerciseId} ref={(el) => { groupRefs.current[i] = el; }}>
+                {i > 0 && <View className="mb-5 h-px bg-border/40" />}
+                <ExerciseBlock
+                  name={g.exerciseName}
+                  exerciseId={g.exerciseId}
+                  sets={g.sets}
+                  unit={unit}
+                  lastSets={lastSetsMap[g.exerciseId] ?? []}
+                  restSeconds={restSecondsMap[g.exerciseId] ?? 0}
+                  onChangeRestSeconds={(s) => onChangeRestSeconds(g.exerciseId, s)}
+                  onChangeWeight={onChangeWeight}
+                  onChangeReps={onChangeReps}
+                  onToggleComplete={onToggleComplete}
+                  onRemoveSet={onRemoveSet}
+                  onAddSet={() => onAddSet(g.exerciseId)}
+                  onAddWarmUp={() => onAddWarmUp(g.exerciseId)}
+                  showWarmUpSets={showWarmUpSets}
+                  active={i === activeGroupIndex}
+                />
+              </View>
+            ))}
+          </View>
+        )}
+
+        {session.sets.length > 0 ? (
+          <View className="mt-5 mb-3 rounded-2xl bg-card p-3">
             <Caption className="mb-2 text-muted-foreground">Set rest for all exercises</Caption>
             <RestPresetBar onSelect={applyRestToAll} />
           </View>
-        )}
+        ) : null}
 
         <Pressable
           onPress={() => setNotesOpen(!notesOpen)}
@@ -456,37 +474,6 @@ export default function SessionScreen() {
           <Icon icon={METRIC_ICONS.equipment} size={16} color="primary" />
           <Body className="text-sm text-foreground">Plate calculator</Body>
         </Pressable>
-
-        {groups.length === 0 ? (
-          <View className="items-center py-16">
-            <Body className="font-semibold text-foreground">No exercises yet</Body>
-            <Caption className="mt-1 text-center">Add an exercise to start logging sets.</Caption>
-          </View>
-        ) : (
-          <View className="gap-5">
-            {groups.map((g, i) => (
-              <View key={g.exerciseId} ref={(el) => { groupRefs.current[i] = el; }}>
-                {i > 0 && <View className="mb-5 h-px bg-border/40" />}
-                <ExerciseBlock
-                  name={g.exerciseName}
-                  exerciseId={g.exerciseId}
-                  sets={g.sets}
-                  unit={unit}
-                  lastSets={lastSetsMap[g.exerciseId] ?? []}
-                  restSeconds={restSecondsMap[g.exerciseId] ?? 0}
-                  onChangeRestSeconds={(s) => onChangeRestSeconds(g.exerciseId, s)}
-                  onChangeWeight={onChangeWeight}
-                  onChangeReps={onChangeReps}
-                  onToggleComplete={onToggleComplete}
-                  onRemoveSet={onRemoveSet}
-                  onAddSet={() => onAddSet(g.exerciseId)}
-                  onAddWarmUp={() => onAddWarmUp(g.exerciseId)}
-                  showWarmUpSets={showWarmUpSets}
-                />
-              </View>
-            ))}
-          </View>
-        )}
       </ScrollView>
 
       {removedSet ? (
@@ -505,7 +492,7 @@ export default function SessionScreen() {
         </View>
       ) : null}
 
-      {rest.running || rest.remaining > 0 ? (
+      {rest.running || rest.remaining > 0 || rest.justFinished ? (
         <RestTimer
           remaining={rest.remaining}
           total={rest.total}
@@ -520,7 +507,11 @@ export default function SessionScreen() {
         open={finishOpen}
         onOpenChange={setFinishOpen}
         title="Finish workout?"
-        description={`You completed ${completedSets} of ${totalSets} sets. Save this session to your history.`}
+        description={
+          completedSets < totalSets
+            ? `You completed ${completedSets} of ${totalSets} sets — ${totalSets - completedSets} still open. Save this session to your history?`
+            : `You completed ${completedSets} of ${totalSets} sets. Save this session to your history.`
+        }
         footer={
           <>
             <Button variant="outline" onPress={() => setFinishOpen(false)}>Keep logging</Button>

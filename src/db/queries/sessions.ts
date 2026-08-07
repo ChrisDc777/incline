@@ -314,18 +314,37 @@ export async function updateWorkoutDuration(logId: number, seconds: number): Pro
   await enqueueLogUpsert(logId);
 }
 
-export async function finishWorkout(logId: number): Promise<void> {
+export async function finishWorkout(logId: number, options?: { pausedMs?: number }): Promise<void> {
   const db = await openDatabase();
   const log = await db.getFirstAsync<LogRow>('SELECT * FROM workout_logs WHERE id = ?', logId);
   if (!log) return;
   const now = Date.now();
-  const duration = Math.max(0, now - log.started_at);
+  const pausedMs = Math.max(0, options?.pausedMs ?? 0);
+  const duration = Math.max(0, Math.floor((now - log.started_at - pausedMs) / 1000));
   await recomputeVolume(logId);
   await db.runAsync(
     'UPDATE workout_logs SET ended_at = ?, duration_seconds = ?, updated_at = ? WHERE id = ?',
     now, duration, now, logId,
   );
   await enqueueLogUpsert(logId);
+}
+
+/** Undo a soft-deleted set within the same session (preserves uuid for sync). */
+export async function restoreSet(setId: number): Promise<void> {
+  const db = await openDatabase();
+  const now = Date.now();
+  const row = await db.getFirstAsync<{ workout_log_id: number }>(
+    'SELECT workout_log_id FROM set_entries WHERE id = ?',
+    setId,
+  );
+  if (!row) return;
+  await db.runAsync(
+    'UPDATE set_entries SET deleted_at = NULL, updated_at = ? WHERE id = ?',
+    now, setId,
+  );
+  await recomputeVolume(row.workout_log_id);
+  await enqueueSetUpsert(setId);
+  await enqueueLogUpsert(row.workout_log_id);
 }
 
 export async function discardWorkout(logId: number): Promise<void> {
