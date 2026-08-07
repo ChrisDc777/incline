@@ -7,8 +7,6 @@
  */
 
 import type { AccentTheme } from '@/db/types';
-import { useSettings } from '@/store/settings-store';
-import { useAppColorScheme } from '@/lib/use-color-scheme';
 
 export type { AccentTheme };
 
@@ -88,10 +86,4 @@ export function chartPaletteFor(
   const def = ACCENT_THEMES[accent] ?? ACCENT_THEMES[DEFAULT_ACCENT_THEME];
   const support = CHART_SUPPORT[scheme];
   return [def.hex[scheme], ...support];
-}
-
-export function useChartPalette(): string[] {
-  const accent = useSettings((s) => s.accentTheme);
-  const scheme = useAppColorScheme() === 'dark' ? 'dark' : 'light';
-  return chartPaletteFor(accent, scheme);
 }

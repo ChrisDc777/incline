@@ -4,7 +4,7 @@ import { PieChart, type pieDataItem } from 'react-native-gifted-charts';
 
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/cn';
-import { useChartPalette } from '@/lib/accent-themes';
+import { useChartPalette } from '@/lib/use-chart-palette';
 import { MUSCLE_LABELS, muscleColor } from '@/lib/labels';
 import { useThemeHex } from '@/lib/theme';
 import type { MuscleDistribution, Unit } from '@/db/types';

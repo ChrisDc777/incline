@@ -222,6 +222,6 @@ export const SCHEMA_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_workout_logs_template ON workout_logs(template_id)`,
   `CREATE INDEX IF NOT EXISTS idx_set_entries_log ON set_entries(workout_log_id, set_index)`,
   `CREATE INDEX IF NOT EXISTS idx_set_entries_exercise ON set_entries(exercise_id, created_at DESC)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS idx_programs_uuid ON programs(uuid)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS idx_program_workouts_uuid ON program_workouts(uuid)`,
+  // Program uuid unique indexes: migration 008 / ensureProgramBuilderSchema (not here —
+  // CREATE IF NOT EXISTS upgrades keep old programs tables without uuid).
 ];

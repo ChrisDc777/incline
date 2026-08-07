@@ -11,6 +11,8 @@ const UUID_TABLES = [
   'set_entries',
   'user_profile',
   'bodyweight_entries',
+  'programs',
+  'program_workouts',
 ] as const;
 
 /** Backfill missing UUIDs (fresh seed rows, legacy inserts). Safe to call repeatedly. */
