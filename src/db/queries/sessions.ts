@@ -321,11 +321,27 @@ export async function finishWorkout(logId: number, options?: { pausedMs?: number
   const now = Date.now();
   const pausedMs = Math.max(0, options?.pausedMs ?? 0);
   const duration = Math.max(0, Math.floor((now - log.started_at - pausedMs) / 1000));
+
+  // Soft-delete incomplete template sets so Home/history only show what was logged.
+  // Templates themselves are untouched.
+  const incomplete = await db.getAllAsync<{ id: number }>(
+    `SELECT id FROM set_entries
+     WHERE workout_log_id = ? AND completed = 0 AND deleted_at IS NULL`,
+    logId,
+  );
+  for (const row of incomplete) {
+    await db.runAsync(
+      'UPDATE set_entries SET deleted_at = ?, updated_at = ? WHERE id = ?',
+      now, now, row.id,
+    );
+  }
+
   await recomputeVolume(logId);
   await db.runAsync(
     'UPDATE workout_logs SET ended_at = ?, duration_seconds = ?, updated_at = ? WHERE id = ?',
     now, duration, now, logId,
   );
+  for (const row of incomplete) await enqueueSetUpsert(row.id);
   await enqueueLogUpsert(logId);
 }
 
@@ -408,7 +424,7 @@ async function enrichWorkoutFeed(db: SQLiteDatabase, rows: LogRow[]): Promise<Fe
   const allSets = await db.getAllAsync<SetRow & { exercise_name: string }>(
     `SELECT s.*, e.name as exercise_name FROM set_entries s
      JOIN exercises e ON e.id = s.exercise_id
-     WHERE s.workout_log_id IN (${placeholders}) AND s.deleted_at IS NULL
+     WHERE s.workout_log_id IN (${placeholders}) AND s.deleted_at IS NULL AND s.completed = 1
      ORDER BY s.workout_log_id, s.exercise_id, s.set_index`,
     ...logIds,
   );

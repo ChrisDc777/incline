@@ -68,6 +68,14 @@ export const ACCENT_THEMES: Record<AccentTheme, AccentDefinition> = {
     dark: { primary: '142 69% 47%', ring: '142 69% 47%', chart1: '142 64% 48%' },
     hex: { light: '#16a34a', dark: '#22c55e' },
   },
+  mint: {
+    id: 'mint',
+    label: 'Mint',
+    description: 'Soft seafoam — charts and active states',
+    light: { primary: '142 68% 48%', ring: '142 68% 48%', chart1: '142 62% 46%' },
+    dark: { primary: '142 70% 68%', ring: '142 70% 68%', chart1: '142 65% 62%' },
+    hex: { light: '#2DB86A', dark: '#75E69C' },
+  },
 };
 
 export const ACCENT_THEME_LIST = Object.values(ACCENT_THEMES);

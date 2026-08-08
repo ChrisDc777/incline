@@ -34,6 +34,7 @@ const ACCENT_CLASS: Record<AccentTheme, string> = {
   copper: 'theme-copper',
   coral: 'theme-coral',
   emerald: 'theme-emerald',
+  mint: 'theme-mint',
 };
 
 export default function RootLayout() {
@@ -75,6 +76,7 @@ export default function RootLayout() {
                     <Stack.Screen name="workout/[id]" options={{ headerShown: true, title: 'Workout' }} />
                     <Stack.Screen name="session/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="summary/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="share/[id]" options={{ headerShown: false, presentation: 'modal' }} />
                     <Stack.Screen name="edit-workout/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
                   </Stack>

@@ -17,11 +17,13 @@ export {
   getExercisePRSummary,
   getExerciseRepRecords,
   getExerciseProgression,
+  getExerciseSeries,
   type ExerciseFilters,
   type CreateCustomExerciseInput,
   type ExercisePRSummary,
   type RepRecord,
   type ProgressionPoint,
+  type ExerciseSeriesPoint,
 } from './exercises';
 
 export {

@@ -51,6 +51,7 @@ export const ShareSummaryCard = forwardRef<
           </View>
         ) : null}
       </View>
+      <Caption className="mt-5 text-center text-zinc-500">Train with me on Incline</Caption>
     </View>
   );
 });

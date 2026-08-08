@@ -12,11 +12,20 @@ import { SegmentedControl } from '@/components/common/segmented-control';
 import { EmptyState, ErrorState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
 import { ProgressionChart } from '@/components/progress/progression-chart';
+import { SeriesAreaChart } from '@/components/progress/series-area-chart';
 import { useExercise, useExerciseHistory } from '@/hooks/use-data';
-import { getExerciseByExternalId, getExercisePRSummary, getExerciseRepRecords, getExerciseProgression, type ExercisePRSummary, type RepRecord, type ProgressionPoint } from '@/db/queries';
+import {
+  getExerciseByExternalId,
+  getExercisePRSummary,
+  getExerciseRepRecords,
+  getExerciseSeries,
+  type ExercisePRSummary,
+  type RepRecord,
+  type ExerciseSeriesPoint,
+} from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
 import { MOVEMENT_LABELS } from '@/lib/labels';
-import { estimated1RM, formatWeight, relativeTime } from '@/db/calc';
+import { estimated1RM, formatWeight, formatVolume, relativeTime } from '@/db/calc';
 import type { Exercise, ExerciseHistoryRow, Unit } from '@/db/types';
 
 const TABS = ['Summary', 'History', 'How to'] as const;
@@ -63,13 +72,13 @@ export default function ExerciseDetailScreen() {
   const { data: history } = useExerciseHistory(exerciseId);
   const [prSummary, setPrSummary] = useState<ExercisePRSummary | null>(null);
   const [repRecords, setRepRecords] = useState<RepRecord[]>([]);
-  const [progression, setProgression] = useState<ProgressionPoint[]>([]);
+  const [series, setSeries] = useState<ExerciseSeriesPoint[]>([]);
 
   useEffect(() => {
     if (!exerciseId) return;
     getExercisePRSummary(exerciseId).then(setPrSummary);
     getExerciseRepRecords(exerciseId).then(setRepRecords);
-    getExerciseProgression(exerciseId).then(setProgression);
+    getExerciseSeries(exerciseId).then(setSeries);
   }, [exerciseId]);
 
   useLayoutEffect(() => {
@@ -122,7 +131,7 @@ export default function ExerciseDetailScreen() {
             exercise={exercise}
             prSummary={prSummary}
             repRecords={repRecords}
-            progression={progression}
+            series={series}
             unit={unit}
             maxWeight={maxWeight}
             max1RM={max1RM}
@@ -141,17 +150,32 @@ export default function ExerciseDetailScreen() {
 
 /* ───────────── Summary Tab ───────────── */
 
+function chartDateLabel(iso: string): string {
+  const parts = iso.split('-');
+  if (parts.length < 3) return iso;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[Number(parts[1]) - 1] ?? parts[1];
+  return `${Number(parts[2])} ${month}`;
+}
+
 function SummaryTab({
-  exercise, prSummary, repRecords, progression, unit, maxWeight, max1RM,
+  exercise, prSummary, repRecords, series, unit, maxWeight, max1RM,
 }: {
   exercise: Exercise;
   prSummary: ExercisePRSummary | null;
   repRecords: RepRecord[];
-  progression: ProgressionPoint[];
+  series: ExerciseSeriesPoint[];
   unit: Unit;
   maxWeight: number;
   max1RM: number;
 }) {
+  const chartPoints = series.map((p) => ({
+    label: chartDateLabel(p.date),
+    e1rm: p.estimated1RM,
+    setVolume: p.setVolume,
+    weight: p.heaviestWeight,
+  }));
+
   return (
     <View>
       {/* Exercise GIF */}
@@ -163,21 +187,36 @@ function SummaryTab({
         {exercise.isCompound ? <Badge variant="default">Compound</Badge> : <Badge variant="secondary">Isolation</Badge>}
       </View>
 
-      {/* Progression chart */}
-      {progression.length > 1 ? (
-        <Card className="mb-4">
-          <CardHeader>
-            <CardTitle>Progression</CardTitle>
-          </CardHeader>
-          <ProgressionChart
-            points={progression.map((p) => ({ label: p.date.slice(5), weight: p.weight }))}
-            unit={unit}
-          />
-          <View className="mt-1 flex-row justify-between px-2">
-            <Caption>{progression[0]?.date}</Caption>
-            <Caption>{progression[progression.length - 1]?.date}</Caption>
-          </View>
-        </Card>
+      {chartPoints.length > 1 ? (
+        <>
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle>Estimated 1RM</CardTitle>
+            </CardHeader>
+            <SeriesAreaChart
+              points={chartPoints.map((p) => ({ label: p.label, value: p.e1rm }))}
+              formatValue={(v) => formatWeight(v, unit)}
+            />
+          </Card>
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle>Set Volume</CardTitle>
+            </CardHeader>
+            <SeriesAreaChart
+              points={chartPoints.map((p) => ({ label: p.label, value: p.setVolume }))}
+              formatValue={(v) => formatVolume(v, unit)}
+            />
+          </Card>
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle>Heaviest weight</CardTitle>
+            </CardHeader>
+            <ProgressionChart
+              points={chartPoints.map((p) => ({ label: p.label, weight: p.weight }))}
+              unit={unit}
+            />
+          </Card>
+        </>
       ) : null}
 
       {/* Personal Records */}

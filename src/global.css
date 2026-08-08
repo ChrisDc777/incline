@@ -152,3 +152,16 @@
   --ring: 142 69% 47%;
   --chart-1: 142 64% 48%;
 }
+
+.theme-mint {
+  --primary: 142 68% 48%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 142 68% 48%;
+  --chart-1: 142 62% 46%;
+}
+.dark.theme-mint {
+  --primary: 142 70% 68%;
+  --primary-foreground: 240 10% 4%;
+  --ring: 142 70% 68%;
+  --chart-1: 142 65% 62%;
+}
