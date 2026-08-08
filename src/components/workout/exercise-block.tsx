@@ -7,7 +7,7 @@ import { Text } from '@/components/ui/text';
 import { SetRow, type SetRowHandle } from './set-row';
 import { PreviousBestBadge } from './previous-best-badge';
 import { RestTimerPickerSheet } from './rest-timer-picker-sheet';
-import { formatWeight } from '@/db/calc';
+import { estimated1RM, formatWeight, repsToBeat1RM } from '@/db/calc';
 import type { SetEntry, Unit } from '@/db/types';
 import type { ExercisePRSummary } from '@/db/queries';
 import { Plus, Clock, Flame } from 'lucide-react-native';
@@ -32,6 +32,7 @@ export function ExerciseBlock({
   onRemoveSet,
   onAddSet,
   onAddWarmUp,
+  onApplyLoad,
   showWarmUpSets = true,
   className,
 }: {
@@ -49,6 +50,8 @@ export function ExerciseBlock({
   onRemoveSet: (setId: number) => void;
   onAddSet: () => void;
   onAddWarmUp: () => void;
+  /** Prefill the next incomplete set with a weight/reps suggestion. */
+  onApplyLoad?: (weight: number, reps?: number) => void;
   showWarmUpSets?: boolean;
   className?: string;
 }) {
@@ -57,14 +60,32 @@ export function ExerciseBlock({
   const completedCount = sets.filter((s) => s.completed).length;
   const weightLabel = unit === 'metric' ? 'KG' : 'LB';
 
-  const workingWeight = sets.find((s) => !s.completed && s.weight > 0)?.weight
-    ?? sets.filter((s) => s.completed).at(-1)?.weight
-    ?? lastSets[0]?.weight
-    ?? 0;
+  const activeSet = sets.find((s) => !s.completed) ?? sets.at(-1) ?? null;
+  const workingWeight = activeSet && activeSet.weight > 0
+    ? activeSet.weight
+    : lastSets.find((s) => s.weight > 0)?.weight ?? 0;
+  const workingReps = activeSet?.reps ?? 0;
+
+  const lastTop = lastSets.length > 0
+    ? lastSets.reduce((best, s) => (s.weight > best.weight ? s : best), lastSets[0])
+    : null;
+
+  const prWeight = prSummary && prSummary.heaviestWeight > 0 ? prSummary.heaviestWeight : null;
+  const best1RM = prSummary && prSummary.best1RM > 0 ? prSummary.best1RM : null;
+
   const prGap =
-    prSummary && prSummary.heaviestWeight > 0
-      ? prSummary.heaviestWeight - workingWeight
+    prWeight != null && workingWeight > 0
+      ? prWeight - workingWeight
       : null;
+
+  const repsToPr =
+    best1RM != null && workingWeight > 0
+      ? repsToBeat1RM(workingWeight, best1RM)
+      : null;
+
+  const alreadyBeating =
+    best1RM != null && workingWeight > 0 && workingReps > 0
+      && estimated1RM(workingWeight, workingReps) > best1RM;
 
   return (
     <View className={cn('gap-2 rounded-2xl px-1 py-1', className)}>
@@ -73,6 +94,11 @@ export function ExerciseBlock({
           <Text className="text-base font-semibold text-foreground" numberOfLines={1}>{name}</Text>
           <View className="mt-1 flex-row flex-wrap items-center gap-x-3 gap-y-1">
             <PreviousBestBadge lastSets={lastSets} unit={unit} />
+            {best1RM != null ? (
+              <Text className="text-xs text-muted-foreground">
+                e1RM {formatWeight(best1RM, unit)}
+              </Text>
+            ) : null}
             {prGap !== null && workingWeight > 0 ? (
               <Text className="text-xs text-muted-foreground">
                 {prGap > 0
@@ -82,7 +108,40 @@ export function ExerciseBlock({
                     : `${formatWeight(Math.abs(prGap), unit)} over PR`}
               </Text>
             ) : null}
+            {alreadyBeating ? (
+              <Text className="text-xs font-medium text-primary">PR pace</Text>
+            ) : repsToPr != null && workingWeight > 0 ? (
+              <Text className="text-xs text-muted-foreground">
+                {repsToPr} reps @ {formatWeight(workingWeight, unit)} to beat e1RM
+              </Text>
+            ) : null}
           </View>
+          {onApplyLoad && (lastTop || prWeight) ? (
+            <View className="mt-2 flex-row flex-wrap gap-2">
+              {lastTop && lastTop.weight > 0 ? (
+                <Pressable
+                  onPress={() => onApplyLoad(lastTop.weight, lastTop.reps)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Use last ${formatWeight(lastTop.weight, unit)} times ${lastTop.reps}`}
+                  className="rounded-full border border-border bg-muted/40 px-2.5 py-1">
+                  <Text className="text-xs font-medium text-foreground">
+                    Last {formatWeight(lastTop.weight, unit)}×{lastTop.reps}
+                  </Text>
+                </Pressable>
+              ) : null}
+              {prWeight != null ? (
+                <Pressable
+                  onPress={() => onApplyLoad(prWeight)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Use PR weight ${formatWeight(prWeight, unit)}`}
+                  className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1">
+                  <Text className="text-xs font-medium text-primary">
+                    PR {formatWeight(prWeight, unit)}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
         </View>
         <View className="flex-row items-center gap-3">
           <Text className="text-xs text-muted-foreground">
