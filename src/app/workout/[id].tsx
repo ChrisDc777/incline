@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { ErrorState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
 import { MuscleBadge } from '@/components/exercise/muscle-badge';
+import { MuscleBodyMap } from '@/components/progress/muscle-body-map';
 import { ActiveSessionConflictDialog } from '@/components/workout/active-session-conflict-dialog';
 import { useTemplate } from '@/hooks/use-data';
 import { useActiveSession } from '@/hooks/use-active-session';
@@ -95,11 +96,17 @@ export default function WorkoutPreviewScreen() {
         <Badge variant="outline">{template.exercises?.length ?? 0} exercises</Badge>
       </View>
 
-      <View className="mt-3 flex-row flex-wrap gap-2">
-        {muscles.map((m) => (
-          <MuscleBadge key={m} muscle={m} />
-        ))}
-      </View>
+      {muscles.length > 0 ? (
+        <Card className="mt-4">
+          <Caption className="mb-2">Targets</Caption>
+          <MuscleBodyMap muscles={muscles} scale={0.95} />
+          <View className="mt-3 flex-row flex-wrap gap-2">
+            {muscles.map((m) => (
+              <MuscleBadge key={m} muscle={m} />
+            ))}
+          </View>
+        </Card>
+      ) : null}
 
       <View className="mt-6 gap-3">
         {(template.exercises ?? []).map((te) => (

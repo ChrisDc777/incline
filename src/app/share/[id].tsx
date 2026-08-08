@@ -11,11 +11,12 @@ import { Body, Caption } from '@/components/common/text';
 import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 import { Button } from '@/components/ui/button';
 import { ShareSummaryCard } from '@/components/workout/share-summary-card';
-import { getWorkoutLog, getWorkoutPrCount, type SessionWorkout } from '@/db/queries';
+import { getWorkoutLog, getWorkoutPrCount, getWorkoutMuscleSplit, type SessionWorkout } from '@/db/queries';
 import { useProfile } from '@/hooks/use-data';
 import { useSettings } from '@/store/settings-store';
 import { useToast } from '@/components/ui/toast';
 import { formatDuration, formatVolume } from '@/db/calc';
+import type { MuscleGroup } from '@/db/types';
 
 /** Invite line for WhatsApp / Messages — public workouts / friends come later. */
 function buildShareMessage(opts: {
@@ -48,6 +49,7 @@ export default function ShareWorkoutScreen() {
   const { data: profile } = useProfile();
   const [log, setLog] = useState<SessionWorkout | null>(null);
   const [prCount, setPrCount] = useState(0);
+  const [muscles, setMuscles] = useState<MuscleGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
   const shareRef = useRef<View>(null);
@@ -56,10 +58,15 @@ export default function ShareWorkoutScreen() {
     useCallback(() => {
       let active = true;
       void (async () => {
-        const [s, prs] = await Promise.all([getWorkoutLog(logId), getWorkoutPrCount(logId)]);
+        const [s, prs, split] = await Promise.all([
+          getWorkoutLog(logId),
+          getWorkoutPrCount(logId),
+          getWorkoutMuscleSplit(logId),
+        ]);
         if (!active) return;
         setLog(s);
         setPrCount(prs);
+        setMuscles(split.map((x) => x.muscle));
         setLoading(false);
       })();
       return () => {
@@ -145,6 +152,7 @@ export default function ShareWorkoutScreen() {
               volumeLabel={volumeLabel}
               completedSets={completedSets}
               prCount={prCount}
+              muscles={muscles}
             />
           </View>
         </ViewShot>

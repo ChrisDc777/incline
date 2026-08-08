@@ -2,36 +2,39 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, LayoutChangeEvent, Pressable, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronRight, Moon } from 'lucide-react-native';
+import { ChevronDown, Moon } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 
 import { Body, Caption } from '@/components/common/text';
 import { Text } from '@/components/ui/text';
+import { Sheet } from '@/components/ui/sheet';
+import { Chip } from '@/components/common/chip';
 import { getWorkoutDays, getStreak } from '@/db/queries';
 import { cn } from '@/lib/cn';
 import { SCREEN_CONTENT, SCREEN_HEADER } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
+import { usePrimaryHex } from '@/lib/theme';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-// Every month grid reserves a fixed slot so FlatList can compute exact item
-// offsets (getItemLayout). Height = title (36) + up to 6 day rows (60 each) + margin (24).
-const MONTH_HEIGHT = 420;
-const DAY_CELL_HEIGHT = 60;
+const DAY_CELL_HEIGHT = 56;
+const MONTH_TITLE_HEIGHT = 40;
+const MONTH_MARGIN = 16;
 const BOTTOM_PADDING = 40;
-// Tiny floor so the overlay never lifts in the same frame it appeared —
-// readiness is driven by the viewable-items signal, not this timer.
 const SPINNER_MIN_FLOOR_MS = 200;
 const VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 10 };
 
 interface MonthItem {
   year: number;
   month: number;
+  height: number;
+  offset: number;
 }
 
 function toDateKey(d: Date): string {
@@ -46,8 +49,32 @@ function getFirstDayOfWeek(year: number, month: number): number {
   return new Date(year, month, 1).getDay();
 }
 
-/** A single month grid in the calendar. Memoized so scrolling doesn't re-render
- * every visible month — the flat list only re-renders cells whose props change. */
+function monthGridHeight(year: number, month: number): number {
+  const days = getDaysInMonth(year, month);
+  const first = getFirstDayOfWeek(year, month);
+  const rows = Math.ceil((first + days) / 7);
+  return MONTH_TITLE_HEIGHT + rows * DAY_CELL_HEIGHT + MONTH_MARGIN;
+}
+
+function buildMonths(now: number, today: Date): MonthItem[] {
+  const list: MonthItem[] = [];
+  const start = new Date(now - 5 * 365 * 86400000);
+  let y = start.getFullYear();
+  let m = start.getMonth();
+  let offset = 0;
+  while (y < today.getFullYear() || (y === today.getFullYear() && m <= today.getMonth())) {
+    const height = monthGridHeight(y, m);
+    list.push({ year: y, month: m, height, offset });
+    offset += height;
+    m++;
+    if (m > 11) {
+      m = 0;
+      y++;
+    }
+  }
+  return list;
+}
+
 const MonthGrid = memo(function MonthGrid({
   year,
   month,
@@ -64,22 +91,16 @@ const MonthGrid = memo(function MonthGrid({
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfWeek(year, month);
   const cells: (number | null)[] = [];
-
-  // Leading blanks
   for (let i = 0; i < firstDay; i++) cells.push(null);
-  // Day numbers
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
   const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
 
   return (
-    <View className="mb-6">
-      <Body className="mb-3 px-1 text-base font-semibold text-foreground">
+    <View className="mb-4">
+      <Body className="mb-2 px-1 text-base font-semibold text-foreground">
         {MONTH_NAMES[month]} {year}
       </Body>
-
-      {/* Day grid */}
-      <View className="mt-1">
+      <View>
         {Array.from({ length: Math.ceil(cells.length / 7) }, (_, rowIdx) => {
           const row = cells.slice(rowIdx * 7, rowIdx * 7 + 7);
           return (
@@ -88,7 +109,6 @@ const MonthGrid = memo(function MonthGrid({
                 if (day === null) {
                   return <View key={`blank-${colIdx}`} style={{ height: DAY_CELL_HEIGHT }} className="flex-1 items-center" />;
                 }
-
                 const date = new Date(year, month, day);
                 const key = toDateKey(date);
                 const isToday = isCurrentMonth && today.getDate() === day;
@@ -112,13 +132,13 @@ const MonthGrid = memo(function MonthGrid({
                       style={{ width: 32, height: 32, borderRadius: 16, overflow: 'hidden' }}
                       className={cn(
                         'items-center justify-center',
-                        isToday && 'bg-blue-500',
+                        isToday && 'bg-primary',
                         hasWorkout && !isToday && 'bg-primary/20',
                       )}>
                       <Text
                         className={cn(
                           'text-sm',
-                          isToday && 'font-bold text-white',
+                          isToday && 'font-bold text-primary-foreground',
                           !isToday && isFuture && 'text-muted-foreground/40',
                           !isToday && !isFuture && hasWorkout && 'font-semibold text-primary',
                           !isToday && !isFuture && !hasWorkout && 'text-foreground',
@@ -127,7 +147,7 @@ const MonthGrid = memo(function MonthGrid({
                       </Text>
                     </View>
                     {hasWorkout && !isToday ? (
-                      <View className="mt-0.5 bg-primary" style={{ width: 6, height: 6, borderRadius: 3 }} />
+                      <View className="mt-0.5 bg-primary" style={{ width: 5, height: 5, borderRadius: 2.5 }} />
                     ) : null}
                   </Pressable>
                 );
@@ -142,38 +162,30 @@ const MonthGrid = memo(function MonthGrid({
 
 export default function CalendarScreen() {
   const router = useRouter();
+  const primary = usePrimaryHex();
   const today = useMemo(() => new Date(), []);
   const [now] = useState(() => Date.now());
 
   const [workoutDaySet, setWorkoutDaySet] = useState<Set<string>>(new Set());
   const [streak, setStreak] = useState(0);
   const [restDays, setRestDays] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerYear, setPickerYear] = useState(today.getFullYear());
 
-  // The calendar grid mounts immediately underneath a spinner overlay. The
-  // overlay lifts as soon as the current month is actually rendered/viewable
-  // (the real readiness signal), with a tiny floor to avoid a same-frame flash.
   const [minTimePassed, setMinTimePassed] = useState(false);
   const [calendarReady, setCalendarReady] = useState(false);
 
-  // Months are built synchronously (5 years back → current) so the calendar is
-  // instantly interactive; workout dots + stats fill in once the DB query lands.
-  const [months] = useState<MonthItem[]>(() => {
-    const list: MonthItem[] = [];
-    const start = new Date(now - 5 * 365 * 86400000);
-    let y = start.getFullYear();
-    let m = start.getMonth();
-    while (y < today.getFullYear() || (y === today.getFullYear() && m <= today.getMonth())) {
-      list.push({ year: y, month: m });
-      m++;
-      if (m > 11) { m = 0; y++; }
-    }
-    return list;
-  });
+  const [months] = useState<MonthItem[]>(() => buildMonths(now, today));
 
   const listRef = useRef<FlatList<MonthItem>>(null);
   const viewportHeightRef = useRef(0);
   const didInitScrollRef = useRef(false);
   const [visibleIndex, setVisibleIndex] = useState(months.length - 1);
+
+  const years = useMemo(() => {
+    const set = new Set(months.map((m) => m.year));
+    return [...set].sort((a, b) => b - a);
+  }, [months]);
 
   useEffect(() => {
     const floor = setTimeout(() => setMinTimePassed(true), SPINNER_MIN_FLOOR_MS);
@@ -185,11 +197,8 @@ export default function CalendarScreen() {
       try {
         const days = await getWorkoutDays();
         setWorkoutDaySet(new Set(days.map((d) => toDateKey(new Date(d)))));
-
         const s = await getStreak();
         setStreak(s);
-
-        // Compute rest days: total days from first workout to today minus workout days
         if (days.length > 0) {
           const firstDay = days[0];
           const totalDays = Math.floor((now - firstDay) / 86400000) + 1;
@@ -207,40 +216,50 @@ export default function CalendarScreen() {
     router.push({ pathname: '/(app)/day/[ms]', params: { ms: String(dayMs) } });
   }, [router]);
 
-  // Pin the current month (end of the list) to the bottom of the viewport.
-  const scrollToBottom = useCallback((animated: boolean) => {
-    if (months.length === 0 || viewportHeightRef.current === 0) return;
-    const total = months.length * MONTH_HEIGHT + BOTTOM_PADDING;
-    const target = Math.max(0, total - viewportHeightRef.current);
-    listRef.current?.scrollToOffset({ offset: target, animated });
+  const scrollToIndex = useCallback((index: number, animated: boolean) => {
+    if (index < 0 || index >= months.length) return;
+    listRef.current?.scrollToIndex({ index, animated, viewPosition: 0 });
   }, [months.length]);
 
   const tryInitScroll = useCallback(() => {
     if (didInitScrollRef.current) return;
     if (months.length === 0 || viewportHeightRef.current === 0) return;
     didInitScrollRef.current = true;
-    scrollToBottom(false);
-  }, [months.length, scrollToBottom]);
+    requestAnimationFrame(() => scrollToIndex(months.length - 1, false));
+  }, [months.length, scrollToIndex]);
 
   const handleLayout = useCallback((e: LayoutChangeEvent) => {
     viewportHeightRef.current = e.nativeEvent.layout.height;
     tryInitScroll();
   }, [tryInitScroll]);
 
-  useEffect(() => { tryInitScroll(); }, [tryInitScroll]);
+  useEffect(() => {
+    tryInitScroll();
+  }, [tryInitScroll]);
 
   const goToToday = useCallback(() => {
-    scrollToBottom(true);
-  }, [scrollToBottom]);
+    scrollToIndex(months.length - 1, true);
+  }, [months.length, scrollToIndex]);
 
-  const getItemLayout = useCallback((_: ArrayLike<MonthItem> | null | undefined, index: number) => ({
-    length: MONTH_HEIGHT,
-    offset: MONTH_HEIGHT * index,
-    index,
-  }), []);
+  const jumpToMonth = useCallback((year: number, month: number) => {
+    const idx = months.findIndex((m) => m.year === year && m.month === month);
+    if (idx >= 0) {
+      setPickerOpen(false);
+      scrollToIndex(idx, true);
+    }
+  }, [months, scrollToIndex]);
+
+  const getItemLayout = useCallback((_: ArrayLike<MonthItem> | null | undefined, index: number) => {
+    const item = months[index];
+    return {
+      length: item?.height ?? monthGridHeight(today.getFullYear(), today.getMonth()),
+      offset: item?.offset ?? 0,
+      index,
+    };
+  }, [months, today]);
 
   const renderMonth = useCallback(({ item }: { item: MonthItem }) => (
-    <View style={{ height: MONTH_HEIGHT }}>
+    <View style={{ height: item.height }}>
       <MonthGrid
         year={item.year}
         month={item.month}
@@ -262,24 +281,46 @@ export default function CalendarScreen() {
     }
   }, [months.length]);
 
-  const visible = months[visibleIndex] ?? months[months.length - 1] ?? { year: today.getFullYear(), month: today.getMonth() };
+  const visible = months[visibleIndex] ?? months[months.length - 1] ?? {
+    year: today.getFullYear(),
+    month: today.getMonth(),
+    height: 0,
+    offset: 0,
+  };
   const visibleLabel = `${MONTH_NAMES[visible.month]} ${visible.year}`;
-
   const showSpinner = !minTimePassed || !calendarReady;
+
+  // Activity intensity for month chips in the picker (optional hint)
+  const monthActivity = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const key of workoutDaySet) {
+      const [y, m] = key.split('-');
+      const k = `${y}-${Number(m)}`;
+      map.set(k, (map.get(k) ?? 0) + 1);
+    }
+    return map;
+  }, [workoutDaySet]);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-      {/* Header */}
       <View className={`${SCREEN_HEADER} flex-row items-center justify-between`}>
         <View style={{ width: 24 }} />
-        <Pressable onPress={goToToday} accessibilityRole="button" accessibilityLabel="Go to today" className="flex-row items-center gap-1">
+        <Pressable
+          onPress={() => {
+            setPickerYear(visible.year);
+            setPickerOpen(true);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Choose month and year"
+          className="flex-row items-center gap-1">
           <Body className="text-lg font-semibold text-foreground">{visibleLabel}</Body>
-          <Icon icon={ChevronRight} size={16} color="muted-foreground" />
+          <Icon icon={ChevronDown} size={16} color="muted-foreground" />
         </Pressable>
-        <View style={{ width: 24 }} />
+        <Pressable onPress={goToToday} accessibilityRole="button" accessibilityLabel="Go to today" hitSlop={8}>
+          <Caption className="font-medium text-primary">Today</Caption>
+        </Pressable>
       </View>
 
-      {/* Stats row */}
       <View className="mx-4 mt-2 flex-row gap-3">
         <View className="flex-1 flex-row items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-3">
           <Icon icon={METRIC_ICONS.streak} size={16} color="warning" />
@@ -291,7 +332,6 @@ export default function CalendarScreen() {
         </View>
       </View>
 
-      {/* Day-of-week header pinned */}
       <View className="mx-4 mt-3 flex-row border-b border-border pb-2">
         {DAY_LABELS.map((label) => (
           <View key={label} className="flex-1 items-center">
@@ -300,24 +340,60 @@ export default function CalendarScreen() {
         ))}
       </View>
 
-      {/* Calendar scroll (virtualized, starts at the current month) */}
       <FlatList
         ref={listRef}
         data={months}
         keyExtractor={(m) => `${m.year}-${m.month}`}
         renderItem={renderMonth}
         getItemLayout={getItemLayout}
-        initialScrollIndex={months.length - 1}
+        initialScrollIndex={Math.max(0, months.length - 1)}
+        onScrollToIndexFailed={(info) => {
+          setTimeout(() => scrollToIndex(info.index, false), 80);
+        }}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={VIEWABILITY_CONFIG}
         onLayout={handleLayout}
         showsVerticalScrollIndicator={false}
-        initialNumToRender={8}
-        maxToRenderPerBatch={8}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
         windowSize={7}
         removeClippedSubviews
         contentContainerStyle={{ paddingHorizontal: SCREEN_CONTENT.paddingHorizontal, paddingBottom: BOTTOM_PADDING }}
       />
+
+      <Sheet open={pickerOpen} onOpenChange={setPickerOpen} title="Jump to month" scroll>
+        <Caption className="mb-2">Year</Caption>
+        <View className="mb-4 flex-row flex-wrap gap-2">
+          {years.map((y) => (
+            <Chip key={y} label={String(y)} selected={pickerYear === y} onPress={() => setPickerYear(y)} />
+          ))}
+        </View>
+        <Caption className="mb-2">Month</Caption>
+        <View className="flex-row flex-wrap gap-2 pb-2">
+          {MONTH_SHORT.map((label, month) => {
+            const available = months.some((m) => m.year === pickerYear && m.month === month);
+            const count = monthActivity.get(`${pickerYear}-${month + 1}`) ?? 0;
+            return (
+              <Pressable
+                key={label}
+                disabled={!available}
+                onPress={() => jumpToMonth(pickerYear, month)}
+                className={cn(
+                  'min-w-[22%] flex-1 items-center rounded-2xl border px-2 py-3',
+                  available ? 'border-border bg-card' : 'border-transparent opacity-35',
+                  visible.year === pickerYear && visible.month === month && 'border-primary bg-primary/10',
+                )}>
+                <Body className="text-sm font-medium text-foreground">{label}</Body>
+                {count > 0 ? (
+                  <View className="mt-1.5 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: primary }} />
+                ) : (
+                  <View className="mt-1.5 h-1.5" />
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+      </Sheet>
 
       {showSpinner ? (
         <View pointerEvents="auto" className="absolute inset-0 z-50 items-center justify-center bg-background">

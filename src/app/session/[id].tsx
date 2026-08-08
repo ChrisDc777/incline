@@ -42,7 +42,8 @@ import {
 import { estimated1RM, formatClock, formatVolume, formatWeight } from '@/db/calc';
 import { SCREEN_CONTENT_CTA } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
-import type { Exercise, SetEntry } from '@/db/types';
+import { MuscleBodyMap } from '@/components/progress/muscle-body-map';
+import type { Exercise, MuscleGroup, SetEntry } from '@/db/types';
 
 interface Group {
   exerciseId: number;
@@ -349,6 +350,21 @@ export default function SessionScreen() {
   const totalSets = session.sets.length;
   const totalVolume = session.sets.reduce((acc, s) => acc + (s.completed ? s.weight * s.reps : 0), 0);
 
+  const sessionMuscleDistribution = (() => {
+    const counts: Partial<Record<MuscleGroup, number>> = {};
+    for (const s of session.sets) {
+      counts[s.primaryMuscle] = (counts[s.primaryMuscle] ?? 0) + (s.completed ? 1 : 0);
+    }
+    for (const s of session.sets) {
+      if ((counts[s.primaryMuscle] ?? 0) === 0) counts[s.primaryMuscle] = 1;
+    }
+    return (Object.entries(counts) as [MuscleGroup, number][]).map(([muscle, sets]) => ({
+      muscle,
+      sets,
+      volume: 0,
+    }));
+  })();
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
       <View className="flex-row items-center justify-between px-4 pb-2 pt-3">
@@ -399,7 +415,14 @@ export default function SessionScreen() {
         contentContainerStyle={{ ...SCREEN_CONTENT_CTA, paddingTop: 4 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive">
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets>
+        {sessionMuscleDistribution.length > 0 ? (
+          <View className="mb-3 items-center rounded-3xl bg-card py-2">
+            <MuscleBodyMap distribution={sessionMuscleDistribution} compact />
+          </View>
+        ) : null}
+
         <Button variant="outline" className="mb-3" leftIcon={<Icon icon={Plus} size={16} color="primary" />} onPress={() => setPickerOpen(true)}>
           Add exercise
         </Button>
@@ -430,7 +453,6 @@ export default function SessionScreen() {
                   onAddSet={() => onAddSet(g.exerciseId)}
                   onAddWarmUp={() => onAddWarmUp(g.exerciseId)}
                   showWarmUpSets={showWarmUpSets}
-                  active={i === activeGroupIndex}
                 />
               </View>
             ))}

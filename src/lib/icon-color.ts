@@ -1,4 +1,9 @@
-import { ACCENT_THEMES, DEFAULT_ACCENT_THEME, type AccentTheme } from '@/lib/accent-themes';
+import {
+  ACCENT_THEMES,
+  DEFAULT_ACCENT_THEME,
+  primaryForegroundChannels,
+  type AccentTheme,
+} from '@/lib/accent-themes';
 import { useSettings } from '@/store/settings-store';
 import { useAppColorScheme } from '@/lib/use-color-scheme';
 
@@ -66,11 +71,10 @@ export function resolveIconColor(
     return `hsl(${channels})`;
   }
   if (color === 'primary-foreground') {
-    // Match CSS per accent: dark ink on copper/emerald (light) and most dark primaries;
-    // white on indigo/teal/coral in light mode.
-    if (isDark) return 'hsl(240 10% 4%)';
-    if (accent === 'copper' || accent === 'emerald') return 'hsl(240 10% 4%)';
-    return 'hsl(0 0% 100%)';
+    const channels = isDark
+      ? (ACCENT_THEMES[accent] ?? ACCENT_THEMES.indigo).dark.primary
+      : (ACCENT_THEMES[accent] ?? ACCENT_THEMES.indigo).light.primary;
+    return `hsl(${primaryForegroundChannels(channels)})`;
   }
   const map = isDark ? DARK_BASE : LIGHT_BASE;
   return map[color as keyof typeof map] ?? color;

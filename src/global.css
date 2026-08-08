@@ -10,8 +10,8 @@
 
 /*
  * Neutrals + semantic colors live on :root / .dark.
- * Brand accent (primary / ring / chart-1) is set by theme-* classes so Settings
- * can swap accents without touching the rest of the palette.
+ * Brand accent (primary / ring / chart-1) is set by theme-* classes on the root View
+ * so Settings can swap accents without touching the rest of the palette.
  * Default accent: indigo (also applied via theme-indigo on the root View).
  */
 :root {
@@ -142,7 +142,7 @@
 
 .theme-emerald {
   --primary: 142 69% 45%;
-  --primary-foreground: 240 10% 4%;
+  --primary-foreground: 0 0% 100%;
   --ring: 142 69% 45%;
   --chart-1: 142 64% 45%;
 }

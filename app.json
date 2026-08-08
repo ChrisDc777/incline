@@ -17,6 +17,7 @@
         "foregroundImage": "./assets/images/icon-preview.png"
       },
       "package": "com.chrisdc777.incline",
+      "softwareKeyboardLayoutMode": "resize",
       "predictiveBackGestureEnabled": false
     },
     "web": {

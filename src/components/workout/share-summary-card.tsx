@@ -2,11 +2,14 @@ import { forwardRef } from 'react';
 import { View } from 'react-native';
 
 import { Body, Caption } from '@/components/common/text';
-import { formatDuration, formatVolume } from '@/db/calc';
+import { MuscleBodyMap } from '@/components/progress/muscle-body-map';
+import { formatDuration } from '@/db/calc';
+import { useThemeHex } from '@/lib/theme';
+import type { MuscleGroup } from '@/db/types';
 
 /**
  * Compact branded card captured for sharing. Keep typography calm —
- * brand name + workout name + three metrics only.
+ * brand name + workout name + metrics + optional body map.
  */
 export const ShareSummaryCard = forwardRef<
   View,
@@ -17,41 +20,63 @@ export const ShareSummaryCard = forwardRef<
     volumeLabel: string;
     completedSets: number;
     prCount: number;
+    muscles?: MuscleGroup[];
   }
 >(function ShareSummaryCard(
-  { athleteName, workoutName, durationSeconds, volumeLabel, completedSets, prCount },
+  { athleteName, workoutName, durationSeconds, volumeLabel, completedSets, prCount, muscles = [] },
   ref,
 ) {
+  const colors = useThemeHex();
+
   return (
     <View
       ref={ref}
       collapsable={false}
-      className="w-full overflow-hidden rounded-3xl border border-border bg-card p-5"
-      style={{ backgroundColor: '#151519' }}>
-      <Caption className="tracking-wide text-zinc-400">INCLINE</Caption>
-      <Body className="mt-2 text-xl font-bold text-zinc-50">{workoutName}</Body>
-      <Caption className="mt-1 text-zinc-400">{athleteName}</Caption>
+      className="w-full overflow-hidden rounded-3xl border border-border p-5"
+      style={{ backgroundColor: colors.surface1, borderColor: colors.border }}>
+      <Caption style={{ color: colors.mutedForeground }}>INCLINE</Caption>
+      <Body className="mt-2 text-xl font-bold" style={{ color: colors.foreground }}>
+        {workoutName}
+      </Body>
+      <Caption className="mt-1" style={{ color: colors.mutedForeground }}>
+        {athleteName}
+      </Caption>
+      {muscles.length > 0 ? (
+        <View className="mt-4 items-center">
+          <MuscleBodyMap muscles={muscles} compact scale={0.65} showToggle={false} />
+        </View>
+      ) : null}
       <View className="mt-5 flex-row justify-between gap-3">
         <View className="flex-1">
-          <Caption className="text-zinc-500">Time</Caption>
-          <Body className="mt-0.5 font-semibold text-zinc-50">{formatDuration(durationSeconds)}</Body>
+          <Caption style={{ color: colors.mutedForeground }}>Time</Caption>
+          <Body className="mt-0.5 font-semibold" style={{ color: colors.foreground }}>
+            {formatDuration(durationSeconds)}
+          </Body>
         </View>
         <View className="flex-1">
-          <Caption className="text-zinc-500">Volume</Caption>
-          <Body className="mt-0.5 font-semibold text-zinc-50">{volumeLabel}</Body>
+          <Caption style={{ color: colors.mutedForeground }}>Volume</Caption>
+          <Body className="mt-0.5 font-semibold" style={{ color: colors.foreground }}>
+            {volumeLabel}
+          </Body>
         </View>
         <View className="flex-1">
-          <Caption className="text-zinc-500">Sets</Caption>
-          <Body className="mt-0.5 font-semibold text-zinc-50">{completedSets}</Body>
+          <Caption style={{ color: colors.mutedForeground }}>Sets</Caption>
+          <Body className="mt-0.5 font-semibold" style={{ color: colors.foreground }}>
+            {completedSets}
+          </Body>
         </View>
         {prCount > 0 ? (
           <View className="flex-1">
-            <Caption className="text-zinc-500">PRs</Caption>
-            <Body className="mt-0.5 font-semibold text-zinc-50">{prCount}</Body>
+            <Caption style={{ color: colors.mutedForeground }}>PRs</Caption>
+            <Body className="mt-0.5 font-semibold" style={{ color: colors.foreground }}>
+              {prCount}
+            </Body>
           </View>
         ) : null}
       </View>
-      <Caption className="mt-5 text-center text-zinc-500">Train with me on Incline</Caption>
+      <Caption className="mt-5 text-center" style={{ color: colors.mutedForeground }}>
+        Train with me on Incline
+      </Caption>
     </View>
   );
 });

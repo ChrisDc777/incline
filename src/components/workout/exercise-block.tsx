@@ -11,6 +11,7 @@ import { formatWeight } from '@/db/calc';
 import type { SetEntry, Unit } from '@/db/types';
 import type { ExercisePRSummary } from '@/db/queries';
 import { Plus, Clock, Flame } from 'lucide-react-native';
+import { SET_COL } from './set-layout';
 
 /**
  * One exercise within an active session: header (name + rest timer config) and
@@ -32,7 +33,6 @@ export function ExerciseBlock({
   onAddSet,
   onAddWarmUp,
   showWarmUpSets = true,
-  active = false,
   className,
 }: {
   name: string;
@@ -50,13 +50,12 @@ export function ExerciseBlock({
   onAddSet: () => void;
   onAddWarmUp: () => void;
   showWarmUpSets?: boolean;
-  /** Subtle focus for the exercise currently being logged. */
-  active?: boolean;
   className?: string;
 }) {
   const [restPickerOpen, setRestPickerOpen] = useState(false);
   const rowRefs = useRef<(SetRowHandle | null)[]>([]);
   const completedCount = sets.filter((s) => s.completed).length;
+  const weightLabel = unit === 'metric' ? 'KG' : 'LB';
 
   const workingWeight = sets.find((s) => !s.completed && s.weight > 0)?.weight
     ?? sets.filter((s) => s.completed).at(-1)?.weight
@@ -68,12 +67,7 @@ export function ExerciseBlock({
       : null;
 
   return (
-    <View
-      className={cn(
-        'gap-2 rounded-2xl px-1 py-1',
-        active && 'border border-primary/25 bg-primary/5',
-        className,
-      )}>
+    <View className={cn('gap-2 rounded-2xl px-1 py-1', className)}>
       <View className="flex-row items-center justify-between px-1">
         <View className="min-w-0 flex-1 pr-2">
           <Text className="text-base font-semibold text-foreground" numberOfLines={1}>{name}</Text>
@@ -104,6 +98,25 @@ export function ExerciseBlock({
               {restSeconds > 0 ? `${restSeconds}s` : 'Off'}
             </Text>
           </Pressable>
+        </View>
+      </View>
+
+      <View className="flex-row items-center gap-2 px-1 pb-0.5">
+        <View style={{ width: SET_COL.index }} className="items-center">
+          <Text className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Set</Text>
+        </View>
+        <View style={{ width: SET_COL.prev }} className="items-center">
+          <Text className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Prev</Text>
+        </View>
+        <View style={{ width: SET_COL.weight }} className="items-center">
+          <Text className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{weightLabel}</Text>
+        </View>
+        <View style={{ width: SET_COL.reps }} className="items-center">
+          <Text className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Reps</Text>
+        </View>
+        <View className="flex-1" />
+        <View style={{ width: SET_COL.done }} className="items-center">
+          <Text className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Done</Text>
         </View>
       </View>
 

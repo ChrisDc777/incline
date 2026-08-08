@@ -1,61 +1,60 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { cn } from '@/lib/cn';
 import { Text } from '@/components/ui/text';
 import { clamp } from '@/db/calc';
+import { SET_INPUT_HEIGHT } from './set-layout';
 
 export interface NumberStepperHandle {
-  /** Enter edit mode and focus the input. */
+  /** Focus the input. */
   focus: () => void;
 }
 
 /**
- * Clean inline-editable number field. Tap the value to type a new number;
- * commits on blur/submit. No +/- buttons. When `onSubmitNext` is provided the
- * return key acts as "next" (Android), letting users flow from field to field.
+ * Fixed-size numeric field. Always mounts a TextInput (never swaps with a
+ * Pressable) so tapping to edit cannot reflow the row / scroll the session.
  */
 export function NumberStepper({
   ref,
   value,
   onChange,
-  step = 2.5,
   min = 0,
   max = 1000,
-  suffix,
   decimals = 0,
   onSubmitNext,
   className,
+  style,
+  step: _step,
+  suffix,
 }: {
   ref?: Ref<NumberStepperHandle>;
   value: number;
   onChange: (v: number) => void;
-  step?: number;
   min?: number;
   max?: number;
-  suffix?: string;
   decimals?: number;
   onSubmitNext?: () => void;
   className?: string;
+  style?: StyleProp<ViewStyle>;
+  step?: number;
+  suffix?: string;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(value));
+  void _step;
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState(value > 0 ? String(value) : '');
   const inputRef = useRef<TextInput>(null);
   const committedRef = useRef(false);
 
-  useImperativeHandle(ref, () => ({ focus: () => setEditing(true) }), []);
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      inputRef.current?.focus();
+    },
+  }), []);
 
   useEffect(() => {
-    if (!editing) setDraft(value === 0 && decimals === 0 ? '' : String(value));
-  }, [value, editing, decimals]);
-
-  // Focus after the TextInput has been laid out so the keyboard doesn't cause
-  // the surrounding ScrollView to re-flow / jump on Android.
-  useEffect(() => {
-    if (!editing) return;
-    const t = setTimeout(() => inputRef.current?.focus(), 80);
-    return () => clearTimeout(t);
-  }, [editing]);
+    if (!focused) setDraft(value > 0 ? String(value) : '');
+  }, [value, focused]);
 
   const commit = () => {
     if (committedRef.current) return;
@@ -63,41 +62,50 @@ export function NumberStepper({
     const parsed = parseFloat(draft.replace(',', '.'));
     const next = Number.isFinite(parsed) ? clamp(parsed, min, max) : min;
     onChange(decimals > 0 ? Math.round(next * 10) / 10 : Math.round(next));
-    setEditing(false);
+    setFocused(false);
   };
 
-  const display = value <= 0 ? '—' : String(value);
-
   return (
-    <View className={cn('flex-row items-center', className)}>
-      {editing ? (
-        <TextInput
-          ref={inputRef}
-          value={draft}
-          onChangeText={(t) => { committedRef.current = false; setDraft(t); }}
-          onBlur={commit}
-          onSubmitEditing={() => { commit(); onSubmitNext?.(); }}
-          keyboardType="decimal-pad"
-          returnKeyType={onSubmitNext ? 'next' : 'done'}
-          style={{ includeFontPadding: false }}
-          className="h-9 min-w-[60px] rounded-lg bg-muted/60 px-2 text-center text-base font-semibold text-foreground"
-        />
-      ) : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Edit value: ${display}${suffix ? ` ${suffix}` : ''}`}
-          className="h-9 min-w-[60px] items-center justify-center rounded-lg bg-muted/60 px-2"
-          onPress={() => {
-            committedRef.current = false;
-            setDraft(value > 0 ? String(value) : '');
-            setEditing(true);
-          }}>
-          <Text className="text-base font-semibold text-foreground">
-            {display}
-            {suffix ? <Text className="text-xs text-muted-foreground"> {suffix}</Text> : null}
-          </Text>
-        </Pressable>
-      )}
+    <View
+      className={cn('flex-row items-center justify-center', className)}
+      style={[{ height: SET_INPUT_HEIGHT }, style]}>
+      <TextInput
+        ref={inputRef}
+        value={focused ? draft : value > 0 ? String(value) : ''}
+        placeholder="—"
+        placeholderTextColor="#71717a"
+        onFocus={() => {
+          committedRef.current = false;
+          setFocused(true);
+          setDraft(value > 0 ? String(value) : '');
+        }}
+        onChangeText={(t) => {
+          committedRef.current = false;
+          setDraft(t);
+        }}
+        onBlur={commit}
+        onSubmitEditing={() => {
+          commit();
+          onSubmitNext?.();
+        }}
+        keyboardType="decimal-pad"
+        returnKeyType={onSubmitNext ? 'next' : 'done'}
+        selectTextOnFocus
+        accessibilityLabel={suffix ? `Value in ${suffix}` : 'Numeric value'}
+        style={{
+          height: SET_INPUT_HEIGHT,
+          flex: 1,
+          paddingVertical: 0,
+          includeFontPadding: false,
+          textAlign: 'center',
+          fontSize: 16,
+          fontWeight: '600',
+        }}
+        className="rounded-lg bg-muted/60 px-1 text-foreground"
+      />
+      {suffix && !focused ? (
+        <Text className="absolute right-2 text-xs text-muted-foreground">{suffix}</Text>
+      ) : null}
     </View>
   );
 }

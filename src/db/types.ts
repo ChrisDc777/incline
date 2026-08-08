@@ -239,6 +239,8 @@ export interface PeriodStats {
   weeklyVolume: WeeklyVolume[];
   monthlyVolume: MonthlyVolume[];
   muscleDistribution: MuscleDistribution[];
+  /** Equal-length window immediately before the selected range (empty for `all`). */
+  previousMuscleDistribution: MuscleDistribution[];
   prs: PR[];
   trend: Trend | null;
 }

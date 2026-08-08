@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { InitialsAvatar } from '@/components/common/initials-avatar';
 import { SummaryStat } from '@/components/workout/summary-stat';
 import { ExerciseThumb } from '@/components/exercise/exercise-media';
+import { MuscleBodyMap } from '@/components/progress/muscle-body-map';
 import {
   getWorkoutLog,
   getWorkoutMuscleSplit,
@@ -22,25 +23,9 @@ import {
 import { useSettings } from '@/store/settings-store';
 import { useProfile } from '@/hooks/use-data';
 import { formatDuration, formatVolume, formatWeight, formatFullDateTime } from '@/db/calc';
-import { MUSCLE_LABELS, muscleColor } from '@/lib/labels';
-import { useChartPalette } from '@/lib/use-chart-palette';
+import { MUSCLE_LABELS } from '@/lib/labels';
 import { METRIC_ICONS } from '@/lib/metric-icons';
-
-function MuscleSplitBar({ split }: { split: MuscleSplit }) {
-  const palette = useChartPalette();
-  const color = muscleColor(split.muscle, palette);
-  return (
-    <View className="mb-3">
-      <View className="mb-1 flex-row items-center justify-between">
-        <Body className="text-sm text-foreground">{MUSCLE_LABELS[split.muscle]}</Body>
-        <Caption>{split.percentage}%</Caption>
-      </View>
-      <View className="h-2 overflow-hidden rounded-full bg-muted/40">
-        <View className="h-full rounded-full" style={{ width: `${split.percentage}%`, backgroundColor: color }} />
-      </View>
-    </View>
-  );
-}
+import type { MuscleDistribution } from '@/db/types';
 
 export default function SummaryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -88,6 +73,11 @@ export default function SummaryScreen() {
     }
     return [...map.values()];
   }, [log]);
+
+  const distribution: MuscleDistribution[] = useMemo(
+    () => muscleSplit.map((s) => ({ muscle: s.muscle, sets: s.sets, volume: 0 })),
+    [muscleSplit],
+  );
 
   const athleteName = profile?.name?.trim() || 'Athlete';
   const volumeLabel = log ? formatVolume(log.totalVolume, unit) : '';
@@ -155,12 +145,20 @@ export default function SummaryScreen() {
           Share
         </Button>
 
-        {muscleSplit.length > 0 ? (
+        {distribution.length > 0 ? (
           <View className="mb-5">
-            <Caption className="mb-3 text-base font-semibold text-foreground">Muscle Split</Caption>
-            {muscleSplit.map((s) => (
-              <MuscleSplitBar key={s.muscle} split={s} />
-            ))}
+            <Caption className="mb-3 text-base font-semibold text-foreground">Muscles trained</Caption>
+            <MuscleBodyMap distribution={distribution} scale={0.95} />
+            <View className="mt-3 gap-2">
+              {muscleSplit.map((s) => (
+                <View key={s.muscle} className="flex-row items-center justify-between">
+                  <Body className="text-sm text-foreground">{MUSCLE_LABELS[s.muscle]}</Body>
+                  <Caption>
+                    {s.sets} sets · {s.percentage}%
+                  </Caption>
+                </View>
+              ))}
+            </View>
           </View>
         ) : null}
 

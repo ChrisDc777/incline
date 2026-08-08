@@ -25,6 +25,7 @@ import {
 export interface MuscleSplit {
   muscle: MuscleGroup;
   percentage: number;
+  sets: number;
 }
 
 async function enqueueLogUpsert(logId: number): Promise<void> {
@@ -92,6 +93,7 @@ export async function getWorkoutMuscleSplit(logId: number): Promise<MuscleSplit[
   return rows.map((r) => ({
     muscle: r.primary_muscle as MuscleGroup,
     percentage: Math.round((r.count / total) * 100),
+    sets: r.count,
   }));
 }
 

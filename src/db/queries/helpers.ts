@@ -134,6 +134,7 @@ export interface ProfileRow {
 /* ------------------------------- session types ------------------------------- */
 export interface SessionSet extends SetEntry {
   exerciseName: string;
+  primaryMuscle: MuscleGroup;
 }
 export interface SessionWorkout extends WorkoutLog {
   sets: SessionSet[];
@@ -250,9 +251,16 @@ export async function recomputeVolume(logId: number): Promise<void> {
 
 export async function getSessionSets(logId: number): Promise<SessionSet[]> {
   const db = await openDatabase();
-  const rows = await db.getAllAsync<SetRow & { exercise_name: string }>(
-    `SELECT s.*, e.name as exercise_name FROM set_entries s JOIN exercises e ON e.id = s.exercise_id WHERE s.workout_log_id = ? AND s.deleted_at IS NULL ORDER BY s.id, s.set_index`,
+  const rows = await db.getAllAsync<SetRow & { exercise_name: string; primary_muscle: string }>(
+    `SELECT s.*, e.name as exercise_name, e.primary_muscle
+     FROM set_entries s JOIN exercises e ON e.id = s.exercise_id
+     WHERE s.workout_log_id = ? AND s.deleted_at IS NULL
+     ORDER BY s.id, s.set_index`,
     logId,
   );
-  return rows.map((r) => ({ ...mapSet(r), exerciseName: r.exercise_name }));
+  return rows.map((r) => ({
+    ...mapSet(r),
+    exerciseName: r.exercise_name,
+    primaryMuscle: r.primary_muscle as MuscleGroup,
+  }));
 }

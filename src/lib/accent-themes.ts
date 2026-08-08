@@ -2,13 +2,21 @@
  * Accent / brand themes. Primary drives CTAs, tabs, focus rings.
  * Success stays emerald across themes so "set complete" stays familiar.
  *
- * CSS class: `theme-${id}` on the root (see global.css).
+ * Apply CSS via `theme-${id}` on the root View (see global.css) —
+ * NativeWind resolves tokens from those classes, not RN style objects.
  * Hex maps stay in sync for charts, ActivityIndicator, icons.
  */
 
 import type { AccentTheme } from '@/db/types';
 
 export type { AccentTheme };
+
+/** Dark ink on light accents, light ink on dark accents — from HSL lightness. */
+export function primaryForegroundChannels(hsl: string): string {
+  const match = hsl.match(/([\d.]+)%\s*$/);
+  const lightness = match ? Number(match[1]) : 50;
+  return lightness >= 55 ? '240 10% 4%' : '0 0% 100%';
+}
 
 /** Shared supporting hues that sit alongside each accent without clashing. */
 const CHART_SUPPORT = {
