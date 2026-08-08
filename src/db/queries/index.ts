@@ -92,6 +92,7 @@ export {
   getProgressStats,
   getPeriodStats,
   getWorkoutDays,
+  getDailyVolumeByDate,
   getWorkoutsByDateRange,
   getWorkoutsForDay,
   getWorkoutCountInRange,

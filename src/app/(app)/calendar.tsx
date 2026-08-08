@@ -10,7 +10,7 @@ import { Body, Caption } from '@/components/common/text';
 import { Text } from '@/components/ui/text';
 import { Sheet } from '@/components/ui/sheet';
 import { Chip } from '@/components/common/chip';
-import { getWorkoutDays, getStreak } from '@/db/queries';
+import { getWorkoutDays, getDailyVolumeByDate, getStreak } from '@/db/queries';
 import { cn } from '@/lib/cn';
 import { SCREEN_CONTENT, SCREEN_HEADER } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
@@ -29,6 +29,18 @@ const MONTH_MARGIN = 16;
 const BOTTOM_PADDING = 40;
 const SPINNER_MIN_FLOOR_MS = 200;
 const VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 10 };
+
+/** Background classes for volume intensity (relative to global max). */
+const HEAT_BG = ['', 'bg-primary/15', 'bg-primary/30', 'bg-primary/50', 'bg-primary/70'] as const;
+
+function heatLevel(volume: number, maxVolume: number): 0 | 1 | 2 | 3 | 4 {
+  if (volume <= 0 || maxVolume <= 0) return 0;
+  const t = volume / maxVolume;
+  if (t <= 0.25) return 1;
+  if (t <= 0.5) return 2;
+  if (t <= 0.75) return 3;
+  return 4;
+}
 
 interface MonthItem {
   year: number;
@@ -78,13 +90,15 @@ function buildMonths(now: number, today: Date): MonthItem[] {
 const MonthGrid = memo(function MonthGrid({
   year,
   month,
-  workoutDays,
+  volumeByDate,
+  maxVolume,
   onDayPress,
   today,
 }: {
   year: number;
   month: number;
-  workoutDays: Set<string>;
+  volumeByDate: Record<string, number>;
+  maxVolume: number;
   onDayPress: (dayMs: number) => void;
   today: Date;
 }) {
@@ -112,7 +126,9 @@ const MonthGrid = memo(function MonthGrid({
                 const date = new Date(year, month, day);
                 const key = toDateKey(date);
                 const isToday = isCurrentMonth && today.getDate() === day;
-                const hasWorkout = workoutDays.has(key);
+                const volume = volumeByDate[key] ?? 0;
+                const hasWorkout = volume > 0;
+                const level = heatLevel(volume, maxVolume);
                 const isFuture = date > today;
 
                 return (
@@ -133,7 +149,7 @@ const MonthGrid = memo(function MonthGrid({
                       className={cn(
                         'items-center justify-center',
                         isToday && 'bg-primary',
-                        hasWorkout && !isToday && 'bg-primary/20',
+                        !isToday && hasWorkout && HEAT_BG[level],
                       )}>
                       <Text
                         className={cn(
@@ -146,9 +162,6 @@ const MonthGrid = memo(function MonthGrid({
                         {day}
                       </Text>
                     </View>
-                    {hasWorkout && !isToday ? (
-                      <View className="mt-0.5 bg-primary" style={{ width: 5, height: 5, borderRadius: 2.5 }} />
-                    ) : null}
                   </Pressable>
                 );
               })}
@@ -167,6 +180,8 @@ export default function CalendarScreen() {
   const [now] = useState(() => Date.now());
 
   const [workoutDaySet, setWorkoutDaySet] = useState<Set<string>>(new Set());
+  const [volumeByDate, setVolumeByDate] = useState<Record<string, number>>({});
+  const [maxVolume, setMaxVolume] = useState(0);
   const [streak, setStreak] = useState(0);
   const [restDays, setRestDays] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -195,8 +210,14 @@ export default function CalendarScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const days = await getWorkoutDays();
+        const [days, volumes] = await Promise.all([getWorkoutDays(), getDailyVolumeByDate()]);
         setWorkoutDaySet(new Set(days.map((d) => toDateKey(new Date(d)))));
+        setVolumeByDate(volumes);
+        let max = 0;
+        for (const v of Object.values(volumes)) {
+          if (v > max) max = v;
+        }
+        setMaxVolume(max);
         const s = await getStreak();
         setStreak(s);
         if (days.length > 0) {
@@ -263,12 +284,13 @@ export default function CalendarScreen() {
       <MonthGrid
         year={item.year}
         month={item.month}
-        workoutDays={workoutDaySet}
+        volumeByDate={volumeByDate}
+        maxVolume={maxVolume}
         onDayPress={handleDayPress}
         today={today}
       />
     </View>
-  ), [workoutDaySet, handleDayPress, today]);
+  ), [volumeByDate, maxVolume, handleDayPress, today]);
 
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length === 0) return;
@@ -331,6 +353,18 @@ export default function CalendarScreen() {
           <Caption className="text-sm font-medium text-foreground">{restDays} rest days</Caption>
         </View>
       </View>
+
+      {maxVolume > 0 ? (
+        <View className="mx-4 mt-2 flex-row items-center justify-end gap-1.5">
+          <Caption className="mr-1 text-xs">Volume</Caption>
+          {[1, 2, 3, 4].map((level) => (
+            <View
+              key={level}
+              className={cn('h-2.5 w-2.5 rounded-sm', HEAT_BG[level as 1 | 2 | 3 | 4])}
+            />
+          ))}
+        </View>
+      ) : null}
 
       <View className="mx-4 mt-3 flex-row border-b border-border pb-2">
         {DAY_LABELS.map((label) => (
