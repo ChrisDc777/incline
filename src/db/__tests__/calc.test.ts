@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { estimated1RM, isoDate, setVolume, startOfDay, startOfWeek } from '../calc';
+import { estimated1RM, isoDate, repsToBeat1RM, setVolume, startOfDay, startOfWeek } from '../calc';
 
 describe('calc helpers', () => {
   it('estimated1RM uses Epley and handles edge cases', () => {
@@ -8,6 +8,13 @@ describe('calc helpers', () => {
     expect(estimated1RM(100, 5)).toBeCloseTo(116.67, 1);
     expect(estimated1RM(0, 5)).toBe(0);
     expect(estimated1RM(100, 0)).toBe(0);
+  });
+
+  it('repsToBeat1RM finds the first Epley-beating rep count', () => {
+    expect(repsToBeat1RM(100, 116.67)).toBe(6);
+    expect(repsToBeat1RM(120, 100)).toBe(1);
+    expect(repsToBeat1RM(0, 100)).toBeNull();
+    expect(repsToBeat1RM(10, 1000)).toBeNull();
   });
 
   it('setVolume multiplies weight and reps', () => {

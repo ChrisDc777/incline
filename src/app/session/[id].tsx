@@ -214,6 +214,21 @@ export default function SessionScreen() {
       toast({ title: 'Could not save reps', variant: 'destructive' });
     }
   };
+  const onApplyLoad = async (exerciseId: number, weight: number, reps?: number) => {
+    const groupSets = session?.sets.filter((s) => s.exerciseId === exerciseId) ?? [];
+    const target = groupSets.find((s) => !s.completed) ?? groupSets.at(-1);
+    if (!target) return;
+    impact();
+    try {
+      await updateSet(target.id, {
+        weight,
+        ...(reps != null && reps > 0 ? { reps } : null),
+      });
+      reload();
+    } catch {
+      toast({ title: 'Could not apply load', variant: 'destructive' });
+    }
+  };
   const onChangeRestSeconds = (exerciseId: number, seconds: number) => {
     setRestSecondsMap((prev) => ({ ...prev, [exerciseId]: seconds }));
   };
@@ -452,6 +467,7 @@ export default function SessionScreen() {
                   onRemoveSet={onRemoveSet}
                   onAddSet={() => onAddSet(g.exerciseId)}
                   onAddWarmUp={() => onAddWarmUp(g.exerciseId)}
+                  onApplyLoad={(weight, reps) => onApplyLoad(g.exerciseId, weight, reps)}
                   showWarmUpSets={showWarmUpSets}
                 />
               </View>

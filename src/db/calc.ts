@@ -39,6 +39,19 @@ export function estimated1RM(weight: number, reps: number): number {
   return Math.round(weight * (1 + reps / 30) * 100) / 100;
 }
 
+/**
+ * Minimum reps at `weight` needed to strictly beat `best1RM` (Epley).
+ * Returns null when the ask is unrealistic (>30 reps) or inputs are invalid.
+ */
+export function repsToBeat1RM(weight: number, best1RM: number): number | null {
+  if (weight <= 0 || best1RM <= 0) return null;
+  if (weight > best1RM) return 1;
+  const exact = 30 * (best1RM / weight - 1);
+  const reps = Math.floor(exact) + 1;
+  if (reps < 1 || reps > 30) return null;
+  return reps;
+}
+
 /** Volume of a single set (weight x reps), rounded to 2dp. */
 export function setVolume(weight: number, reps: number): number {
   return Math.round(weight * reps * 100) / 100;
