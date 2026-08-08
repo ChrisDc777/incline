@@ -29,7 +29,7 @@ import {
   discardWorkout,
   finishWorkout,
   getExercisePRSummary,
-  getLastSetsForExercise,
+  getLastSetsForExercises,
   getRestDefaultsForSession,
   getWorkoutLog,
   removeSet,
@@ -92,29 +92,25 @@ export default function SessionScreen() {
 
   const load = useCallback(async () => {
     const s = await getWorkoutLog(logId);
-    if (s) {
-      const exIds = [...new Set(s.sets.map((x) => x.exerciseId))];
-      const map: Record<number, SetEntry[]> = {};
-      const prs: Record<number, ExercisePRSummary> = {};
-      await Promise.all(
-        exIds.map(async (eid) => {
-          map[eid] = await getLastSetsForExercise(eid);
-          prs[eid] = await getExercisePRSummary(eid);
-        }),
-      );
-      setLastSetsMap(map);
-      setPrMap(prs);
-      // Pre-fill the per-exercise rest timer (template rest, else exercise default)
-      // so completing a set auto-starts a countdown. Only on first load — the
-      // user's in-session selections must survive reloads.
-      if (!seededRestRef.current) {
-        seededRestRef.current = true;
-        setRestSecondsMap(await getRestDefaultsForSession(logId));
-      }
-    }
     setSession(s);
     if (s) setNotes(s.notes ?? '');
     setLoading(false);
+
+    if (!s) return;
+    const exIds = [...new Set(s.sets.map((x) => x.exerciseId))];
+    if (!seededRestRef.current) {
+      seededRestRef.current = true;
+      void getRestDefaultsForSession(logId).then(setRestSecondsMap);
+    }
+    // PR / last-session assist is secondary — load after the set list is interactive.
+    void (async () => {
+      const [lastMap, prEntries] = await Promise.all([
+        getLastSetsForExercises(exIds),
+        Promise.all(exIds.map(async (eid) => [eid, await getExercisePRSummary(eid)] as const)),
+      ]);
+      setLastSetsMap(lastMap);
+      setPrMap(Object.fromEntries(prEntries));
+    })();
   }, [logId]);
 
   useEffect(() => {
@@ -468,6 +464,7 @@ export default function SessionScreen() {
                   onAddSet={() => onAddSet(g.exerciseId)}
                   onAddWarmUp={() => onAddWarmUp(g.exerciseId)}
                   onApplyLoad={(weight, reps) => onApplyLoad(g.exerciseId, weight, reps)}
+                  onOpenExercise={() => router.push(`/exercise/${g.exerciseId}` as Href)}
                   showWarmUpSets={showWarmUpSets}
                 />
               </View>

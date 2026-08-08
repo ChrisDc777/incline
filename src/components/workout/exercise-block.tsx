@@ -4,18 +4,24 @@ import { Pressable, View } from 'react-native';
 import { cn } from '@/lib/cn';
 import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
+import { Body, Caption } from '@/components/common/text';
+import { Button } from '@/components/ui/button';
+import { Sheet } from '@/components/ui/sheet';
 import { SetRow, type SetRowHandle } from './set-row';
 import { PreviousBestBadge } from './previous-best-badge';
 import { RestTimerPickerSheet } from './rest-timer-picker-sheet';
 import { estimated1RM, formatWeight, repsToBeat1RM } from '@/db/calc';
 import type { SetEntry, Unit } from '@/db/types';
 import type { ExercisePRSummary } from '@/db/queries';
-import { Plus, Clock, Flame } from 'lucide-react-native';
+import { Plus, Clock, Flame, CircleHelp, ChevronRight } from 'lucide-react-native';
 import { SET_COL } from './set-layout';
 
 /**
  * One exercise within an active session: header (name + rest timer config) and
  * its set rows, plus an "Add set" action.
+ *
+ * PR / load assist details live behind a compact info affordance so the set
+ * list stays the primary focus during logging.
  */
 export function ExerciseBlock({
   name,
@@ -33,6 +39,7 @@ export function ExerciseBlock({
   onAddSet,
   onAddWarmUp,
   onApplyLoad,
+  onOpenExercise,
   showWarmUpSets = true,
   className,
 }: {
@@ -52,10 +59,13 @@ export function ExerciseBlock({
   onAddWarmUp: () => void;
   /** Prefill the next incomplete set with a weight/reps suggestion. */
   onApplyLoad?: (weight: number, reps?: number) => void;
+  /** Open exercise detail (history / charts). */
+  onOpenExercise?: () => void;
   showWarmUpSets?: boolean;
   className?: string;
 }) {
   const [restPickerOpen, setRestPickerOpen] = useState(false);
+  const [assistOpen, setAssistOpen] = useState(false);
   const rowRefs = useRef<(SetRowHandle | null)[]>([]);
   const completedCount = sets.filter((s) => s.completed).length;
   const weightLabel = unit === 'metric' ? 'KG' : 'LB';
@@ -87,61 +97,42 @@ export function ExerciseBlock({
     best1RM != null && workingWeight > 0 && workingReps > 0
       && estimated1RM(workingWeight, workingReps) > best1RM;
 
+  const hasAssist =
+    lastSets.length > 0 || prWeight != null || best1RM != null;
+
+  const applyAndClose = (weight: number, reps?: number) => {
+    onApplyLoad?.(weight, reps);
+    setAssistOpen(false);
+  };
+
   return (
     <View className={cn('gap-2 rounded-2xl px-1 py-1', className)}>
       <View className="flex-row items-center justify-between px-1">
         <View className="min-w-0 flex-1 pr-2">
-          <Text className="text-base font-semibold text-foreground" numberOfLines={1}>{name}</Text>
-          <View className="mt-1 flex-row flex-wrap items-center gap-x-3 gap-y-1">
+          <Pressable
+            onPress={onOpenExercise}
+            disabled={!onOpenExercise}
+            accessibilityRole={onOpenExercise ? 'button' : undefined}
+            accessibilityLabel={onOpenExercise ? `Open ${name} details` : undefined}
+            className="flex-row items-center gap-1 self-start">
+            <Text className="text-base font-semibold text-foreground" numberOfLines={1}>{name}</Text>
+            {onOpenExercise ? <Icon icon={ChevronRight} size={16} color="muted-foreground" /> : null}
+          </Pressable>
+          <View className="mt-1 flex-row items-center gap-2">
             <PreviousBestBadge lastSets={lastSets} unit={unit} />
-            {best1RM != null ? (
-              <Text className="text-xs text-muted-foreground">
-                e1RM {formatWeight(best1RM, unit)}
-              </Text>
-            ) : null}
-            {prGap !== null && workingWeight > 0 ? (
-              <Text className="text-xs text-muted-foreground">
-                {prGap > 0
-                  ? `${formatWeight(prGap, unit)} to PR`
-                  : prGap === 0
-                    ? 'At PR weight'
-                    : `${formatWeight(Math.abs(prGap), unit)} over PR`}
-              </Text>
-            ) : null}
             {alreadyBeating ? (
               <Text className="text-xs font-medium text-primary">PR pace</Text>
-            ) : repsToPr != null && workingWeight > 0 ? (
-              <Text className="text-xs text-muted-foreground">
-                {repsToPr} reps @ {formatWeight(workingWeight, unit)} to beat e1RM
-              </Text>
+            ) : null}
+            {hasAssist ? (
+              <Pressable
+                onPress={() => setAssistOpen(true)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Exercise progress details">
+                <Icon icon={CircleHelp} size={14} color="muted-foreground" />
+              </Pressable>
             ) : null}
           </View>
-          {onApplyLoad && (lastTop || prWeight) ? (
-            <View className="mt-2 flex-row flex-wrap gap-2">
-              {lastTop && lastTop.weight > 0 ? (
-                <Pressable
-                  onPress={() => onApplyLoad(lastTop.weight, lastTop.reps)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Use last ${formatWeight(lastTop.weight, unit)} times ${lastTop.reps}`}
-                  className="rounded-full border border-border bg-muted/40 px-2.5 py-1">
-                  <Text className="text-xs font-medium text-foreground">
-                    Last {formatWeight(lastTop.weight, unit)}×{lastTop.reps}
-                  </Text>
-                </Pressable>
-              ) : null}
-              {prWeight != null ? (
-                <Pressable
-                  onPress={() => onApplyLoad(prWeight)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Use PR weight ${formatWeight(prWeight, unit)}`}
-                  className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1">
-                  <Text className="text-xs font-medium text-primary">
-                    PR {formatWeight(prWeight, unit)}
-                  </Text>
-                </Pressable>
-              ) : null}
-            </View>
-          ) : null}
         </View>
         <View className="flex-row items-center gap-3">
           <Text className="text-xs text-muted-foreground">
@@ -235,6 +226,94 @@ export function ExerciseBlock({
         exerciseId={exerciseId}
         onSelect={onChangeRestSeconds}
       />
+
+      <Sheet
+        open={assistOpen}
+        onOpenChange={setAssistOpen}
+        title="Targets & shortcuts"
+        snapPoints={['50%']}
+        dynamicSizing={false}>
+        <View className="gap-4 pb-2">
+          <Caption className="text-foreground">{name}</Caption>
+          <View className="gap-2">
+            {lastTop && lastTop.weight > 0 ? (
+              <AssistRow label="Last session best" value={`${formatWeight(lastTop.weight, unit)} × ${lastTop.reps}`} />
+            ) : null}
+            {best1RM != null ? (
+              <AssistRow label="Best estimated 1RM" value={formatWeight(best1RM, unit)} />
+            ) : null}
+            {prWeight != null ? (
+              <AssistRow label="Heaviest weight" value={formatWeight(prWeight, unit)} />
+            ) : null}
+            {prGap !== null && workingWeight > 0 ? (
+              <AssistRow
+                label="Gap to heaviest"
+                value={
+                  prGap > 0
+                    ? `${formatWeight(prGap, unit)} to go`
+                    : prGap === 0
+                      ? 'Matching PR weight'
+                      : `${formatWeight(Math.abs(prGap), unit)} over PR`
+                }
+              />
+            ) : null}
+            {alreadyBeating ? (
+              <AssistRow label="Current set" value="Beating estimated 1RM" accent />
+            ) : repsToPr != null && workingWeight > 0 ? (
+              <AssistRow
+                label="Reps to beat e1RM"
+                value={`${repsToPr} @ ${formatWeight(workingWeight, unit)}`}
+              />
+            ) : null}
+          </View>
+
+          {onApplyLoad && (lastTop || prWeight) ? (
+            <View className="gap-2">
+              <Caption className="font-medium uppercase tracking-wide">Fill next incomplete set</Caption>
+              {lastTop && lastTop.weight > 0 ? (
+                <Button
+                  variant="outline"
+                  onPress={() => applyAndClose(lastTop.weight, lastTop.reps)}>
+                  {`Use last session — ${formatWeight(lastTop.weight, unit)} × ${lastTop.reps}`}
+                </Button>
+              ) : null}
+              {prWeight != null ? (
+                <Button onPress={() => applyAndClose(prWeight)}>
+                  {`Use PR weight — ${formatWeight(prWeight, unit)}`}
+                </Button>
+              ) : null}
+            </View>
+          ) : null}
+
+          {onOpenExercise ? (
+            <Button
+              variant="ghost"
+              onPress={() => {
+                setAssistOpen(false);
+                onOpenExercise();
+              }}>
+              Open exercise details
+            </Button>
+          ) : null}
+        </View>
+      </Sheet>
+    </View>
+  );
+}
+
+function AssistRow({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <View className="flex-row items-center justify-between gap-3">
+      <Caption>{label}</Caption>
+      <Body className={cn('font-medium', accent ? 'text-primary' : 'text-foreground')}>{value}</Body>
     </View>
   );
 }

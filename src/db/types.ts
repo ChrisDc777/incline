@@ -170,6 +170,17 @@ export interface Settings {
   defaultRestSeconds: number;
   /** Show the warm-up set button in the session screen. */
   showWarmUpSets: boolean;
+  /** What the calendar month grid encodes in day cell color. */
+  calendarHeatMetric: CalendarHeatMetric;
+}
+
+/** Month-view day coloring: presence (trained or not) or a load metric. */
+export type CalendarHeatMetric = 'presence' | 'volume' | 'intensity' | 'reps';
+
+export const CALENDAR_HEAT_METRICS: CalendarHeatMetric[] = ['presence', 'volume', 'intensity', 'reps'];
+
+export function isCalendarHeatMetric(v: unknown): v is CalendarHeatMetric {
+  return v === 'presence' || v === 'volume' || v === 'intensity' || v === 'reps';
 }
 
 /* ---- Query result shapes ---- */

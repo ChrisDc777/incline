@@ -10,7 +10,7 @@ import type {
   Paginated,
   WorkoutLog,
 } from '../types';
-import { getLastSetsForExercise } from './exercises';
+import { getLastSetsForExercise, getLastSetsForExercises } from './exercises';
 import {
   getSessionSets,
   mapLog,
@@ -74,6 +74,16 @@ async function enqueueSetUpsert(setId: number): Promise<void> {
     updated_at: row.updated_at,
     deleted_at: row.deleted_at,
   });
+}
+
+/** Sync enqueue must not block session UX — fire and forget. */
+function enqueueLogUpsertBackground(logId: number): void {
+  void enqueueLogUpsert(logId).catch(() => {});
+}
+
+function enqueueSetUpsertsBackground(setIds: number[]): void {
+  if (setIds.length === 0) return;
+  void Promise.all(setIds.map((id) => enqueueSetUpsert(id))).catch(() => {});
 }
 
 /** Calculate the muscle group distribution for a completed workout (by completed set count). */
@@ -153,31 +163,36 @@ export async function startWorkout(templateId: number | null, name: string): Pro
   const logUuid = newUuid();
   let logId = 0;
   const setIds: number[] = [];
+
+  let teRows: TemplateExerciseRow[] = [];
+  let lastByExercise: Record<number, Awaited<ReturnType<typeof getLastSetsForExercise>>> = {};
+  if (templateId != null) {
+    teRows = await db.getAllAsync<TemplateExerciseRow>(
+      'SELECT * FROM template_exercises WHERE template_id = ? AND deleted_at IS NULL ORDER BY sort_order',
+      templateId,
+    );
+    lastByExercise = await getLastSetsForExercises(teRows.map((te) => te.exercise_id));
+  }
+
   await db.withTransactionAsync(async () => {
     const res = await db.runAsync(
       `INSERT INTO workout_logs (template_id, name, started_at, ended_at, duration_seconds, total_volume, unit, notes, uuid, created_at, updated_at) VALUES (?, ?, ?, NULL, 0, 0, 'metric', '', ?, ?, ?)`,
       templateId, name, now, logUuid, now, now,
     );
     logId = res.lastInsertRowId as number;
-    if (templateId != null) {
-      const teRows = await db.getAllAsync<TemplateExerciseRow>(
-        'SELECT * FROM template_exercises WHERE template_id = ? AND deleted_at IS NULL ORDER BY sort_order',
-        templateId,
-      );
-      for (const te of teRows) {
-        const last = await getLastSetsForExercise(te.exercise_id);
-        for (let s = 0; s < te.target_sets; s++) {
-          const setRes = await db.runAsync(
-            `INSERT INTO set_entries (workout_log_id, exercise_id, set_index, weight, reps, completed, rest_seconds, uuid, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, NULL, ?, ?, ?)`,
-            logId, te.exercise_id, s, last[s]?.weight ?? 0, last[s]?.reps ?? te.target_reps_min, newUuid(), now, now,
-          );
-          setIds.push(setRes.lastInsertRowId as number);
-        }
+    for (const te of teRows) {
+      const last = lastByExercise[te.exercise_id] ?? [];
+      for (let s = 0; s < te.target_sets; s++) {
+        const setRes = await db.runAsync(
+          `INSERT INTO set_entries (workout_log_id, exercise_id, set_index, weight, reps, completed, rest_seconds, uuid, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, NULL, ?, ?, ?)`,
+          logId, te.exercise_id, s, last[s]?.weight ?? 0, last[s]?.reps ?? te.target_reps_min, newUuid(), now, now,
+        );
+        setIds.push(setRes.lastInsertRowId as number);
       }
     }
   });
-  await enqueueLogUpsert(logId);
-  for (const setId of setIds) await enqueueSetUpsert(setId);
+  enqueueLogUpsertBackground(logId);
+  enqueueSetUpsertsBackground(setIds);
   return logId;
 }
 
@@ -324,17 +339,16 @@ export async function finishWorkout(logId: number, options?: { pausedMs?: number
   const pausedMs = Math.max(0, options?.pausedMs ?? 0);
   const duration = Math.max(0, Math.floor((now - log.started_at - pausedMs) / 1000));
 
-  // Soft-delete incomplete template sets so Home/history only show what was logged.
-  // Templates themselves are untouched.
   const incomplete = await db.getAllAsync<{ id: number }>(
     `SELECT id FROM set_entries
      WHERE workout_log_id = ? AND completed = 0 AND deleted_at IS NULL`,
     logId,
   );
-  for (const row of incomplete) {
+  if (incomplete.length > 0) {
     await db.runAsync(
-      'UPDATE set_entries SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      now, now, row.id,
+      `UPDATE set_entries SET deleted_at = ?, updated_at = ?
+       WHERE workout_log_id = ? AND completed = 0 AND deleted_at IS NULL`,
+      now, now, logId,
     );
   }
 
@@ -343,8 +357,8 @@ export async function finishWorkout(logId: number, options?: { pausedMs?: number
     'UPDATE workout_logs SET ended_at = ?, duration_seconds = ?, updated_at = ? WHERE id = ?',
     now, duration, now, logId,
   );
-  for (const row of incomplete) await enqueueSetUpsert(row.id);
-  await enqueueLogUpsert(logId);
+  enqueueSetUpsertsBackground(incomplete.map((r) => r.id));
+  enqueueLogUpsertBackground(logId);
 }
 
 /** Undo a soft-deleted set within the same session (preserves uuid for sync). */
@@ -361,8 +375,8 @@ export async function restoreSet(setId: number): Promise<void> {
     now, setId,
   );
   await recomputeVolume(row.workout_log_id);
-  await enqueueSetUpsert(setId);
-  await enqueueLogUpsert(row.workout_log_id);
+  enqueueSetUpsertsBackground([setId]);
+  enqueueLogUpsertBackground(row.workout_log_id);
 }
 
 export async function discardWorkout(logId: number): Promise<void> {
@@ -380,8 +394,8 @@ export async function discardWorkout(logId: number): Promise<void> {
     'UPDATE workout_logs SET deleted_at = ?, updated_at = ? WHERE id = ?',
     now, now, logId,
   );
-  for (const s of sets) await enqueueSetUpsert(s.id);
-  await enqueueLogUpsert(logId);
+  enqueueSetUpsertsBackground(sets.map((s) => s.id));
+  enqueueLogUpsertBackground(logId);
 }
 
 export async function listWorkoutLogs(offset = 0, limit = PAGINATION.pageSize): Promise<Paginated<WorkoutLog>> {

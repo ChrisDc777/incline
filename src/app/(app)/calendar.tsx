@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, LayoutChangeEvent, Pressable, View, type ViewToken } from 'react-native';
+import { FlatList, LayoutChangeEvent, Pressable, ScrollView, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronDown, Moon } from 'lucide-react-native';
+import { ChevronDown, ChevronLeft, ChevronRight, Moon } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 
@@ -10,13 +10,16 @@ import { Body, Caption } from '@/components/common/text';
 import { Text } from '@/components/ui/text';
 import { Sheet } from '@/components/ui/sheet';
 import { Chip } from '@/components/common/chip';
-import { getWorkoutDays, getDailyVolumeByDate, getStreak } from '@/db/queries';
+import { SegmentedControl } from '@/components/common/segmented-control';
+import { getWorkoutDays, getDailyCalendarMetrics, getStreak, type DailyCalendarMetrics } from '@/db/queries';
+import type { CalendarHeatMetric } from '@/db/types';
 import { cn } from '@/lib/cn';
 import { SCREEN_CONTENT, SCREEN_HEADER } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
 import { usePrimaryHex } from '@/lib/theme';
+import { useSettings } from '@/store/settings-store';
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -30,12 +33,20 @@ const BOTTOM_PADDING = 40;
 const SPINNER_MIN_FLOOR_MS = 200;
 const VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 10 };
 
-/** Background classes for volume intensity (relative to global max). */
+const HEAT_LEGEND_LABEL: Record<Exclude<CalendarHeatMetric, 'presence'>, string> = {
+  volume: 'Volume',
+  intensity: 'Intensity',
+  reps: 'Reps',
+};
+
+/** Background classes for heat intensity (relative to global max). Month view only. */
 const HEAT_BG = ['', 'bg-primary/15', 'bg-primary/30', 'bg-primary/50', 'bg-primary/70'] as const;
 
-function heatLevel(volume: number, maxVolume: number): 0 | 1 | 2 | 3 | 4 {
-  if (volume <= 0 || maxVolume <= 0) return 0;
-  const t = volume / maxVolume;
+type CalendarMode = 'month' | 'year';
+
+function heatLevel(value: number, maxValue: number): 0 | 1 | 2 | 3 | 4 {
+  if (value <= 0 || maxValue <= 0) return 0;
+  const t = value / maxValue;
   if (t <= 0.25) return 1;
   if (t <= 0.5) return 2;
   if (t <= 0.75) return 3;
@@ -90,15 +101,17 @@ function buildMonths(now: number, today: Date): MonthItem[] {
 const MonthGrid = memo(function MonthGrid({
   year,
   month,
-  volumeByDate,
-  maxVolume,
+  metricsByDate,
+  heatMetric,
+  maxMetric,
   onDayPress,
   today,
 }: {
   year: number;
   month: number;
-  volumeByDate: Record<string, number>;
-  maxVolume: number;
+  metricsByDate: Record<string, DailyCalendarMetrics>;
+  heatMetric: CalendarHeatMetric;
+  maxMetric: number;
   onDayPress: (dayMs: number) => void;
   today: Date;
 }) {
@@ -126,9 +139,14 @@ const MonthGrid = memo(function MonthGrid({
                 const date = new Date(year, month, day);
                 const key = toDateKey(date);
                 const isToday = isCurrentMonth && today.getDate() === day;
-                const volume = volumeByDate[key] ?? 0;
-                const hasWorkout = volume > 0;
-                const level = heatLevel(volume, maxVolume);
+                const dayMetrics = metricsByDate[key];
+                const hasWorkout = (dayMetrics?.sessions ?? 0) > 0;
+                const metricValue =
+                  heatMetric === 'presence'
+                    ? 0
+                    : (dayMetrics?.[heatMetric] ?? 0);
+                const level =
+                  heatMetric === 'presence' ? 0 : heatLevel(metricValue, maxMetric);
                 const isFuture = date > today;
 
                 return (
@@ -149,7 +167,8 @@ const MonthGrid = memo(function MonthGrid({
                       className={cn(
                         'items-center justify-center',
                         isToday && 'bg-primary',
-                        !isToday && hasWorkout && HEAT_BG[level],
+                        !isToday && hasWorkout && heatMetric === 'presence' && 'bg-primary/40',
+                        !isToday && hasWorkout && heatMetric !== 'presence' && HEAT_BG[level],
                       )}>
                       <Text
                         className={cn(
@@ -173,19 +192,99 @@ const MonthGrid = memo(function MonthGrid({
   );
 });
 
+/** Compact year-overview month: presence only (no volume tiers) for scanability. */
+const MiniMonth = memo(function MiniMonth({
+  year,
+  month,
+  workoutDays,
+  today,
+  onPress,
+}: {
+  year: number;
+  month: number;
+  workoutDays: Set<string>;
+  today: Date;
+  onPress: () => void;
+}) {
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDay = getFirstDayOfWeek(year, month);
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+  const isFutureMonth =
+    year > today.getFullYear() || (year === today.getFullYear() && month > today.getMonth());
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={isFutureMonth}
+      accessibilityRole="button"
+      accessibilityLabel={`${MONTH_NAMES[month]} ${year}`}
+      className={cn(
+        'w-[48%] rounded-2xl border border-border/60 bg-card px-2.5 py-2.5',
+        isFutureMonth && 'opacity-40',
+        isCurrentMonth && 'border-primary/40',
+      )}>
+      <Caption className={cn('mb-1.5 font-semibold', isCurrentMonth ? 'text-primary' : 'text-foreground')}>
+        {MONTH_SHORT[month]}
+      </Caption>
+      <View className="mb-0.5 flex-row">
+        {DAY_LABELS.map((label, i) => (
+          <View key={`${label}-${i}`} className="flex-1 items-center">
+            <Text className="text-[8px] text-muted-foreground">{label}</Text>
+          </View>
+        ))}
+      </View>
+      {Array.from({ length: cells.length / 7 }, (_, rowIdx) => {
+        const row = cells.slice(rowIdx * 7, rowIdx * 7 + 7);
+        return (
+          <View key={rowIdx} className="flex-row">
+            {row.map((day, colIdx) => {
+              if (day == null) {
+                return <View key={`b-${colIdx}`} className="flex-1 items-center py-0.5" />;
+              }
+              const date = new Date(year, month, day);
+              const key = toDateKey(date);
+              const hasWorkout = workoutDays.has(key);
+              const isToday = isCurrentMonth && today.getDate() === day;
+              return (
+                <View key={key} className="flex-1 items-center py-0.5">
+                  <View
+                    style={{ width: 8, height: 8, borderRadius: 4 }}
+                    className={cn(
+                      isToday && 'bg-primary',
+                      !isToday && hasWorkout && 'bg-primary/55',
+                      !isToday && !hasWorkout && 'bg-transparent',
+                    )}
+                  />
+                </View>
+              );
+            })}
+          </View>
+        );
+      })}
+    </Pressable>
+  );
+});
+
 export default function CalendarScreen() {
   const router = useRouter();
   const primary = usePrimaryHex();
+  const calendarHeatMetric = useSettings((s) => s.calendarHeatMetric);
   const today = useMemo(() => new Date(), []);
   const [now] = useState(() => Date.now());
+  const [mode, setMode] = useState<CalendarMode>('month');
 
   const [workoutDaySet, setWorkoutDaySet] = useState<Set<string>>(new Set());
-  const [volumeByDate, setVolumeByDate] = useState<Record<string, number>>({});
-  const [maxVolume, setMaxVolume] = useState(0);
+  const [metricsByDate, setMetricsByDate] = useState<Record<string, DailyCalendarMetrics>>({});
   const [streak, setStreak] = useState(0);
   const [restDays, setRestDays] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(today.getFullYear());
+  const [yearViewYear, setYearViewYear] = useState(today.getFullYear());
 
   const [minTimePassed, setMinTimePassed] = useState(false);
   const [calendarReady, setCalendarReady] = useState(false);
@@ -202,6 +301,19 @@ export default function CalendarScreen() {
     return [...set].sort((a, b) => b - a);
   }, [months]);
 
+  const minYear = years[years.length - 1] ?? today.getFullYear();
+  const maxYear = years[0] ?? today.getFullYear();
+
+  const maxMetric = useMemo(() => {
+    if (calendarHeatMetric === 'presence') return 0;
+    let max = 0;
+    for (const m of Object.values(metricsByDate)) {
+      const v = m[calendarHeatMetric];
+      if (v > max) max = v;
+    }
+    return max;
+  }, [metricsByDate, calendarHeatMetric]);
+
   useEffect(() => {
     const floor = setTimeout(() => setMinTimePassed(true), SPINNER_MIN_FLOOR_MS);
     return () => clearTimeout(floor);
@@ -210,14 +322,9 @@ export default function CalendarScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const [days, volumes] = await Promise.all([getWorkoutDays(), getDailyVolumeByDate()]);
+        const [days, metrics] = await Promise.all([getWorkoutDays(), getDailyCalendarMetrics()]);
         setWorkoutDaySet(new Set(days.map((d) => toDateKey(new Date(d)))));
-        setVolumeByDate(volumes);
-        let max = 0;
-        for (const v of Object.values(volumes)) {
-          if (v > max) max = v;
-        }
-        setMaxVolume(max);
+        setMetricsByDate(metrics);
         const s = await getStreak();
         setStreak(s);
         if (days.length > 0) {
@@ -259,16 +366,24 @@ export default function CalendarScreen() {
   }, [tryInitScroll]);
 
   const goToToday = useCallback(() => {
+    if (mode === 'year') {
+      setYearViewYear(today.getFullYear());
+      return;
+    }
     scrollToIndex(months.length - 1, true);
-  }, [months.length, scrollToIndex]);
+  }, [mode, months.length, scrollToIndex, today]);
+
+  const openMonth = useCallback((year: number, month: number) => {
+    const idx = months.findIndex((m) => m.year === year && m.month === month);
+    if (idx < 0) return;
+    setMode('month');
+    setPickerOpen(false);
+    requestAnimationFrame(() => scrollToIndex(idx, true));
+  }, [months, scrollToIndex]);
 
   const jumpToMonth = useCallback((year: number, month: number) => {
-    const idx = months.findIndex((m) => m.year === year && m.month === month);
-    if (idx >= 0) {
-      setPickerOpen(false);
-      scrollToIndex(idx, true);
-    }
-  }, [months, scrollToIndex]);
+    openMonth(year, month);
+  }, [openMonth]);
 
   const getItemLayout = useCallback((_: ArrayLike<MonthItem> | null | undefined, index: number) => {
     const item = months[index];
@@ -284,13 +399,14 @@ export default function CalendarScreen() {
       <MonthGrid
         year={item.year}
         month={item.month}
-        volumeByDate={volumeByDate}
-        maxVolume={maxVolume}
+        metricsByDate={metricsByDate}
+        heatMetric={calendarHeatMetric}
+        maxMetric={maxMetric}
         onDayPress={handleDayPress}
         today={today}
       />
     </View>
-  ), [volumeByDate, maxVolume, handleDayPress, today]);
+  ), [metricsByDate, calendarHeatMetric, maxMetric, handleDayPress, today]);
 
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length === 0) return;
@@ -310,9 +426,8 @@ export default function CalendarScreen() {
     offset: 0,
   };
   const visibleLabel = `${MONTH_NAMES[visible.month]} ${visible.year}`;
-  const showSpinner = !minTimePassed || !calendarReady;
+  const showSpinner = mode === 'month' && (!minTimePassed || !calendarReady);
 
-  // Activity intensity for month chips in the picker (optional hint)
   const monthActivity = useMemo(() => {
     const map = new Map<string, number>();
     for (const key of workoutDaySet) {
@@ -323,24 +438,68 @@ export default function CalendarScreen() {
     return map;
   }, [workoutDaySet]);
 
+  const yearWorkoutCount = useMemo(() => {
+    let n = 0;
+    for (const key of workoutDaySet) {
+      if (key.startsWith(`${yearViewYear}-`)) n += 1;
+    }
+    return n;
+  }, [workoutDaySet, yearViewYear]);
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-      <View className={`${SCREEN_HEADER} flex-row items-center justify-between`}>
-        <View style={{ width: 24 }} />
-        <Pressable
-          onPress={() => {
-            setPickerYear(visible.year);
-            setPickerOpen(true);
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Choose month and year"
-          className="flex-row items-center gap-1">
-          <Body className="text-lg font-semibold text-foreground">{visibleLabel}</Body>
-          <Icon icon={ChevronDown} size={16} color="muted-foreground" />
-        </Pressable>
-        <Pressable onPress={goToToday} accessibilityRole="button" accessibilityLabel="Go to today" hitSlop={8}>
-          <Caption className="font-medium text-primary">Today</Caption>
-        </Pressable>
+      <View className={`${SCREEN_HEADER} gap-3`}>
+        <View className="flex-row items-center justify-between">
+          {mode === 'month' ? (
+            <>
+              <View style={{ width: 48 }} />
+              <Pressable
+                onPress={() => {
+                  setPickerYear(visible.year);
+                  setPickerOpen(true);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Choose month and year"
+                className="flex-row items-center gap-1">
+                <Body className="text-lg font-semibold text-foreground">{visibleLabel}</Body>
+                <Icon icon={ChevronDown} size={16} color="muted-foreground" />
+              </Pressable>
+              <Pressable onPress={goToToday} accessibilityRole="button" accessibilityLabel="Go to today" hitSlop={8}>
+                <Caption className="font-medium text-primary">Today</Caption>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Pressable
+                onPress={() => setYearViewYear((y) => Math.max(minYear, y - 1))}
+                disabled={yearViewYear <= minYear}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Previous year"
+                className={cn(yearViewYear <= minYear && 'opacity-30')}>
+                <Icon icon={ChevronLeft} size={22} color="foreground" />
+              </Pressable>
+              <Body className="text-lg font-semibold text-foreground">{yearViewYear}</Body>
+              <Pressable
+                onPress={() => setYearViewYear((y) => Math.min(maxYear, y + 1))}
+                disabled={yearViewYear >= maxYear}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Next year"
+                className={cn(yearViewYear >= maxYear && 'opacity-30')}>
+                <Icon icon={ChevronRight} size={22} color="foreground" />
+              </Pressable>
+            </>
+          )}
+        </View>
+        <SegmentedControl<CalendarMode>
+          value={mode}
+          onChange={setMode}
+          values={[
+            { value: 'month', label: 'Month' },
+            { value: 'year', label: 'Year' },
+          ]}
+        />
       </View>
 
       <View className="mx-4 mt-2 flex-row gap-3">
@@ -350,13 +509,15 @@ export default function CalendarScreen() {
         </View>
         <View className="flex-1 flex-row items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-3">
           <Icon icon={Moon} size={16} color="info" />
-          <Caption className="text-sm font-medium text-foreground">{restDays} rest days</Caption>
+          <Caption className="text-sm font-medium text-foreground">
+            {mode === 'year' ? `${yearWorkoutCount} days` : `${restDays} rest days`}
+          </Caption>
         </View>
       </View>
 
-      {maxVolume > 0 ? (
+      {mode === 'month' && calendarHeatMetric !== 'presence' && maxMetric > 0 ? (
         <View className="mx-4 mt-2 flex-row items-center justify-end gap-1.5">
-          <Caption className="mr-1 text-xs">Volume</Caption>
+          <Caption className="mr-1 text-xs">{HEAT_LEGEND_LABEL[calendarHeatMetric]}</Caption>
           {[1, 2, 3, 4].map((level) => (
             <View
               key={level}
@@ -366,34 +527,75 @@ export default function CalendarScreen() {
         </View>
       ) : null}
 
-      <View className="mx-4 mt-3 flex-row border-b border-border pb-2">
-        {DAY_LABELS.map((label) => (
-          <View key={label} className="flex-1 items-center">
-            <Caption className="text-xs">{label}</Caption>
-          </View>
-        ))}
+      {mode === 'month' ? (
+        <View className="mx-4 mt-3 flex-row border-b border-border pb-2">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label) => (
+            <View key={label} className="flex-1 items-center">
+              <Caption className="text-xs">{label}</Caption>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      <View style={{ flex: 1, display: mode === 'month' ? 'flex' : 'none' }}>
+        <FlatList
+          ref={listRef}
+          data={months}
+          keyExtractor={(m) => `${m.year}-${m.month}`}
+          renderItem={renderMonth}
+          getItemLayout={getItemLayout}
+          initialScrollIndex={Math.max(0, months.length - 1)}
+          onScrollToIndexFailed={(info) => {
+            setTimeout(() => scrollToIndex(info.index, false), 80);
+          }}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={VIEWABILITY_CONFIG}
+          onLayout={handleLayout}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={7}
+          removeClippedSubviews
+          contentContainerStyle={{ paddingHorizontal: SCREEN_CONTENT.paddingHorizontal, paddingBottom: BOTTOM_PADDING }}
+        />
       </View>
 
-      <FlatList
-        ref={listRef}
-        data={months}
-        keyExtractor={(m) => `${m.year}-${m.month}`}
-        renderItem={renderMonth}
-        getItemLayout={getItemLayout}
-        initialScrollIndex={Math.max(0, months.length - 1)}
-        onScrollToIndexFailed={(info) => {
-          setTimeout(() => scrollToIndex(info.index, false), 80);
-        }}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={VIEWABILITY_CONFIG}
-        onLayout={handleLayout}
-        showsVerticalScrollIndicator={false}
-        initialNumToRender={6}
-        maxToRenderPerBatch={6}
-        windowSize={7}
-        removeClippedSubviews
-        contentContainerStyle={{ paddingHorizontal: SCREEN_CONTENT.paddingHorizontal, paddingBottom: BOTTOM_PADDING }}
-      />
+      <View style={{ flex: 1, display: mode === 'year' ? 'flex' : 'none' }}>
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: SCREEN_CONTENT.paddingHorizontal,
+            paddingTop: 12,
+            paddingBottom: BOTTOM_PADDING,
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            rowGap: 12,
+          }}
+          showsVerticalScrollIndicator={false}>
+          {MONTH_SHORT.map((_, month) => {
+            const available = months.some((m) => m.year === yearViewYear && m.month === month);
+            if (!available) {
+              return (
+                <View
+                  key={month}
+                  className="w-[48%] rounded-2xl border border-transparent px-2.5 py-2.5 opacity-30">
+                  <Caption className="mb-1.5 font-semibold text-muted-foreground">{MONTH_SHORT[month]}</Caption>
+                </View>
+              );
+            }
+            return (
+              <MiniMonth
+                key={month}
+                year={yearViewYear}
+                month={month}
+                workoutDays={workoutDaySet}
+                today={today}
+                onPress={() => openMonth(yearViewYear, month)}
+              />
+            );
+          })}
+        </ScrollView>
+      </View>
 
       <Sheet open={pickerOpen} onOpenChange={setPickerOpen} title="Jump to month" scroll>
         <Caption className="mb-2">Year</Caption>

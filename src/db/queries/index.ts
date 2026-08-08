@@ -13,6 +13,7 @@ export {
   getExerciseDefaultRest,
   ensureExerciseExists,
   getLastSetsForExercise,
+  getLastSetsForExercises,
   getExerciseHistory,
   getExercisePRSummary,
   getExerciseRepRecords,
@@ -93,9 +94,11 @@ export {
   getPeriodStats,
   getWorkoutDays,
   getDailyVolumeByDate,
+  getDailyCalendarMetrics,
   getWorkoutsByDateRange,
   getWorkoutsForDay,
   getWorkoutCountInRange,
+  type DailyCalendarMetrics,
 } from './progress';
 
 export {

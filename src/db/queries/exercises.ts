@@ -320,14 +320,42 @@ export async function ensureExerciseExists(
 
 /** Most recent completed sets for an exercise (used for carry-over values). */
 export async function getLastSetsForExercise(exerciseId: number): Promise<SetEntry[]> {
+  const map = await getLastSetsForExercises([exerciseId]);
+  return map[exerciseId] ?? [];
+}
+
+/** Batch last-session sets for many exercises (avoids N+1 on workout start). */
+export async function getLastSetsForExercises(exerciseIds: number[]): Promise<Record<number, SetEntry[]>> {
+  const out: Record<number, SetEntry[]> = {};
+  const ids = [...new Set(exerciseIds.filter((id) => id > 0))];
+  for (const id of ids) out[id] = [];
+  if (ids.length === 0) return out;
+
   const db = await openDatabase();
-  const log = await db.getFirstAsync<{ id: number }>(
-    `SELECT w.id FROM workout_logs w WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND EXISTS (SELECT 1 FROM set_entries s WHERE s.workout_log_id = w.id AND s.exercise_id = ? AND s.completed = 1 AND s.deleted_at IS NULL) ORDER BY w.started_at DESC LIMIT 1`,
-    exerciseId,
+  const placeholders = ids.map(() => '?').join(',');
+  const rows = await db.getAllAsync<SetRow>(
+    `SELECT s.*
+     FROM set_entries s
+     JOIN workout_logs w ON w.id = s.workout_log_id
+     WHERE s.exercise_id IN (${placeholders})
+       AND s.completed = 1 AND s.deleted_at IS NULL
+       AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL
+       AND w.started_at = (
+         SELECT MAX(w2.started_at)
+         FROM set_entries s2
+         JOIN workout_logs w2 ON w2.id = s2.workout_log_id
+         WHERE s2.exercise_id = s.exercise_id
+           AND s2.completed = 1 AND s2.deleted_at IS NULL
+           AND w2.ended_at IS NOT NULL AND w2.deleted_at IS NULL
+       )
+     ORDER BY s.exercise_id, s.set_index`,
+    ...ids,
   );
-  if (!log) return [];
-  const rows = await db.getAllAsync<SetRow>('SELECT * FROM set_entries WHERE workout_log_id = ? AND exercise_id = ? AND completed = 1 AND deleted_at IS NULL ORDER BY set_index', log.id, exerciseId);
-  return rows.map(mapSet);
+
+  for (const row of rows) {
+    (out[row.exercise_id] ??= []).push(mapSet(row));
+  }
+  return out;
 }
 
 export async function getExerciseHistory(exerciseId: number, limit = 10): Promise<ExerciseHistoryRow[]> {
