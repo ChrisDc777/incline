@@ -45,7 +45,9 @@ export default function SettingsScreen() {
   const {
     unit, themeMode, accentTheme, hapticsEnabled,
     restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets,
+    calendarHeatMetric,
     setUnit, setThemeMode, setAccentTheme, setHaptics, setRestSound, setAutoStartRest, setDefaultRestSeconds, setShowWarmUpSets,
+    setCalendarHeatMetric,
   } = useSettings();
   const { data: profile, refetch } = useProfile();
   const scheme = useAppColorScheme();
@@ -115,6 +117,33 @@ export default function SettingsScreen() {
           <View className="h-px bg-border/60" />
           <Row icon={<Icon icon={METRIC_ICONS.warmUp} size={18} color="muted-foreground" />} title="Warm-up set button" subtitle="Quick 50% set in the session">
             <Switch value={showWarmUpSets} onValueChange={setShowWarmUpSets} accessibilityLabel="Warm-up set button" />
+          </Row>
+        </Card>
+
+        <Caption className="mb-1 mt-5 font-semibold uppercase tracking-wide">Calendar</Caption>
+        <Card>
+          <Row
+            icon={<Icon icon={METRIC_ICONS.sessions} size={18} color="muted-foreground" />}
+            title="Month day color"
+            subtitle="What the month heatmap encodes">
+            <View className="flex-row flex-wrap justify-end gap-1.5">
+              {(
+                [
+                  { id: 'presence' as const, label: 'Trained' },
+                  { id: 'volume' as const, label: 'Volume' },
+                  { id: 'intensity' as const, label: 'Intensity' },
+                  { id: 'reps' as const, label: 'Reps' },
+                ]
+              ).map((opt) => (
+                <Chip
+                  key={opt.id}
+                  size="sm"
+                  label={opt.label}
+                  selected={calendarHeatMetric === opt.id}
+                  onPress={() => setCalendarHeatMetric(opt.id)}
+                />
+              ))}
+            </View>
           </Row>
         </Card>
 

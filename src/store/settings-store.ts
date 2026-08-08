@@ -3,7 +3,8 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 
 import { STORAGE_KEYS } from '@/constants/config';
 import { kvStorage } from '@/db/kv';
-import type { Settings, Unit, ThemeMode, AccentTheme } from '@/db/types';
+import type { Settings, Unit, ThemeMode, AccentTheme, CalendarHeatMetric } from '@/db/types';
+import { isCalendarHeatMetric } from '@/db/types';
 import { DEFAULT_ACCENT_THEME, isAccentTheme } from '@/lib/accent-themes';
 
 interface SettingsState extends Settings {
@@ -15,6 +16,7 @@ interface SettingsState extends Settings {
   setAutoStartRest: (enabled: boolean) => void;
   setDefaultRestSeconds: (seconds: number) => void;
   setShowWarmUpSets: (enabled: boolean) => void;
+  setCalendarHeatMetric: (metric: CalendarHeatMetric) => void;
 }
 
 const DEFAULT_REST_OPTIONS = [30, 60, 90, 120] as const;
@@ -34,6 +36,7 @@ export const useSettings = create<SettingsState>()(
       autoStartRest: true,
       defaultRestSeconds: 90,
       showWarmUpSets: true,
+      calendarHeatMetric: 'volume',
       setUnit: (unit) => set({ unit }),
       setThemeMode: (themeMode) => set({ themeMode }),
       setAccentTheme: (accentTheme) => set({ accentTheme }),
@@ -42,6 +45,7 @@ export const useSettings = create<SettingsState>()(
       setAutoStartRest: (enabled) => set({ autoStartRest: enabled }),
       setDefaultRestSeconds: (seconds) => set({ defaultRestSeconds: seconds }),
       setShowWarmUpSets: (enabled) => set({ showWarmUpSets: enabled }),
+      setCalendarHeatMetric: (calendarHeatMetric) => set({ calendarHeatMetric }),
     }),
     {
       name: STORAGE_KEYS.settings,
@@ -55,6 +59,7 @@ export const useSettings = create<SettingsState>()(
         autoStartRest: s.autoStartRest,
         defaultRestSeconds: s.defaultRestSeconds,
         showWarmUpSets: s.showWarmUpSets,
+        calendarHeatMetric: s.calendarHeatMetric,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<Settings>;
@@ -62,6 +67,9 @@ export const useSettings = create<SettingsState>()(
           ...current,
           ...p,
           accentTheme: isAccentTheme(p.accentTheme) ? p.accentTheme : DEFAULT_ACCENT_THEME,
+          calendarHeatMetric: isCalendarHeatMetric(p.calendarHeatMetric)
+            ? p.calendarHeatMetric
+            : 'volume',
         };
       },
     },

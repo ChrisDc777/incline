@@ -276,17 +276,79 @@ export async function getWorkoutDays(): Promise<number[]> {
  * Keys are `YYYY-MM-DD` (local). Multiple sessions on one day are summed.
  */
 export async function getDailyVolumeByDate(): Promise<Record<string, number>> {
-  const db = await openDatabase();
-  const rows = await db.getAllAsync<{ started_at: number; total_volume: number }>(
-    'SELECT started_at, total_volume FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL ORDER BY started_at',
-  );
+  const metrics = await getDailyCalendarMetrics();
   const map: Record<string, number> = {};
-  for (const r of rows) {
-    const d = new Date(r.started_at);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    map[key] = (map[key] ?? 0) + (r.total_volume ?? 0);
-  }
+  for (const [key, m] of Object.entries(metrics)) map[key] = m.volume;
   return map;
+}
+
+export interface DailyCalendarMetrics {
+  /** Sum of session total_volume for the day. */
+  volume: number;
+  /** Max estimated 1RM across completed sets that day. */
+  intensity: number;
+  /** Sum of completed reps that day. */
+  reps: number;
+  /** Distinct completed sessions that day (presence). */
+  sessions: number;
+}
+
+/**
+ * Per-day training load metrics for calendar heatmaps.
+ * Keys are local `YYYY-MM-DD`.
+ */
+export async function getDailyCalendarMetrics(): Promise<Record<string, DailyCalendarMetrics>> {
+  const db = await openDatabase();
+  const logs = await db.getAllAsync<{ id: number; started_at: number; total_volume: number }>(
+    'SELECT id, started_at, total_volume FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL ORDER BY started_at',
+  );
+  const map: Record<string, DailyCalendarMetrics & { _logIds: Set<number> }> = {};
+
+  for (const log of logs) {
+    const d = new Date(log.started_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    let bucket = map[key];
+    if (!bucket) {
+      bucket = { volume: 0, intensity: 0, reps: 0, sessions: 0, _logIds: new Set() };
+      map[key] = bucket;
+    }
+    if (!bucket._logIds.has(log.id)) {
+      bucket._logIds.add(log.id);
+      bucket.sessions += 1;
+      bucket.volume += log.total_volume ?? 0;
+    }
+  }
+
+  const sets = await db.getAllAsync<{ started_at: number; weight: number; reps: number }>(
+    `SELECT w.started_at as started_at, s.weight as weight, s.reps as reps
+     FROM set_entries s
+     JOIN workout_logs w ON w.id = s.workout_log_id
+     WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL
+       AND s.deleted_at IS NULL AND s.completed = 1`,
+  );
+  for (const s of sets) {
+    const d = new Date(s.started_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    let bucket = map[key];
+    if (!bucket) {
+      bucket = { volume: 0, intensity: 0, reps: 0, sessions: 0, _logIds: new Set() };
+      map[key] = bucket;
+    }
+    bucket.reps += s.reps ?? 0;
+    const e1rm = estimated1RM(s.weight ?? 0, s.reps ?? 0);
+    if (e1rm > bucket.intensity) bucket.intensity = e1rm;
+  }
+
+  const out: Record<string, DailyCalendarMetrics> = {};
+  for (const [key, b] of Object.entries(map)) {
+    out[key] = {
+      volume: b.volume,
+      intensity: b.intensity,
+      reps: b.reps,
+      sessions: b.sessions,
+    };
+  }
+  return out;
 }
 
 /** Returns completed workout logs within a date range (start/end in ms). */

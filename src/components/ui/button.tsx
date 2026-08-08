@@ -56,6 +56,14 @@ type ButtonProps = PressableProps &
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+function asButtonLabel(children: ReactNode): string | null {
+  if (typeof children === 'string' || typeof children === 'number') return String(children);
+  if (Array.isArray(children) && children.every((c) => typeof c === 'string' || typeof c === 'number')) {
+    return children.join('');
+  }
+  return null;
+}
+
 export function Button({
   className,
   variant,
@@ -81,6 +89,8 @@ export function Button({
     scale.value = withSpring(1, { damping: 15, stiffness: 400 });
   }, [scale]);
 
+  const label = asButtonLabel(children);
+
   return (
     <AnimatedPressable
       style={animatedStyle}
@@ -91,8 +101,8 @@ export function Button({
       onPressOut={onPressOut}
       {...props}>
       {leftIcon}
-      {typeof children === 'string' ? (
-        <Text className={cn(buttonTextVariants({ variant, size }), textClass)}>{children}</Text>
+      {label != null ? (
+        <Text className={cn(buttonTextVariants({ variant, size }), textClass)}>{label}</Text>
       ) : (
         children
       )}
