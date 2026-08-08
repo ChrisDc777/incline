@@ -23,7 +23,7 @@ Status: **pre-alpha**. The core loop (onboarding → log → finish → progress
 - **AI-powered workout recommendations** — suggest next session, auto-regulate load from recent logs (carry-over data already exists via `getLastSetsForExercise`).
 - **Advanced analytics** — volume/intensity trends, fatigue, deload suggestions, exercise substitution.
 - **Exercise & template authoring** — user-created exercises/templates/programs (schema already supports it).
-- **Custom branding / icon** — use existing `icon.png` / `icon-preview.png`; APK share for friend testing (store listing later).
+- ~~**Custom branding / icon**~~ — **done** (`icon.png` / `icon-preview.png` for app + splash; EAS `preview` profile builds shareable APK). Store listing assets later.
 
 ## Engineering
 - **Lint / typecheck baseline** — configured (`npm run lint`, `npm run typecheck`); one pre-existing `env.ts` lint error to clean up.

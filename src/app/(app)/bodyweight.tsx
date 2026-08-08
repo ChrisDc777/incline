@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
 import { Plus, ChevronDown, BarChart3 } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
-import { LineChart } from 'react-native-gifted-charts';
 
 import { Body, Caption } from '@/components/common/text';
 import { Text } from '@/components/ui/text';
@@ -13,10 +12,10 @@ import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
+import { SeriesAreaChart } from '@/components/progress/series-area-chart';
 import { addBodyweightEntry, getBodyweightEntries, deleteBodyweightEntry } from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
 import { SCREEN_CONTENT } from '@/lib/layout';
-import { hexToRgba, useThemeHex } from '@/lib/theme';
 import { cn } from '@/lib/cn';
 
 interface Entry {
@@ -47,7 +46,6 @@ function getRangeMs(range: TimeRange): number {
 }
 
 function MiniChart({ data, unit }: { data: Entry[]; unit: string }) {
-  const colors = useThemeHex();
   if (data.length < 2) {
     return (
       <View className="mt-4 items-center justify-center rounded-2xl border border-border/60 bg-card px-4 py-10">
@@ -57,35 +55,20 @@ function MiniChart({ data, unit }: { data: Entry[]; unit: string }) {
     );
   }
 
-  const points = [...data].reverse();
-  const minW = Math.min(...points.map((e) => e.weight));
-  const maxW = Math.max(...points.map((e) => e.weight));
+  const points = [...data].reverse().map((e) => ({
+    value: e.weight,
+    label: new Date(e.recordedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+  }));
 
   return (
-    <View className="mt-4 rounded-2xl border border-border/60 bg-card p-4">
-      <LineChart
-        data={points.map((e) => ({
-          value: e.weight,
-          label: new Date(e.recordedAt).toLocaleDateString(undefined, { month: 'short' }),
-        }))}
-        height={120}
-        width={300}
-        thickness={2}
-        color={colors.primary}
-        areaChart
-        startFillColor={hexToRgba(colors.primary, 0.25)}
-        endFillColor={hexToRgba(colors.primary, 0.02)}
-        hideDataPoints={points.length > 15}
-        adjustToWidth
-        yAxisTextStyle={{ fontSize: 10, color: colors.mutedForeground }}
-        xAxisLabelTextStyle={{ fontSize: 9, color: colors.mutedForeground }}
-        yAxisLabelWidth={40}
-        rulesColor={colors.border}
+    <View className="mt-4">
+      <SeriesAreaChart
+        title="Bodyweight"
+        points={points}
+        formatValue={(v) => v.toFixed(1)}
+        valueHint={unit}
+        height={150}
       />
-      <View className="mt-2 flex-row justify-between">
-        <Caption>{minW.toFixed(1)} {unit}</Caption>
-        <Caption>{maxW.toFixed(1)} {unit}</Caption>
-      </View>
     </View>
   );
 }

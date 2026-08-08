@@ -25,6 +25,7 @@ import {
 export interface MuscleSplit {
   muscle: MuscleGroup;
   percentage: number;
+  sets: number;
 }
 
 async function enqueueLogUpsert(logId: number): Promise<void> {
@@ -92,6 +93,7 @@ export async function getWorkoutMuscleSplit(logId: number): Promise<MuscleSplit[
   return rows.map((r) => ({
     muscle: r.primary_muscle as MuscleGroup,
     percentage: Math.round((r.count / total) * 100),
+    sets: r.count,
   }));
 }
 
@@ -314,18 +316,53 @@ export async function updateWorkoutDuration(logId: number, seconds: number): Pro
   await enqueueLogUpsert(logId);
 }
 
-export async function finishWorkout(logId: number): Promise<void> {
+export async function finishWorkout(logId: number, options?: { pausedMs?: number }): Promise<void> {
   const db = await openDatabase();
   const log = await db.getFirstAsync<LogRow>('SELECT * FROM workout_logs WHERE id = ?', logId);
   if (!log) return;
   const now = Date.now();
-  const duration = Math.max(0, now - log.started_at);
+  const pausedMs = Math.max(0, options?.pausedMs ?? 0);
+  const duration = Math.max(0, Math.floor((now - log.started_at - pausedMs) / 1000));
+
+  // Soft-delete incomplete template sets so Home/history only show what was logged.
+  // Templates themselves are untouched.
+  const incomplete = await db.getAllAsync<{ id: number }>(
+    `SELECT id FROM set_entries
+     WHERE workout_log_id = ? AND completed = 0 AND deleted_at IS NULL`,
+    logId,
+  );
+  for (const row of incomplete) {
+    await db.runAsync(
+      'UPDATE set_entries SET deleted_at = ?, updated_at = ? WHERE id = ?',
+      now, now, row.id,
+    );
+  }
+
   await recomputeVolume(logId);
   await db.runAsync(
     'UPDATE workout_logs SET ended_at = ?, duration_seconds = ?, updated_at = ? WHERE id = ?',
     now, duration, now, logId,
   );
+  for (const row of incomplete) await enqueueSetUpsert(row.id);
   await enqueueLogUpsert(logId);
+}
+
+/** Undo a soft-deleted set within the same session (preserves uuid for sync). */
+export async function restoreSet(setId: number): Promise<void> {
+  const db = await openDatabase();
+  const now = Date.now();
+  const row = await db.getFirstAsync<{ workout_log_id: number }>(
+    'SELECT workout_log_id FROM set_entries WHERE id = ?',
+    setId,
+  );
+  if (!row) return;
+  await db.runAsync(
+    'UPDATE set_entries SET deleted_at = NULL, updated_at = ? WHERE id = ?',
+    now, setId,
+  );
+  await recomputeVolume(row.workout_log_id);
+  await enqueueSetUpsert(setId);
+  await enqueueLogUpsert(row.workout_log_id);
 }
 
 export async function discardWorkout(logId: number): Promise<void> {
@@ -389,7 +426,7 @@ async function enrichWorkoutFeed(db: SQLiteDatabase, rows: LogRow[]): Promise<Fe
   const allSets = await db.getAllAsync<SetRow & { exercise_name: string }>(
     `SELECT s.*, e.name as exercise_name FROM set_entries s
      JOIN exercises e ON e.id = s.exercise_id
-     WHERE s.workout_log_id IN (${placeholders}) AND s.deleted_at IS NULL
+     WHERE s.workout_log_id IN (${placeholders}) AND s.deleted_at IS NULL AND s.completed = 1
      ORDER BY s.workout_log_id, s.exercise_id, s.set_index`,
     ...logIds,
   );
@@ -455,6 +492,35 @@ async function enrichWorkoutFeed(db: SQLiteDatabase, rows: LogRow[]): Promise<Fe
       prCount: prCounts.get(r.id) ?? 0,
     };
   });
+}
+
+/** Count exercises in this finished session that match the all-time heaviest weight. */
+export async function getWorkoutPrCount(logId: number): Promise<number> {
+  const db = await openDatabase();
+  const logSets = await db.getAllAsync<{ exercise_id: number; weight: number }>(
+    `SELECT exercise_id, weight FROM set_entries
+     WHERE workout_log_id = ? AND completed = 1 AND deleted_at IS NULL`,
+    logId,
+  );
+  if (logSets.length === 0) return 0;
+  const exerciseMax = new Map<number, number>();
+  for (const s of logSets) {
+    const prev = exerciseMax.get(s.exercise_id) ?? 0;
+    if (s.weight > prev) exerciseMax.set(s.exercise_id, s.weight);
+  }
+  let count = 0;
+  for (const [exId, maxW] of exerciseMax) {
+    if (maxW <= 0) continue;
+    const best = await db.getFirstAsync<{ max_weight: number }>(
+      `SELECT MAX(s.weight) as max_weight FROM set_entries s
+       JOIN workout_logs w ON w.id = s.workout_log_id
+       WHERE s.exercise_id = ? AND s.completed = 1 AND s.deleted_at IS NULL
+         AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL`,
+      exId,
+    );
+    if ((best?.max_weight ?? 0) === maxW) count++;
+  }
+  return count;
 }
 
 export async function deleteWorkout(logId: number): Promise<void> {

@@ -14,10 +14,10 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#1a1a1a",
-        "foregroundImage": "./assets/images/icon-preview.png",
-        "backgroundImage": "./assets/images/icon.png"
+        "foregroundImage": "./assets/images/icon-preview.png"
       },
       "package": "com.chrisdc777.incline",
+      "softwareKeyboardLayoutMode": "resize",
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -36,7 +36,8 @@
         }
       ],
       "expo-audio",
-      "expo-image"
+      "expo-image",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true

@@ -13,7 +13,7 @@ import { StatCard } from '@/components/common/stat-card';
 import { WorkoutFeedCard } from '@/components/workout/workout-feed-card';
 import { TemplatePickerSheet } from '@/components/workout/template-picker-sheet';
 import { ActiveSessionConflictDialog } from '@/components/workout/active-session-conflict-dialog';
-import { MuscleBadge } from '@/components/exercise/muscle-badge';
+import { MuscleBodyMap } from '@/components/progress/muscle-body-map';
 import { CardSkeleton } from '@/components/common/skeleton';
 import { useProfile, useSuggestedTemplate, useProgressStats, useWorkoutFeedLogs, useTodayProgramSlot } from '@/hooks/use-data';
 import { useActiveSession } from '@/hooks/use-active-session';
@@ -24,6 +24,7 @@ import { useHaptics } from '@/hooks/use-haptics';
 import { startWorkout, discardWorkout, deleteWorkout } from '@/db/queries';
 import { formatVolume, formatFullDate } from '@/db/calc';
 import { METRIC_ICONS } from '@/lib/metric-icons';
+import { weekInsightFromStats } from '@/lib/week-insight';
 import type { FeedWorkoutLog, MuscleGroup } from '@/db/types';
 
 function greeting() {
@@ -126,11 +127,13 @@ export default function HomeScreen() {
   const thisWeek = stats?.weeklyVolume?.[stats.weeklyVolume.length - 1];
   const weekSessions = thisWeek?.sessions ?? 0;
   const weekVolume = thisWeek?.volume ?? 0;
+  const weekInsight = weekInsightFromStats(stats, unit);
   const suggestedMuscles = (suggested?.exercises ?? [])
     .map((e) => e.exercise?.primaryMuscle)
     .filter((m, i, arr): m is MuscleGroup => !!m && arr.indexOf(m) === i);
 
   const programWorkout = todaySlot && !todaySlot.isRestDay ? todaySlot.workout : null;
+  const todayMuscles = programWorkout ? todaySlot?.muscles ?? [] : suggestedMuscles;
   const heroLoading = sugLoading || todayLoading;
 
   const renderHeader = () => (
@@ -145,6 +148,9 @@ export default function HomeScreen() {
       </View>
       <Hero className="mt-0.5">Let&apos;s train, {name.split(' ')[0]}</Hero>
       <Body className="mt-1 text-muted-foreground">{today}</Body>
+      {hasData && weekInsight ? (
+        <Caption className="mt-2 text-foreground/80">{weekInsight.line}</Caption>
+      ) : null}
 
       <View className="mt-6 gap-3">
         {heroLoading ? (
@@ -162,6 +168,9 @@ export default function HomeScreen() {
                 {programWorkout.templateName ?? 'Workout'}
               </Body>
               <Caption className="mt-1">Week {todaySlot!.week}</Caption>
+              {todayMuscles.length > 0 ? (
+                <MuscleBodyMap muscles={todayMuscles} compact className="mt-3" />
+              ) : null}
               <Button
                 className="mt-4"
                 leftIcon={<Icon icon={Play} size={16} color="primary-foreground" />}
@@ -201,11 +210,7 @@ export default function HomeScreen() {
                 {suggested.description}
               </Body>
               {suggestedMuscles.length > 0 ? (
-                <View className="mt-3 flex-row flex-wrap gap-2">
-                  {suggestedMuscles.map((m) => (
-                    <MuscleBadge key={m} muscle={m} />
-                  ))}
-                </View>
+                <MuscleBodyMap muscles={suggestedMuscles} compact className="mt-3" />
               ) : null}
               <Button
                 className="mt-4"

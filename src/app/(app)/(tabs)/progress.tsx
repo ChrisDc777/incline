@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Dumbbell, TrendingUp } from 'lucide-react-native';
+import { useRouter, type Href } from 'expo-router';
+import { ChevronRight, Dumbbell, TrendingUp } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
-import { Heading, Caption } from '@/components/common/text';
+import { Heading, Caption, Body } from '@/components/common/text';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { StatCard } from '@/components/common/stat-card';
 import { SectionHeader } from '@/components/common/section-header';
@@ -14,13 +15,13 @@ import { EmptyState, ErrorState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
 import { SegmentedControl } from '@/components/common/segmented-control';
 import { VolumeChart } from '@/components/progress/volume-chart';
-import { MuscleDonut } from '@/components/progress/muscle-donut';
 import { TrendChip } from '@/components/progress/trend-chip';
 import { PRCard } from '@/components/progress/pr-card';
 import { HistoryRow } from '@/components/progress/history-row';
 import { usePeriodStats, useWorkoutLogs } from '@/hooks/use-data';
 import { useSettings } from '@/store/settings-store';
 import { formatVolume } from '@/db/calc';
+import { MUSCLE_LABELS } from '@/lib/labels';
 import { SCREEN_CONTENT } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
 import type { ProgressRange } from '@/db/types';
@@ -44,6 +45,7 @@ function monthLabel(key: string): string {
 }
 
 export default function ProgressScreen() {
+  const router = useRouter();
   const { unit } = useSettings();
   const [range, setRange] = useState<ProgressRange>('1m');
   const { data: stats, loading, error, refetch } = usePeriodStats(range);
@@ -56,6 +58,12 @@ export default function ProgressScreen() {
     }
     return stats.weeklyVolume.map((w) => ({ label: weekLabel(w.weekStart), value: w.volume }));
   }, [stats, range]);
+
+  const topMuscle = useMemo(() => {
+    const list = stats?.muscleDistribution ?? [];
+    if (list.length === 0) return null;
+    return [...list].sort((a, b) => b.sets - a.sets)[0];
+  }, [stats]);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
@@ -108,13 +116,24 @@ export default function ProgressScreen() {
                   <VolumeChart data={volumeData} unit={unit} />
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Muscle focus</CardTitle>
-                    <CardDescription>Set share this period</CardDescription>
-                  </CardHeader>
-                  <MuscleDonut data={stats.muscleDistribution} unit={unit} className="mt-2" />
-                </Card>
+                <Pressable
+                  onPress={() => router.push('/(app)/muscle-distribution' as Href)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open muscle distribution">
+                  <Card>
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-1 pr-3">
+                        <Body className="font-semibold text-foreground">Muscle distribution</Body>
+                        <Caption className="mt-1">
+                          {topMuscle
+                            ? `Top: ${MUSCLE_LABELS[topMuscle.muscle]} · ${topMuscle.sets} sets`
+                            : 'Body map and balance radar'}
+                        </Caption>
+                      </View>
+                      <Icon icon={ChevronRight} size={18} color="muted-foreground" />
+                    </View>
+                  </Card>
+                </Pressable>
 
                 <View>
                   <SectionHeader title="Records" className="mb-3" />

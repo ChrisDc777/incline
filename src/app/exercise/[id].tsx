@@ -11,15 +11,24 @@ import { Badge } from '@/components/ui/badge';
 import { SegmentedControl } from '@/components/common/segmented-control';
 import { EmptyState, ErrorState } from '@/components/common/states';
 import { ListSkeleton } from '@/components/common/skeleton';
-import { ProgressionChart } from '@/components/progress/progression-chart';
+import { SeriesAreaChart } from '@/components/progress/series-area-chart';
+import { MuscleBodyMap } from '@/components/progress/muscle-body-map';
 import { useExercise, useExerciseHistory } from '@/hooks/use-data';
-import { getExerciseByExternalId, getExercisePRSummary, getExerciseRepRecords, getExerciseProgression, type ExercisePRSummary, type RepRecord, type ProgressionPoint } from '@/db/queries';
+import {
+  getExerciseByExternalId,
+  getExercisePRSummary,
+  getExerciseRepRecords,
+  getExerciseSeries,
+  type ExercisePRSummary,
+  type RepRecord,
+  type ExerciseSeriesPoint,
+} from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
-import { MOVEMENT_LABELS } from '@/lib/labels';
-import { estimated1RM, formatWeight, relativeTime } from '@/db/calc';
+import { MOVEMENT_LABELS, MUSCLE_LABELS } from '@/lib/labels';
+import { estimated1RM, formatWeight, formatVolume, relativeTime } from '@/db/calc';
 import type { Exercise, ExerciseHistoryRow, Unit } from '@/db/types';
 
-const TABS = ['Summary', 'History', 'How to'] as const;
+const TABS = ['Summary', 'Progress', 'History', 'How to'] as const;
 type Tab = typeof TABS[number];
 const TAB_VALUES = TABS.map((t) => ({ value: t, label: t }));
 
@@ -63,13 +72,13 @@ export default function ExerciseDetailScreen() {
   const { data: history } = useExerciseHistory(exerciseId);
   const [prSummary, setPrSummary] = useState<ExercisePRSummary | null>(null);
   const [repRecords, setRepRecords] = useState<RepRecord[]>([]);
-  const [progression, setProgression] = useState<ProgressionPoint[]>([]);
+  const [series, setSeries] = useState<ExerciseSeriesPoint[]>([]);
 
   useEffect(() => {
     if (!exerciseId) return;
     getExercisePRSummary(exerciseId).then(setPrSummary);
     getExerciseRepRecords(exerciseId).then(setRepRecords);
-    getExerciseProgression(exerciseId).then(setProgression);
+    getExerciseSeries(exerciseId).then(setSeries);
   }, [exerciseId]);
 
   useLayoutEffect(() => {
@@ -106,7 +115,7 @@ export default function ExerciseDetailScreen() {
         </View>
         <View className="flex-1">
           <Heading style={{ fontSize: 18 }}>{exercise.name}</Heading>
-          <Caption>Primary: {exercise.primaryMuscle}</Caption>
+          <Caption>Primary: {MUSCLE_LABELS[exercise.primaryMuscle]}</Caption>
         </View>
       </View>
 
@@ -122,11 +131,11 @@ export default function ExerciseDetailScreen() {
             exercise={exercise}
             prSummary={prSummary}
             repRecords={repRecords}
-            progression={progression}
             unit={unit}
-            maxWeight={maxWeight}
-            max1RM={max1RM}
           />
+        )}
+        {tab === 'Progress' && (
+          <ProgressTab series={series} unit={unit} />
         )}
         {tab === 'History' && (
           <HistoryTab sessions={sessions} unit={unit} maxWeight={maxWeight} max1RM={max1RM} />
@@ -141,16 +150,21 @@ export default function ExerciseDetailScreen() {
 
 /* ───────────── Summary Tab ───────────── */
 
+function chartDateLabel(iso: string): string {
+  const parts = iso.split('-');
+  if (parts.length < 3) return iso;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[Number(parts[1]) - 1] ?? parts[1];
+  return `${Number(parts[2])} ${month}`;
+}
+
 function SummaryTab({
-  exercise, prSummary, repRecords, progression, unit, maxWeight, max1RM,
+  exercise, prSummary, repRecords, unit,
 }: {
   exercise: Exercise;
   prSummary: ExercisePRSummary | null;
   repRecords: RepRecord[];
-  progression: ProgressionPoint[];
   unit: Unit;
-  maxWeight: number;
-  max1RM: number;
 }) {
   return (
     <View>
@@ -163,22 +177,24 @@ function SummaryTab({
         {exercise.isCompound ? <Badge variant="default">Compound</Badge> : <Badge variant="secondary">Isolation</Badge>}
       </View>
 
-      {/* Progression chart */}
-      {progression.length > 1 ? (
-        <Card className="mb-4">
-          <CardHeader>
-            <CardTitle>Progression</CardTitle>
-          </CardHeader>
-          <ProgressionChart
-            points={progression.map((p) => ({ label: p.date.slice(5), weight: p.weight }))}
-            unit={unit}
-          />
-          <View className="mt-1 flex-row justify-between px-2">
-            <Caption>{progression[0]?.date}</Caption>
-            <Caption>{progression[progression.length - 1]?.date}</Caption>
-          </View>
-        </Card>
-      ) : null}
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>Muscles</CardTitle>
+        </CardHeader>
+        <MuscleBodyMap
+          muscles={[exercise.primaryMuscle, ...exercise.secondaryMuscles]}
+          scale={0.9}
+          className="mt-1"
+        />
+        <View className="mt-3 flex-row flex-wrap gap-2">
+          <Badge variant="default">{MUSCLE_LABELS[exercise.primaryMuscle]}</Badge>
+          {exercise.secondaryMuscles.map((m) => (
+            <Badge key={m} variant="outline">
+              {MUSCLE_LABELS[m]}
+            </Badge>
+          ))}
+        </View>
+      </Card>
 
       {/* Personal Records */}
       {prSummary && prSummary.heaviestWeight > 0 ? (
@@ -222,6 +238,55 @@ function SummaryTab({
           <Body className="flex-1 text-sm text-foreground">{exercise.tips}</Body>
         </Card>
       ) : null}
+    </View>
+  );
+}
+
+/* ───────────── Progress Tab ───────────── */
+
+function ProgressTab({
+  series,
+  unit,
+}: {
+  series: ExerciseSeriesPoint[];
+  unit: Unit;
+}) {
+  const chartPoints = series.map((p) => ({
+    label: chartDateLabel(p.date),
+    e1rm: p.estimated1RM,
+    setVolume: p.setVolume,
+    weight: p.heaviestWeight,
+  }));
+
+  if (chartPoints.length < 2) {
+    return (
+      <EmptyState
+        title="Not enough data yet"
+        description="Complete a few sets of this exercise to see 1RM, volume, and weight trends."
+      />
+    );
+  }
+
+  return (
+    <View className="gap-4">
+      <SeriesAreaChart
+        title="Estimated 1RM"
+        points={chartPoints.map((p) => ({ label: p.label, value: p.e1rm }))}
+        formatValue={(v) => formatWeight(v, unit)}
+        valueHint={unit === 'metric' ? 'kg' : 'lb'}
+      />
+      <SeriesAreaChart
+        title="Set Volume"
+        points={chartPoints.map((p) => ({ label: p.label, value: p.setVolume }))}
+        formatValue={(v) => formatVolume(v, unit)}
+        valueHint="volume"
+      />
+      <SeriesAreaChart
+        title="Heaviest weight"
+        points={chartPoints.map((p) => ({ label: p.label, value: p.weight }))}
+        formatValue={(v) => formatWeight(v, unit)}
+        valueHint={unit === 'metric' ? 'kg' : 'lb'}
+      />
     </View>
   );
 }

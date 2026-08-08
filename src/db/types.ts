@@ -37,7 +37,7 @@ export type Category = 'strength' | 'cardio' | 'mobility' | 'accessory';
 export type Goal = 'build_muscle' | 'gain_strength' | 'lose_fat' | 'improve_endurance';
 export type Unit = 'metric' | 'imperial';
 export type ThemeMode = 'system' | 'light' | 'dark';
-export type AccentTheme = 'indigo' | 'teal' | 'copper' | 'coral' | 'emerald';
+export type AccentTheme = 'indigo' | 'teal' | 'copper' | 'coral' | 'emerald' | 'mint';
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 
@@ -239,6 +239,8 @@ export interface PeriodStats {
   weeklyVolume: WeeklyVolume[];
   monthlyVolume: MonthlyVolume[];
   muscleDistribution: MuscleDistribution[];
+  /** Equal-length window immediately before the selected range (empty for `all`). */
+  previousMuscleDistribution: MuscleDistribution[];
   prs: PR[];
   trend: Trend | null;
 }

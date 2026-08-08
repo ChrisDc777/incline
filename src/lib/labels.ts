@@ -2,6 +2,7 @@ import type {
   Category,
   Difficulty,
   Equipment,
+  ExperienceLevel,
   Goal,
   MovementPattern,
   MuscleGroup,
@@ -57,6 +58,12 @@ export const GOAL_LABELS: Record<Goal, string> = {
   gain_strength: 'Gain Strength',
   lose_fat: 'Lose Fat',
   improve_endurance: 'Improve Endurance',
+};
+
+export const EXPERIENCE_LABELS: Record<ExperienceLevel, string> = {
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  advanced: 'Advanced',
 };
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {

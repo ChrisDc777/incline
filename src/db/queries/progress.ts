@@ -180,6 +180,26 @@ export async function getPeriodStats(range: ProgressRange): Promise<PeriodStats>
   );
   const muscleDistribution: MuscleDistribution[] = muscleRows.map((r) => ({ muscle: r.primary_muscle as MuscleGroup, sets: r.sets, volume: r.volume }));
 
+  let previousMuscleDistribution: MuscleDistribution[] = [];
+  if (range !== 'all') {
+    const windowMs = weeks * 7 * 86_400_000;
+    const prevSince = since - windowMs;
+    const prevRows = await db.getAllAsync<{ primary_muscle: string; sets: number; volume: number }>(
+      `SELECT e.primary_muscle, COUNT(s.id) as sets, COALESCE(SUM(s.weight * s.reps), 0) as volume
+       FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id JOIN exercises e ON e.id = s.exercise_id
+       WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1
+         AND w.started_at >= ? AND w.started_at < ?
+       GROUP BY e.primary_muscle ORDER BY sets DESC`,
+      prevSince,
+      since,
+    );
+    previousMuscleDistribution = prevRows.map((r) => ({
+      muscle: r.primary_muscle as MuscleGroup,
+      sets: r.sets,
+      volume: r.volume,
+    }));
+  }
+
   // PRs achieved within the window (best estimate-1RM per exercise)
   const prRows = await db.getAllAsync<{ exerciseId: number; name: string; weight: number; reps: number; created_at: number }>(
     `SELECT e.id as exerciseId, e.name, s.weight, s.reps, s.created_at
@@ -212,6 +232,7 @@ export async function getPeriodStats(range: ProgressRange): Promise<PeriodStats>
     weeklyVolume: weekly,
     monthlyVolume: monthly,
     muscleDistribution,
+    previousMuscleDistribution,
     prs,
     trend,
   };

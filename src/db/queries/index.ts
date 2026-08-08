@@ -17,11 +17,13 @@ export {
   getExercisePRSummary,
   getExerciseRepRecords,
   getExerciseProgression,
+  getExerciseSeries,
   type ExerciseFilters,
   type CreateCustomExerciseInput,
   type ExercisePRSummary,
   type RepRecord,
   type ProgressionPoint,
+  type ExerciseSeriesPoint,
 } from './exercises';
 
 export {
@@ -68,6 +70,7 @@ export {
   addSet,
   updateSet,
   removeSet,
+  restoreSet,
   updateWorkoutNotes,
   updateWorkoutLogStartedAt,
   updateWorkoutDuration,
@@ -76,6 +79,7 @@ export {
   listWorkoutLogs,
   listWorkoutFeedLogs,
   getWorkoutFeedForDay,
+  getWorkoutPrCount,
   deleteWorkout,
   clearWorkoutHistory,
   type MuscleSplit,

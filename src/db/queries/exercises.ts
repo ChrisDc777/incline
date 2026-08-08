@@ -412,14 +412,42 @@ export interface ProgressionPoint {
   weight: number;
 }
 
+export interface ExerciseSeriesPoint {
+  date: string;
+  heaviestWeight: number;
+  estimated1RM: number;
+  setVolume: number;
+}
+
 export async function getExerciseProgression(exerciseId: number): Promise<ProgressionPoint[]> {
+  const series = await getExerciseSeries(exerciseId);
+  return series.map((p) => ({ date: p.date, weight: p.heaviestWeight }));
+}
+
+/** Daily bests for heaviest weight, estimated 1RM, and best set volume (completed sets only). */
+export async function getExerciseSeries(exerciseId: number): Promise<ExerciseSeriesPoint[]> {
   const db = await openDatabase();
-  const rows = await db.getAllAsync<{ w: string; weight: number }>(
-    `SELECT strftime('%Y-%m-%d', s.created_at / 1000, 'unixepoch') as w, MAX(s.weight) as weight
+  const rows = await db.getAllAsync<{
+    w: string;
+    weight: number;
+    e1rm: number;
+    set_vol: number;
+  }>(
+    `SELECT strftime('%Y-%m-%d', s.created_at / 1000, 'unixepoch') as w,
+            MAX(s.weight) as weight,
+            MAX(CASE WHEN s.reps <= 1 THEN s.weight
+                     ELSE s.weight * (1.0 + s.reps / 30.0) END) as e1rm,
+            MAX(s.weight * s.reps) as set_vol
      FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1
+     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL
+       AND s.deleted_at IS NULL AND s.completed = 1
      GROUP BY w ORDER BY w`,
     exerciseId,
   );
-  return rows.map((r) => ({ date: r.w, weight: r.weight }));
+  return rows.map((r) => ({
+    date: r.w,
+    heaviestWeight: r.weight,
+    estimated1RM: Math.round(r.e1rm * 100) / 100,
+    setVolume: Math.round(r.set_vol * 100) / 100,
+  }));
 }

@@ -14,9 +14,12 @@ export default function AppLayout() {
         <Stack.Screen name="program/[id]" options={{ headerShown: true, title: 'Program' }} />
       <Stack.Screen name="program/edit/[id]" options={{ headerShown: true, title: 'Edit program' }} />
         <Stack.Screen name="bodyweight" options={{ headerShown: true, title: 'Measurements' }} />
-        <Stack.Screen name="calendar" options={{ headerShown: true, title: 'Calendar' }} />
+        <Stack.Screen name="calendar" options={{ headerShown: false }} />
         <Stack.Screen name="calculator" options={{ headerShown: false }} />
         <Stack.Screen name="plate-calculator" options={{ headerShown: false }} />
+        <Stack.Screen name="muscle-distribution" options={{ headerShown: false }} />
+        <Stack.Screen name="milestones" options={{ headerShown: false }} />
+        <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
         <Stack.Screen name="day/[ms]" options={{ headerShown: false }} />
       </Stack>
     </CloudSyncProvider>

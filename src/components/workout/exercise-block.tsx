@@ -5,9 +5,13 @@ import { cn } from '@/lib/cn';
 import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
 import { SetRow, type SetRowHandle } from './set-row';
+import { PreviousBestBadge } from './previous-best-badge';
 import { RestTimerPickerSheet } from './rest-timer-picker-sheet';
+import { formatWeight } from '@/db/calc';
 import type { SetEntry, Unit } from '@/db/types';
+import type { ExercisePRSummary } from '@/db/queries';
 import { Plus, Clock, Flame } from 'lucide-react-native';
+import { SET_COL } from './set-layout';
 
 /**
  * One exercise within an active session: header (name + rest timer config) and
@@ -19,6 +23,7 @@ export function ExerciseBlock({
   sets,
   unit,
   lastSets,
+  prSummary,
   restSeconds,
   onChangeRestSeconds,
   onChangeWeight,
@@ -35,6 +40,7 @@ export function ExerciseBlock({
   sets: SetEntry[];
   unit: Unit;
   lastSets: SetEntry[];
+  prSummary?: ExercisePRSummary | null;
   restSeconds: number;
   onChangeRestSeconds: (seconds: number) => void;
   onChangeWeight: (setId: number, v: number) => void;
@@ -49,11 +55,35 @@ export function ExerciseBlock({
   const [restPickerOpen, setRestPickerOpen] = useState(false);
   const rowRefs = useRef<(SetRowHandle | null)[]>([]);
   const completedCount = sets.filter((s) => s.completed).length;
+  const weightLabel = unit === 'metric' ? 'KG' : 'LB';
+
+  const workingWeight = sets.find((s) => !s.completed && s.weight > 0)?.weight
+    ?? sets.filter((s) => s.completed).at(-1)?.weight
+    ?? lastSets[0]?.weight
+    ?? 0;
+  const prGap =
+    prSummary && prSummary.heaviestWeight > 0
+      ? prSummary.heaviestWeight - workingWeight
+      : null;
 
   return (
-    <View className={cn('gap-2', className)}>
+    <View className={cn('gap-2 rounded-2xl px-1 py-1', className)}>
       <View className="flex-row items-center justify-between px-1">
-        <Text className="text-base font-semibold text-foreground">{name}</Text>
+        <View className="min-w-0 flex-1 pr-2">
+          <Text className="text-base font-semibold text-foreground" numberOfLines={1}>{name}</Text>
+          <View className="mt-1 flex-row flex-wrap items-center gap-x-3 gap-y-1">
+            <PreviousBestBadge lastSets={lastSets} unit={unit} />
+            {prGap !== null && workingWeight > 0 ? (
+              <Text className="text-xs text-muted-foreground">
+                {prGap > 0
+                  ? `${formatWeight(prGap, unit)} to PR`
+                  : prGap === 0
+                    ? 'At PR weight'
+                    : `${formatWeight(Math.abs(prGap), unit)} over PR`}
+              </Text>
+            ) : null}
+          </View>
+        </View>
         <View className="flex-row items-center gap-3">
           <Text className="text-xs text-muted-foreground">
             {completedCount}/{sets.length}
@@ -71,6 +101,25 @@ export function ExerciseBlock({
         </View>
       </View>
 
+      <View className="flex-row items-center gap-2 px-1 pb-0.5">
+        <View style={{ width: SET_COL.index }} className="items-center">
+          <Text className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Set</Text>
+        </View>
+        <View style={{ width: SET_COL.prev }} className="items-center">
+          <Text className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Prev</Text>
+        </View>
+        <View style={{ width: SET_COL.weight }} className="items-center">
+          <Text className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{weightLabel}</Text>
+        </View>
+        <View style={{ width: SET_COL.reps }} className="items-center">
+          <Text className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Reps</Text>
+        </View>
+        <View className="flex-1" />
+        <View style={{ width: SET_COL.done }} className="items-center">
+          <Text className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Done</Text>
+        </View>
+      </View>
+
       <View className="gap-1">
         {sets.map((s, i) => (
           <SetRow
@@ -85,6 +134,14 @@ export function ExerciseBlock({
             unit={unit}
             onChangeWeight={(v) => onChangeWeight(s.id, v)}
             onChangeReps={(v) => onChangeReps(s.id, v)}
+            onApplyPrevious={
+              lastSets[i] && lastSets[i].weight > 0
+                ? () => {
+                    onChangeWeight(s.id, lastSets[i].weight);
+                    onChangeReps(s.id, lastSets[i].reps);
+                  }
+                : undefined
+            }
             onToggleComplete={() => onToggleComplete(s.id)}
             onRemove={sets.length > 1 ? () => onRemoveSet(s.id) : undefined}
             onSubmitReps={i + 1 < sets.length ? () => rowRefs.current[i + 1]?.focusWeight() : undefined}

@@ -1,16 +1,17 @@
 import { useImperativeHandle, useRef, type Ref } from 'react';
 import { Pressable, View } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 
 import { cn } from '@/lib/cn';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/common/icon';
-import { Check, X } from 'lucide-react-native';
+import { Check, Trash2 } from 'lucide-react-native';
 import { NumberStepper, type NumberStepperHandle } from './number-stepper';
+import { SET_COL, SET_ROW_HEIGHT } from './set-layout';
 import { formatWeight } from '@/db/calc';
 import type { Unit } from '@/db/types';
 
 export interface SetRowHandle {
-  /** Focus the weight input of this row. */
   focusWeight: () => void;
 }
 
@@ -26,6 +27,7 @@ export function SetRow({
   unit,
   onChangeWeight,
   onChangeReps,
+  onApplyPrevious,
   onToggleComplete,
   onRemove,
   onSubmitReps,
@@ -40,90 +42,113 @@ export function SetRow({
   unit: Unit;
   onChangeWeight: (v: number) => void;
   onChangeReps: (v: number) => void;
+  onApplyPrevious?: () => void;
   onToggleComplete?: () => void;
   onRemove?: () => void;
-  /** Called when the reps field is submitted (advance to next row). */
   onSubmitReps?: () => void;
 }) {
   const weightRef = useRef<NumberStepperHandle>(null);
   const repsRef = useRef<NumberStepperHandle>(null);
+  const swipeRef = useRef<Swipeable>(null);
 
   useImperativeHandle(ref, () => ({ focusWeight: () => weightRef.current?.focus() }), []);
 
   const hasPrevious = previousWeight !== undefined && previousWeight > 0;
-  return (
+
+  const row = (
     <View
+      style={{ height: SET_ROW_HEIGHT }}
       className={cn(
-        'flex-row items-center gap-1 rounded-xl px-1 py-1.5',
+        'flex-row items-center gap-2 rounded-xl bg-background px-1',
         completed && 'bg-success/8',
       )}>
-      <View className="w-6 items-center">
+      <View style={{ width: SET_COL.index }} className="items-center">
         <Text className="text-sm font-bold text-muted-foreground">{index + 1}</Text>
       </View>
 
-      <View className="w-[72px] items-center">
+      <Pressable
+        style={{ width: SET_COL.prev }}
+        className="items-center justify-center"
+        disabled={!hasPrevious || !onApplyPrevious}
+        onPress={onApplyPrevious}
+        accessibilityRole={hasPrevious ? 'button' : undefined}
+        accessibilityLabel={hasPrevious ? 'Use previous weight and reps' : undefined}
+        hitSlop={6}>
         {hasPrevious ? (
-          <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-            {formatWeight(previousWeight!, unit)} × {previousReps}
+          <Text className="text-center text-xs text-primary" numberOfLines={1}>
+            {formatWeight(previousWeight!, unit)}×{previousReps}
           </Text>
         ) : (
           <Text className="text-xs text-muted-foreground">—</Text>
         )}
-      </View>
+      </Pressable>
 
       <NumberStepper
         ref={weightRef}
         value={weight}
         onChange={onChangeWeight}
-        step={2.5}
-        suffix={unit === 'metric' ? 'kg' : 'lb'}
         decimals={1}
+        style={{ width: SET_COL.weight }}
         onSubmitNext={() => repsRef.current?.focus()}
       />
       <NumberStepper
         ref={repsRef}
         value={reps}
         onChange={onChangeReps}
-        step={1}
-        suffix="reps"
+        style={{ width: SET_COL.reps }}
         onSubmitNext={onSubmitReps}
       />
 
       <View className="flex-1" />
 
-      {onToggleComplete ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={completed ? 'Mark incomplete' : 'Complete set'}
-          accessibilityState={{ checked: completed }}
-          onPress={onToggleComplete}
-          hitSlop={8}
-          className={cn(
-            'h-12 w-12 items-center justify-center rounded-full',
-            completed ? 'bg-success' : 'border-2 border-border',
-          )}>
-          <Icon icon={Check} size={20} color="success-foreground" />
-        </Pressable>
-      ) : (
-        <View
-          className={cn(
-            'h-12 w-12 items-center justify-center rounded-full',
-            completed ? 'bg-success' : 'border-2 border-border',
-          )}>
-          {completed ? <Icon icon={Check} size={20} color="success-foreground" /> : null}
-        </View>
-      )}
-
-      {onRemove ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Remove set"
-          onPress={onRemove}
-          hitSlop={8}
-          className="h-11 w-11 items-center justify-center">
-          <Icon icon={X} size={16} color="muted-foreground" />
-        </Pressable>
-      ) : null}
+      <View style={{ width: SET_COL.done }} className="items-center">
+        {onToggleComplete ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={completed ? 'Mark incomplete' : 'Complete set'}
+            accessibilityState={{ checked: completed }}
+            onPress={onToggleComplete}
+            hitSlop={8}
+            className={cn(
+              'h-11 w-11 items-center justify-center rounded-full',
+              completed ? 'bg-success' : 'border-2 border-border',
+            )}>
+            <Icon icon={Check} size={18} color={completed ? 'success-foreground' : 'muted-foreground'} />
+          </Pressable>
+        ) : (
+          <View
+            className={cn(
+              'h-11 w-11 items-center justify-center rounded-full',
+              completed ? 'bg-success' : 'border-2 border-border',
+            )}>
+            {completed ? <Icon icon={Check} size={18} color="success-foreground" /> : null}
+          </View>
+        )}
+      </View>
     </View>
+  );
+
+  if (!onRemove) return row;
+
+  return (
+    <Swipeable
+      ref={swipeRef}
+      friction={2}
+      rightThreshold={48}
+      overshootRight={false}
+      renderRightActions={() => (
+        <Pressable
+          onPress={() => {
+            swipeRef.current?.close();
+            onRemove();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Delete set"
+          className="w-[72px] items-center justify-center rounded-xl bg-destructive">
+          <Icon icon={Trash2} size={18} color="destructive-foreground" />
+        </Pressable>
+      )}>
+      {row}
+    </Swipeable>
   );
 }

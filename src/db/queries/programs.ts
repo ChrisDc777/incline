@@ -2,7 +2,7 @@ import { openDatabase } from '../client';
 import { newUuid } from '@/lib/uuid';
 import { kvStorage } from '../kv';
 import { startOfDay, weekdayMon1 } from '../calc';
-import type { Program, ProgramWorkout } from '../types';
+import type { MuscleGroup, Program, ProgramWorkout } from '../types';
 import {
   type ProgramRow,
   type ProgramWorkoutRow,
@@ -23,6 +23,8 @@ export interface TodayProgramSlot {
   week: number;
   day: number;
   workout: ProgramWorkout | null;
+  /** Primary muscles covered by today's template (if any). */
+  muscles: MuscleGroup[];
   /** True when this calendar day has no programmed session. */
   isRestDay: boolean;
 }
@@ -276,11 +278,25 @@ export async function getTodayProgramSlot(now = Date.now()): Promise<TodayProgra
   const day = weekdayMon1(today);
   const workout = (program.workouts ?? []).find((w) => w.week === week && w.day === day) ?? null;
 
+  let muscles: MuscleGroup[] = [];
+  if (workout?.templateId) {
+    const db = await openDatabase();
+    const muscleRows = await db.getAllAsync<{ primary_muscle: string }>(
+      `SELECT DISTINCT e.primary_muscle
+       FROM template_exercises te
+       JOIN exercises e ON e.id = te.exercise_id
+       WHERE te.template_id = ? AND te.deleted_at IS NULL AND e.deleted_at IS NULL`,
+      workout.templateId,
+    );
+    muscles = muscleRows.map((r) => r.primary_muscle as MuscleGroup);
+  }
+
   return {
     program,
     week,
     day,
     workout,
+    muscles,
     isRestDay: !workout,
   };
 }

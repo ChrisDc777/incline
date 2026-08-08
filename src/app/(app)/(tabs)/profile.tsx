@@ -5,15 +5,28 @@ import { useRouter, type Href } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import * as ImagePicker from 'expo-image-picker';
 import { documentDirectory, makeDirectoryAsync, copyAsync } from 'expo-file-system/legacy';
-import { Settings as SettingsIcon, Pencil, ChevronRight, Trash2, Info, Dumbbell, BarChart3, Ruler, Calendar, LogOut, Camera, Calculator, Weight } from 'lucide-react-native';
+import {
+  Settings as SettingsIcon,
+  Pencil,
+  ChevronRight,
+  Trash2,
+  Info,
+  Dumbbell,
+  BarChart3,
+  Ruler,
+  Calendar,
+  LogOut,
+  Camera,
+  Calculator,
+  Weight,
+  Trophy,
+} from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
-import { Chip } from '@/components/common/chip';
 import { StatCard } from '@/components/common/stat-card';
 import { InitialsAvatar } from '@/components/common/initials-avatar';
 import { useProfile, useProgressStats } from '@/hooks/use-data';
@@ -22,12 +35,10 @@ import { useToast } from '@/components/ui/toast';
 import { saveProfile, clearWorkoutHistory } from '@/db/queries';
 import { GOAL_LABELS } from '@/lib/labels';
 import { formatVolume } from '@/db/calc';
-import { SCREEN_CONTENT } from '@/lib/layout';
+import { SCREEN_CONTENT, SCREEN_HEADER } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
 import { hexToRgba, usePrimaryHex } from '@/lib/theme';
-import type { Goal } from '@/db/types';
-
-const GOALS: Goal[] = ['build_muscle', 'gain_strength', 'lose_fat', 'improve_endurance'];
+import { evaluateAchievements } from '@/lib/achievements';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -37,27 +48,7 @@ export default function ProfileScreen() {
   const { data: profile, refetch } = useProfile();
   const { data: stats, refetch: refetchStats } = useProgressStats();
   const { signOut } = useAuth();
-
-  const [editOpen, setEditOpen] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [goal, setGoal] = useState<Goal>('build_muscle');
-  const [bodyweight, setBodyweight] = useState('');
-
-  const openEdit = () => {
-    setName(profile?.name ?? '');
-    setGoal(profile?.goal ?? 'build_muscle');
-    setBodyweight(profile?.bodyweight ? String(profile.bodyweight) : '');
-    setEditOpen(true);
-  };
-
-  const saveEdit = async () => {
-    const bw = bodyweight.trim() ? parseFloat(bodyweight.replace(',', '.')) : null;
-    await saveProfile({ name: name.trim(), goal, bodyweight: Number.isFinite(bw) ? bw : null });
-    setEditOpen(false);
-    refetch();
-    toast({ title: 'Profile updated', variant: 'success' });
-  };
 
   const pickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -92,12 +83,24 @@ export default function ProfileScreen() {
     toast({ title: 'Workout history cleared', variant: 'info' });
   };
 
+  const achievements = evaluateAchievements(stats);
+  const unlockedCount = achievements.filter((a) => a.unlocked).length;
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={SCREEN_CONTENT}>
-        <Heading>Profile</Heading>
+        <View className={`${SCREEN_HEADER} flex-row items-center justify-between px-0`}>
+          <Heading>Profile</Heading>
+          <Pressable
+            onPress={() => router.push('/(app)/settings')}
+            className="h-10 w-10 items-center justify-center rounded-full bg-muted"
+            accessibilityRole="button"
+            accessibilityLabel="Settings">
+            <Icon icon={SettingsIcon} size={20} color="foreground" />
+          </Pressable>
+        </View>
 
-        <View className="mt-4 overflow-hidden rounded-3xl">
+        <View className="mt-2 overflow-hidden rounded-3xl">
           <LinearGradient
             colors={[hexToRgba(primary, 0.14), hexToRgba(primary, 0.02)]}
             start={{ x: 0, y: 0 }}
@@ -120,7 +123,12 @@ export default function ProfileScreen() {
                   </Caption>
                 </View>
               </View>
-              <Button variant="outline" size="sm" className="mt-4" leftIcon={<Icon icon={Pencil} size={14} color="muted-foreground" />} onPress={openEdit}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                leftIcon={<Icon icon={Pencil} size={14} color="muted-foreground" />}
+                onPress={() => router.push('/(app)/edit-profile' as Href)}>
                 Edit profile
               </Button>
             </View>
@@ -132,6 +140,25 @@ export default function ProfileScreen() {
           <StatCard label="Volume" value={formatVolume(stats?.totalVolume ?? 0, unit)} icon={<Icon icon={METRIC_ICONS.volume} size={16} color="info" />} />
           <StatCard label="Sets" value={stats?.totalSets ?? 0} icon={<Icon icon={METRIC_ICONS.sets} size={16} color="muted-foreground" />} />
         </View>
+
+        <Pressable
+          onPress={() => router.push('/(app)/milestones' as Href)}
+          accessibilityRole="button"
+          accessibilityLabel="Open milestones"
+          className="mt-6">
+          <View className="flex-row items-center justify-between rounded-3xl bg-card p-4">
+            <View className="flex-row items-center gap-3">
+              <Icon icon={Trophy} size={20} color="primary" />
+              <View>
+                <Body className="font-semibold text-foreground">Milestones</Body>
+                <Caption className="mt-0.5">
+                  {unlockedCount}/{achievements.length} unlocked
+                </Caption>
+              </View>
+            </View>
+            <Icon icon={ChevronRight} size={18} color="muted-foreground" />
+          </View>
+        </Pressable>
 
         <Caption className="mb-3 mt-6">Dashboard</Caption>
         <View className="flex-row gap-3">
@@ -167,14 +194,7 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
-        <Caption className="mb-3 mt-6">Settings</Caption>
-        <View className="gap-2">
-          <Pressable onPress={() => router.push('/(app)/settings')} accessibilityRole="button" accessibilityLabel="Settings" className="flex-row items-center gap-3 rounded-3xl bg-card p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-            <Icon icon={SettingsIcon} size={20} color="muted-foreground" />
-            <Body className="flex-1 font-medium text-foreground">Settings</Body>
-            <Icon icon={ChevronRight} size={18} color="muted-foreground" />
-          </Pressable>
-
+        <View className="mt-6 gap-2">
           <Pressable onPress={() => setClearOpen(true)} accessibilityRole="button" accessibilityLabel="Clear workout history" className="flex-row items-center gap-3 rounded-3xl border border-destructive/20 bg-destructive/10 p-4" android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Trash2} size={20} color="destructive" />
             <Body className="flex-1 font-medium text-foreground">Clear workout history</Body>
@@ -189,7 +209,6 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Dev tools — hidden in production */}
           {__DEV__ && (
             <View className="mt-4 gap-2 rounded-3xl border border-dashed border-border p-4">
               <Caption className="mb-1 font-semibold">Dev Tools</Caption>
@@ -210,36 +229,6 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
       </ScrollView>
-
-      <Dialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        title="Edit profile"
-        footer={
-          <>
-            <Button variant="outline" onPress={() => setEditOpen(false)}>Cancel</Button>
-            <Button onPress={saveEdit}>Save</Button>
-          </>
-        }>
-        <View className="gap-3">
-          <View className="gap-1.5">
-            <Caption>Name</Caption>
-            <Input value={name} onChangeText={setName} placeholder="Your name" autoCapitalize="words" />
-          </View>
-          <View className="gap-1.5">
-            <Caption>Goal</Caption>
-            <View className="flex-row flex-wrap gap-2">
-              {GOALS.map((g) => (
-                <Chip key={g} label={GOAL_LABELS[g]} selected={goal === g} onPress={() => setGoal(g)} />
-              ))}
-            </View>
-          </View>
-          <View className="gap-1.5">
-            <Caption>Bodyweight ({unit === 'metric' ? 'kg' : 'lb'})</Caption>
-            <Input value={bodyweight} onChangeText={setBodyweight} placeholder="Optional" keyboardType="decimal-pad" />
-          </View>
-        </View>
-      </Dialog>
 
       <Dialog
         open={clearOpen}

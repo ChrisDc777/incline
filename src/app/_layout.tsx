@@ -1,89 +1,82 @@
-import '@/global.css';
-
-import { useEffect } from 'react';
-import { View } from 'react-native';
-import { useFonts } from 'expo-font';
-import * as SplashScreen from 'expo-splash-screen';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { BottomSheetModalProvider } from '@expo/ui/community/bottom-sheet';
-import { ClerkProvider } from '@clerk/clerk-expo';
-import {
-  Geist_400Regular,
-  Geist_500Medium,
-  Geist_600SemiBold,
-  Geist_700Bold,
-} from '@expo-google-fonts/geist';
-
-import { cn } from '@/lib/cn';
-import { CLERK_PUBLISHABLE_KEY } from '@/lib/env';
-import { secureTokenCache } from '@/auth/secure-store';
-import { ToastProvider } from '@/components/ui/toast';
-import { ErrorBoundary } from '@/components/common/error-boundary';
-import { useDatabaseReady } from '@/hooks/use-database';
-import { useAppColorScheme } from '@/lib/use-color-scheme';
-import { useSettings } from '@/store/settings-store';
-import type { AccentTheme } from '@/db/types';
-
-SplashScreen.preventAutoHideAsync();
-
-const ACCENT_CLASS: Record<AccentTheme, string> = {
-  indigo: 'theme-indigo',
-  teal: 'theme-teal',
-  copper: 'theme-copper',
-  coral: 'theme-coral',
-  emerald: 'theme-emerald',
-};
-
-export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
-    Geist: Geist_400Regular,
-    'Geist-Medium': Geist_500Medium,
-    'Geist-SemiBold': Geist_600SemiBold,
-    'Geist-Bold': Geist_700Bold,
-  });
-  const dbReady = useDatabaseReady();
-  const scheme = useAppColorScheme();
-  const accentTheme = useSettings((s) => s.accentTheme);
-
-  useEffect(() => {
-    if (fontsLoaded && dbReady) SplashScreen.hideAsync();
-  }, [fontsLoaded, dbReady]);
-
-  if (!fontsLoaded || !dbReady) return null;
-
-  const isDark = scheme === 'dark';
-
-  return (
-    <ClerkProvider
-      publishableKey={CLERK_PUBLISHABLE_KEY}
-      tokenCache={secureTokenCache}>
-      <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-        <ErrorBoundary>
-          <StatusBar style={isDark ? 'light' : 'dark'} />
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <BottomSheetModalProvider>
-              <View className={cn('flex-1', isDark && 'dark', ACCENT_CLASS[accentTheme])}>
-                <ToastProvider>
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="index" />
-                    <Stack.Screen name="(onboarding)" />
-                    <Stack.Screen name="(auth)" />
-                    <Stack.Screen name="(app)" />
-                    <Stack.Screen name="exercise/[id]" options={{ headerShown: true, title: 'Exercise' }} />
-                    <Stack.Screen name="workout/[id]" options={{ headerShown: true, title: 'Workout' }} />
-                    <Stack.Screen name="session/[id]" options={{ headerShown: false }} />
-                    <Stack.Screen name="summary/[id]" options={{ headerShown: false }} />
-                    <Stack.Screen name="edit-workout/[id]" options={{ headerShown: false }} />
-                    <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
-                  </Stack>
-                </ToastProvider>
-              </View>
-            </BottomSheetModalProvider>
-          </GestureHandlerRootView>
-        </ErrorBoundary>
-      </ThemeProvider>
-    </ClerkProvider>
-  );
-}
+import '@/global.css';
+
+import { useEffect } from 'react';
+import { View } from 'react-native';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@expo/ui/community/bottom-sheet';
+import { ClerkProvider } from '@clerk/clerk-expo';
+import {
+  Geist_400Regular,
+  Geist_500Medium,
+  Geist_600SemiBold,
+  Geist_700Bold,
+} from '@expo-google-fonts/geist';
+
+import { cn } from '@/lib/cn';
+import { CLERK_PUBLISHABLE_KEY } from '@/lib/env';
+import { secureTokenCache } from '@/auth/secure-store';
+import { ToastProvider } from '@/components/ui/toast';
+import { ErrorBoundary } from '@/components/common/error-boundary';
+import { useDatabaseReady } from '@/hooks/use-database';
+import { useAppColorScheme } from '@/lib/use-color-scheme';
+import { useSettings } from '@/store/settings-store';
+
+SplashScreen.preventAutoHideAsync();
+
+export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Geist: Geist_400Regular,
+    'Geist-Medium': Geist_500Medium,
+    'Geist-SemiBold': Geist_600SemiBold,
+    'Geist-Bold': Geist_700Bold,
+  });
+  const dbReady = useDatabaseReady();
+  const scheme = useAppColorScheme();
+  const accentTheme = useSettings((s) => s.accentTheme);
+
+  useEffect(() => {
+    if (fontsLoaded && dbReady) SplashScreen.hideAsync();
+  }, [fontsLoaded, dbReady]);
+
+  if (!fontsLoaded || !dbReady) return null;
+
+  const isDark = scheme === 'dark';
+
+  return (
+    <ClerkProvider
+      publishableKey={CLERK_PUBLISHABLE_KEY}
+      tokenCache={secureTokenCache}>
+      <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+        <ErrorBoundary>
+          <StatusBar style={isDark ? 'light' : 'dark'} />
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <BottomSheetModalProvider>
+              <View className={cn('flex-1', isDark && 'dark', `theme-${accentTheme}`)}>
+                <ToastProvider>
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="index" />
+                    <Stack.Screen name="(onboarding)" />
+                    <Stack.Screen name="(auth)" />
+                    <Stack.Screen name="(app)" />
+                    <Stack.Screen name="exercise/[id]" options={{ headerShown: true, title: 'Exercise' }} />
+                    <Stack.Screen name="workout/[id]" options={{ headerShown: true, title: 'Workout' }} />
+                    <Stack.Screen name="session/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="summary/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="share/[id]" options={{ headerShown: false, presentation: 'modal' }} />
+                    <Stack.Screen name="edit-workout/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
+                  </Stack>
+                </ToastProvider>
+              </View>
+            </BottomSheetModalProvider>
+          </GestureHandlerRootView>
+        </ErrorBoundary>
+      </ThemeProvider>
+    </ClerkProvider>
+  );
+}
+
