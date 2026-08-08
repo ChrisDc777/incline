@@ -234,7 +234,7 @@ export async function addExerciseToTemplate(
 
 export async function updateTemplateExercise(
   id: number,
-  patch: Partial<Pick<TemplateExercise, 'targetSets' | 'targetRepsMin' | 'targetRepsMax' | 'restSeconds'>>,
+  patch: Partial<Pick<TemplateExercise, 'targetSets' | 'targetRepsMin' | 'targetRepsMax' | 'restSeconds' | 'notes'>>,
 ): Promise<void> {
   const db = await openDatabase();
   const sets: string[] = [];
@@ -243,6 +243,7 @@ export async function updateTemplateExercise(
   if (patch.targetRepsMin !== undefined) { sets.push('target_reps_min = ?'); args.push(patch.targetRepsMin); }
   if (patch.targetRepsMax !== undefined) { sets.push('target_reps_max = ?'); args.push(patch.targetRepsMax); }
   if (patch.restSeconds !== undefined) { sets.push('rest_seconds = ?'); args.push(patch.restSeconds); }
+  if (patch.notes !== undefined) { sets.push('notes = ?'); args.push(patch.notes); }
   if (sets.length === 0) return;
   const now = Date.now();
   sets.push('updated_at = ?');
@@ -284,4 +285,26 @@ export async function reorderTemplateExercises(templateId: number, exerciseIds: 
   }
   await db.runAsync('UPDATE workout_templates SET updated_at = ? WHERE id = ?', now, templateId);
   await enqueueTemplateUpsert(templateId);
+}
+
+/** Copy a routine (custom or seed) into a new custom template with the same exercises. */
+export async function duplicateTemplate(sourceId: number): Promise<number> {
+  const source = await getTemplate(sourceId);
+  if (!source) throw new Error('Template not found');
+  const copyName = `${source.name} (copy)`;
+  const newId = await createTemplate(copyName, source.description, source.difficulty);
+  for (const te of source.exercises ?? []) {
+    const teId = await addExerciseToTemplate(
+      newId,
+      te.exerciseId,
+      te.targetSets,
+      te.targetRepsMin,
+      te.targetRepsMax,
+      te.restSeconds,
+    );
+    if (te.notes?.trim()) {
+      await updateTemplateExercise(teId, { notes: te.notes });
+    }
+  }
+  return newId;
 }

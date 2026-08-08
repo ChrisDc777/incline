@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Dumbbell, Plus, Search, ClipboardList, Play, Pencil, Trash2 } from 'lucide-react-native';
+import { Dumbbell, Plus, Search, ClipboardList, Play, Pencil, Trash2, Copy } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Heading, Body } from '@/components/common/text';
@@ -21,7 +21,7 @@ import { useActiveSession } from '@/hooks/use-active-session';
 import { useActiveWorkout } from '@/store/active-workout-store';
 import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
-import { startWorkout, discardWorkout, deleteTemplate } from '@/db/queries';
+import { startWorkout, discardWorkout, deleteTemplate, duplicateTemplate } from '@/db/queries';
 import type { TemplateSummary } from '@/db/queries';
 import { SCREEN_CONTENT, SCREEN_HEADER } from '@/lib/layout';
 
@@ -98,6 +98,21 @@ export default function WorkoutsScreen() {
       setDeleting(false);
       setDeleteTarget(null);
       setMenuTarget(null);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!menuTarget) return;
+    const source = menuTarget;
+    setMenuTarget(null);
+    try {
+      const newId = await duplicateTemplate(source.template.id);
+      impact();
+      toast({ title: 'Routine duplicated', variant: 'success' });
+      templates.refetch();
+      router.push({ pathname: '/(app)/template/[id]', params: { id: String(newId) } } as Href);
+    } catch {
+      toast({ title: 'Could not duplicate routine', variant: 'destructive' });
     }
   };
 
@@ -246,6 +261,13 @@ export default function WorkoutsScreen() {
             android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
             <Icon icon={Pencil} size={18} color="muted-foreground" />
             <Body className="text-foreground">Edit Routine</Body>
+          </Pressable>
+          <Pressable
+            onPress={handleDuplicate}
+            className="flex-row items-center gap-3 rounded-xl p-3"
+            android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+            <Icon icon={Copy} size={18} color="muted-foreground" />
+            <Body className="text-foreground">Duplicate Routine</Body>
           </Pressable>
           <Pressable
             onPress={() => {

@@ -59,7 +59,7 @@ export default function SessionScreen() {
   const { impact, notify } = useHaptics();
   const clear = useActiveWorkout((s) => s.clear);
   const { unit, setUnit, restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets } = useSettings();
-  const rest = useRestTimer();
+  const rest = useRestTimer({ notify: restSoundEnabled });
   const restSound = useRestTimerSound();
 
   // Play sound when rest timer finishes

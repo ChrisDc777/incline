@@ -1,46 +1,74 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 
+import {
+  cancelRestCompleteNotification,
+  scheduleRestCompleteNotification,
+} from '@/lib/rest-notification';
+
 /**
  * Local rest-timer countdown. Kept local to the session screen (no global
  * ticking) so the rest of the app doesn't re-render every second.
  *
- * Handles backgrounding: when the app returns to foreground, the timer
- * calculates elapsed time from wall-clock timestamps so it stays accurate
- * even if the JS interval was suspended by the OS.
+ * Handles backgrounding via wall-clock deadlines, and schedules a local
+ * notification so rest completion still alerts when the user leaves the session.
  */
-export function useRestTimer() {
+export function useRestTimer(opts?: { notify?: boolean }) {
+  const notify = opts?.notify !== false;
   const [remaining, setRemaining] = useState(0);
   const [total, setTotal] = useState(0);
   const [running, setRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const deadlineRef = useRef<number>(0); // timestamp when timer should hit 0
+  const deadlineRef = useRef<number>(0);
 
-  const start = useCallback((seconds: number) => {
-    if (seconds <= 0) return;
-    setTotal(seconds);
-    setRemaining(seconds);
-    setRunning(true);
-    deadlineRef.current = Date.now() + seconds * 1000;
-  }, []);
+  const syncNotification = useCallback(
+    async (seconds: number | null) => {
+      if (!notify) {
+        await cancelRestCompleteNotification();
+        return;
+      }
+      if (seconds == null || seconds <= 0) {
+        await cancelRestCompleteNotification();
+        return;
+      }
+      await scheduleRestCompleteNotification(seconds);
+    },
+    [notify],
+  );
+
+  const start = useCallback(
+    (seconds: number) => {
+      if (seconds <= 0) return;
+      setTotal(seconds);
+      setRemaining(seconds);
+      setRunning(true);
+      deadlineRef.current = Date.now() + seconds * 1000;
+      void syncNotification(seconds);
+    },
+    [syncNotification],
+  );
 
   const stop = useCallback(() => {
     setRunning(false);
     setRemaining(0);
     setTotal(0);
     deadlineRef.current = 0;
-  }, []);
+    void syncNotification(null);
+  }, [syncNotification]);
 
-  const add = useCallback((delta: number) => {
-    setRemaining((r) => {
-      const next = Math.max(0, r + delta);
-      deadlineRef.current = Date.now() + next * 1000;
-      return next;
-    });
-    setRunning(true);
-  }, []);
+  const add = useCallback(
+    (delta: number) => {
+      setRemaining((r) => {
+        const next = Math.max(0, r + delta);
+        deadlineRef.current = Date.now() + next * 1000;
+        void syncNotification(next > 0 ? next : null);
+        return next;
+      });
+      setRunning(true);
+    },
+    [syncNotification],
+  );
 
-  // Handle app backgrounding — recalculate remaining from deadline on resume
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state: AppStateStatus) => {
       if (state === 'active' && running && deadlineRef.current > 0) {
@@ -50,13 +78,14 @@ export function useRestTimer() {
           setRemaining(0);
           setRunning(false);
           deadlineRef.current = 0;
+          void syncNotification(null);
         } else {
           setRemaining(Math.ceil(diff / 1000));
         }
       }
     });
     return () => sub.remove();
-  }, [running]);
+  }, [running, syncNotification]);
 
   useEffect(() => {
     if (!running) {
@@ -73,6 +102,7 @@ export function useRestTimer() {
         setRemaining(0);
         setRunning(false);
         deadlineRef.current = 0;
+        void syncNotification(null);
       } else {
         setRemaining(Math.ceil(diff / 1000));
       }
@@ -80,19 +110,19 @@ export function useRestTimer() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [running]);
+  }, [running, syncNotification]);
 
   const justFinished = total > 0 && remaining === 0 && !running;
 
-  // Keep "Done" visible briefly so completion isn't a silent disappear.
   useEffect(() => {
     if (!justFinished) return;
+    void syncNotification(null);
     const t = setTimeout(() => {
       setTotal(0);
       deadlineRef.current = 0;
     }, 1400);
     return () => clearTimeout(t);
-  }, [justFinished]);
+  }, [justFinished, syncNotification]);
 
   return { remaining, total, running, justFinished, start, stop, add };
 }

@@ -109,8 +109,8 @@ export default function SettingsScreen() {
             </View>
           </Row>
           <View className="h-px bg-border/60" />
-          <Row icon={restSoundEnabled ? <Icon icon={Bell} size={18} color="muted-foreground" /> : <Icon icon={BellOff} size={18} color="muted-foreground" />} title="Rest timer sound" subtitle="Chime + vibration when rest ends">
-            <Switch value={restSoundEnabled} onValueChange={setRestSound} accessibilityLabel="Rest timer sound" />
+          <Row icon={restSoundEnabled ? <Icon icon={Bell} size={18} color="muted-foreground" /> : <Icon icon={BellOff} size={18} color="muted-foreground" />} title="Rest timer alerts" subtitle="Chime in-app and notify if you leave the session">
+            <Switch value={restSoundEnabled} onValueChange={setRestSound} accessibilityLabel="Rest timer alerts" />
           </Row>
           <View className="h-px bg-border/60" />
           <Row icon={<Icon icon={METRIC_ICONS.warmUp} size={18} color="muted-foreground" />} title="Warm-up set button" subtitle="Quick 50% set in the session">
