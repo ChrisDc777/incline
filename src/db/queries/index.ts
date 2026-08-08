@@ -38,6 +38,7 @@ export {
   updateTemplateExercise,
   removeTemplateExercise,
   reorderTemplateExercises,
+  duplicateTemplate,
   type TemplateSummary,
 } from './templates';
 

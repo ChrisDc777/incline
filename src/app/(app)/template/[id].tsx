@@ -32,6 +32,7 @@ import { SCREEN_CONTENT_CTA } from '@/lib/layout';
 import type { Difficulty, TemplateExercise } from '@/db/types';
 
 type Exercise = TemplateExercise & { exercise?: { id: number; name: string; primaryMuscle: string; equipment: string } };
+type ExercisePatch = Partial<Pick<TemplateExercise, 'targetSets' | 'targetRepsMin' | 'targetRepsMax' | 'restSeconds' | 'notes'>>;
 
 const DIFFICULTIES: Difficulty[] = ['beginner', 'intermediate', 'advanced'];
 
@@ -99,7 +100,7 @@ export default function TemplateEditorScreen() {
     }
   };
 
-  const updateExercise = async (te: Exercise, patch: Partial<Pick<TemplateExercise, 'targetSets' | 'targetRepsMin' | 'targetRepsMax' | 'restSeconds'>>) => {
+  const updateExercise = async (te: Exercise, patch: ExercisePatch) => {
     setExercises((prev) => prev.map((e) => (e.id === te.id ? { ...e, ...patch } : e)));
     if (templateId && te.id > 0) {
       await updateTemplateExercise(te.id, patch).catch(() => {});
@@ -123,7 +124,10 @@ export default function TemplateEditorScreen() {
       if (isNew) {
         const newId = await createTemplate(name.trim(), description.trim(), difficulty);
         for (const ex of exercises) {
-          await addExerciseToTemplate(newId, ex.exerciseId, ex.targetSets, ex.targetRepsMin, ex.targetRepsMax, ex.restSeconds);
+          const teId = await addExerciseToTemplate(newId, ex.exerciseId, ex.targetSets, ex.targetRepsMin, ex.targetRepsMax, ex.restSeconds);
+          if (ex.notes?.trim()) {
+            await updateTemplateExercise(teId, { notes: ex.notes });
+          }
         }
         toast({ title: 'Routine created', variant: 'success' });
         router.replace(`/workout/${newId}`);
@@ -152,10 +156,11 @@ export default function TemplateEditorScreen() {
     setEditOpen(true);
   };
 
-  const applyEdit = (patch: Partial<Pick<TemplateExercise, 'targetSets' | 'targetRepsMin' | 'targetRepsMax' | 'restSeconds'>>) => {
-    if (editingExercise) updateExercise(editingExercise, patch);
-    setEditOpen(false);
-    setEditingExercise(null);
+  const applyEdit = (patch: ExercisePatch) => {
+    if (!editingExercise) return;
+    const next = { ...editingExercise, ...patch };
+    setEditingExercise(next);
+    void updateExercise(editingExercise, patch);
   };
 
   const onDragEnd = async ({ data }: { data: Exercise[] }) => {
@@ -219,6 +224,9 @@ export default function TemplateEditorScreen() {
                       <Caption>
                         {te.targetSets} × {te.targetRepsMin}–{te.targetRepsMax} reps · {te.restSeconds}s rest
                       </Caption>
+                      {te.notes?.trim() ? (
+                        <Caption className="mt-0.5" numberOfLines={1}>{te.notes.trim()}</Caption>
+                      ) : null}
                     </View>
                     <Pressable
                       onPress={(e) => { e.stopPropagation(); removeExercise(te); }}
@@ -271,6 +279,15 @@ export default function TemplateEditorScreen() {
             <View className="flex-row items-center justify-between">
               <Body>Rest (sec)</Body>
               <NumberStepper value={editingExercise.restSeconds} onChange={(v) => applyEdit({ restSeconds: v })} step={15} min={0} max={600} />
+            </View>
+            <View className="gap-1">
+              <Body>Notes</Body>
+              <Input
+                value={editingExercise.notes ?? ''}
+                onChangeText={(notes) => applyEdit({ notes })}
+                placeholder="Cues, tempo, substitutions…"
+                multiline
+              />
             </View>
           </View>
         )}
