@@ -271,6 +271,24 @@ export async function getWorkoutDays(): Promise<number[]> {
   return days;
 }
 
+/**
+ * Sum completed session volume per local calendar day.
+ * Keys are `YYYY-MM-DD` (local). Multiple sessions on one day are summed.
+ */
+export async function getDailyVolumeByDate(): Promise<Record<string, number>> {
+  const db = await openDatabase();
+  const rows = await db.getAllAsync<{ started_at: number; total_volume: number }>(
+    'SELECT started_at, total_volume FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL ORDER BY started_at',
+  );
+  const map: Record<string, number> = {};
+  for (const r of rows) {
+    const d = new Date(r.started_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    map[key] = (map[key] ?? 0) + (r.total_volume ?? 0);
+  }
+  return map;
+}
+
 /** Returns completed workout logs within a date range (start/end in ms). */
 export async function getWorkoutsByDateRange(startMs: number, endMs: number): Promise<WorkoutLog[]> {
   const db = await openDatabase();
