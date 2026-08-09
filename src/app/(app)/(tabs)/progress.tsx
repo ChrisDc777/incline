@@ -27,9 +27,10 @@ import { METRIC_ICONS } from '@/lib/metric-icons';
 import type { ProgressRange } from '@/db/types';
 
 const RANGES: { value: ProgressRange; label: string }[] = [
-  { value: '1m', label: '1M' },
+  { value: '1w', label: '7d' },
+  { value: '30d', label: '30d' },
   { value: '3m', label: '3M' },
-  { value: '6m', label: '6M' },
+  { value: '1y', label: '1Y' },
   { value: 'all', label: 'All' },
 ];
 
@@ -47,13 +48,13 @@ function monthLabel(key: string): string {
 export default function ProgressScreen() {
   const router = useRouter();
   const { unit } = useSettings();
-  const [range, setRange] = useState<ProgressRange>('1m');
+  const [range, setRange] = useState<ProgressRange>('30d');
   const { data: stats, loading, error, refetch } = usePeriodStats(range);
   const history = useWorkoutLogs();
 
   const volumeData = useMemo(() => {
     if (!stats) return [];
-    if (range === '6m' || range === 'all') {
+    if (range === '1y' || range === 'all') {
       return stats.monthlyVolume.map((w) => ({ label: monthLabel(w.month), value: w.volume }));
     }
     return stats.weeklyVolume.map((w) => ({ label: weekLabel(w.weekStart), value: w.volume }));
@@ -109,7 +110,17 @@ export default function ProgressScreen() {
                   <CardHeader>
                     <View>
                       <CardTitle>Volume</CardTitle>
-                      <CardDescription>{range === 'all' ? 'All time' : `Last ${range}`}</CardDescription>
+                      <CardDescription>
+                        {range === '1w'
+                          ? 'Last 7 days'
+                          : range === '30d'
+                            ? 'Last 30 days'
+                            : range === '3m'
+                              ? 'Last 3 months'
+                              : range === '1y'
+                                ? 'Last year'
+                                : 'All time'}
+                      </CardDescription>
                     </View>
                     <Icon icon={TrendingUp} size={18} color="muted-foreground" />
                   </CardHeader>

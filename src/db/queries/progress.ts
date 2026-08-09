@@ -115,7 +115,29 @@ export async function getProgressStats(weeks = 8): Promise<ProgressStats> {
   };
 }
 
-const RANGE_WEEKS: Record<ProgressRange, number> = { '1m': 5, '3m': 13, '6m': 26, all: 52 };
+const DAY_MS = 86_400_000;
+
+/** Inclusive lookback length; `all` has no bound. */
+const RANGE_MS: Record<Exclude<ProgressRange, 'all'>, number> = {
+  '1w': 7 * DAY_MS,
+  '30d': 30 * DAY_MS,
+  '3m': 90 * DAY_MS,
+  '1y': 365 * DAY_MS,
+};
+
+/** How many week buckets to materialize for the volume chart. */
+function weeklyBucketCount(range: ProgressRange): number {
+  if (range === '1w') return 2;
+  if (range === '30d') return 5;
+  if (range === '3m') return 13;
+  // 1y / all — weekly series is unused; monthly chart is shown instead.
+  return 52;
+}
+
+function rangeSince(range: ProgressRange, now: number): number {
+  if (range === 'all') return 0;
+  return now - RANGE_MS[range];
+}
 
 function monthKey(ts: number): string {
   const d = new Date(ts);
@@ -123,22 +145,22 @@ function monthKey(ts: number): string {
 }
 
 /**
- * Time-windowed progress stats (1 month / 3 months / 6 months / all time) used
- * by the Progress insights. Returns weekly and monthly volume series plus
- * muscle distribution, PRs and a "vs previous period" trend.
+ * Time-windowed progress stats used by Progress + Muscle distribution.
+ * Returns weekly/monthly volume series, muscle distribution, PRs, and
+ * previous-period muscle distribution for radar comparison.
  */
 export async function getPeriodStats(range: ProgressRange): Promise<PeriodStats> {
   const db = await openDatabase();
   const now = Date.now();
-  const weeks = RANGE_WEEKS[range];
-  const since = range === 'all' ? 0 : now - weeks * 7 * 86_400_000;
+  const since = rangeSince(range, now);
+  const weeks = weeklyBucketCount(range);
   const weekStart = startOfWeek(now);
 
   // Bucket setup
   const weekly: WeeklyVolume[] = [];
   const weeklyMap = new Map<string, WeeklyVolume>();
   for (let i = 0; i < weeks; i++) {
-    const ws = weekStart - (weeks - 1 - i) * 7 * 86_400_000;
+    const ws = weekStart - (weeks - 1 - i) * 7 * DAY_MS;
     const key = isoDate(ws);
     const bucket = { weekStart: key, volume: 0, sessions: 0 };
     weekly.push(bucket);
@@ -182,7 +204,7 @@ export async function getPeriodStats(range: ProgressRange): Promise<PeriodStats>
 
   let previousMuscleDistribution: MuscleDistribution[] = [];
   if (range !== 'all') {
-    const windowMs = weeks * 7 * 86_400_000;
+    const windowMs = RANGE_MS[range];
     const prevSince = since - windowMs;
     const prevRows = await db.getAllAsync<{ primary_muscle: string; sets: number; volume: number }>(
       `SELECT e.primary_muscle, COUNT(s.id) as sets, COALESCE(SUM(s.weight * s.reps), 0) as volume
@@ -219,8 +241,8 @@ export async function getPeriodStats(range: ProgressRange): Promise<PeriodStats>
     .map((b) => ({ exerciseId: b.exerciseId, exerciseName: b.name, maxWeight: 0, maxReps: 0, estimated1RM: b.oneRM, bestSetVolume: 0, achievedAt: b.at }))
     .sort((a, b) => b.estimated1RM - a.estimated1RM);
 
-  // Trend: compare the most recent bucket period to the equal-length window before it
-  const bucketLen = range === '1m' || range === '3m' ? 7 * 86_400_000 : 30 * 86_400_000;
+  // Trend: short ranges compare week-over-week; longer ranges compare month-over-month
+  const bucketLen = range === '1w' || range === '30d' || range === '3m' ? 7 * DAY_MS : 30 * DAY_MS;
   const trend = computeTrend(logs, now, bucketLen);
 
   return {

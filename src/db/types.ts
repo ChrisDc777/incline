@@ -228,7 +228,8 @@ export interface MuscleDistribution {
   volume: number;
 }
 
-export type ProgressRange = '1m' | '3m' | '6m' | 'all';
+/** Insights window: week / 30 days / 3 months / year / all-time. */
+export type ProgressRange = '1w' | '30d' | '3m' | '1y' | 'all';
 
 export interface MonthlyVolume {
   month: string;
