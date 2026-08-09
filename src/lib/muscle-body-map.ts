@@ -30,6 +30,8 @@ export interface BodyHighlightPart {
 /**
  * Build highlighter data from set counts (or any intensity map).
  * Intensity is scaled 1–3 for the library's discrete levels.
+ * Callers must pass at least 3 entries in `colors`, or set `color` per part —
+ * otherwise intensity 3 resolves to undefined and looks unhighlighted.
  */
 export function bodyPartsFromMuscleCounts(
   counts: Partial<Record<MuscleGroup, number>>,
@@ -39,8 +41,8 @@ export function bodyPartsFromMuscleCounts(
   const max = Math.max(...entries.map(([, n]) => n));
   const bySlug = new Map<BodyHighlighterSlug, number>();
   for (const [muscle, n] of entries) {
-    const intensity = max <= 0 ? 1 : Math.max(1, Math.ceil((n / max) * 3));
-    for (const slug of MUSCLE_TO_BODY_SLUGS[muscle]) {
+    const intensity = max <= 0 ? 1 : Math.max(1, Math.min(3, Math.ceil((n / max) * 3)));
+    for (const slug of MUSCLE_TO_BODY_SLUGS[muscle] ?? []) {
       bySlug.set(slug, Math.max(bySlug.get(slug) ?? 0, intensity));
     }
   }

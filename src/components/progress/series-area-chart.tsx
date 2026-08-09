@@ -104,15 +104,17 @@ export const SeriesAreaChart = memo(function SeriesAreaChart({
           spacing={spacing}
           initialSpacing={initialSpacing}
           endSpacing={endSpacing}
-          thickness={2.5}
+          thickness={2}
           color={colors.primary}
           hideDataPoints
           areaChart
           curved
-          startFillColor={hexToRgba(colors.primary, 0.45)}
-          endFillColor={hexToRgba(colors.primary, 0.02)}
-          startOpacity={1}
-          endOpacity={1}
+          // Color stays opaque; Gifted Charts applies transparency via *Opacity.
+          // Baking alpha into startFillColor + opacity:1 paints a solid block.
+          startFillColor={colors.primary}
+          endFillColor={colors.primary}
+          startOpacity={0.22}
+          endOpacity={0.02}
           yAxisOffset={prepared.yAxisOffset}
           maxValue={prepared.maxValue}
           noOfSections={3}

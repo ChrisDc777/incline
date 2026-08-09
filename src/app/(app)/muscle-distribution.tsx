@@ -22,16 +22,17 @@ import { METRIC_ICONS } from '@/lib/metric-icons';
 import type { ProgressRange } from '@/db/types';
 
 const RANGES: { value: ProgressRange; label: string }[] = [
-  { value: '1m', label: '1M' },
+  { value: '1w', label: '7d' },
+  { value: '30d', label: '30d' },
   { value: '3m', label: '3M' },
-  { value: '6m', label: '6M' },
+  { value: '1y', label: '1Y' },
   { value: 'all', label: 'All' },
 ];
 
 export default function MuscleDistributionScreen() {
   const router = useRouter();
   const { unit } = useSettings();
-  const [range, setRange] = useState<ProgressRange>('1m');
+  const [range, setRange] = useState<ProgressRange>('30d');
   const { data: stats, loading, error, refetch } = usePeriodStats(range);
 
   const topMuscles = useMemo(() => {
@@ -82,13 +83,16 @@ export default function MuscleDistributionScreen() {
                 <View>
                   <CardTitle>Balance</CardTitle>
                   <CardDescription>
-                    {range === 'all' ? 'All-time set share' : 'This period vs previous'}
+                    {range === 'all'
+                      ? 'Fixed hexagon — zeros where you have not trained'
+                      : 'This period vs the equal window before it'}
                   </CardDescription>
                 </View>
               </CardHeader>
               <MuscleRadar
                 current={stats.muscleDistribution}
                 previous={stats.previousMuscleDistribution}
+                comparePrevious={range !== 'all'}
                 className="mt-2"
               />
             </Card>
