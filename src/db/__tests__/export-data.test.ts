@@ -1,0 +1,73 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  buildExportJson,
+  buildSetsCsv,
+  csvEscape,
+  rangeStartMs,
+  stampFilename,
+  type ExportSetRow,
+} from '@/lib/export-data';
+
+describe('export-data', () => {
+  it('escapes CSV fields with commas and quotes', () => {
+    expect(csvEscape('hello')).toBe('hello');
+    expect(csvEscape('a,b')).toBe('"a,b"');
+    expect(csvEscape('say "hi"')).toBe('"say ""hi"""');
+    expect(csvEscape(true)).toBe('1');
+    expect(csvEscape(null)).toBe('');
+  });
+
+  it('maps export ranges to start timestamps', () => {
+    const now = Date.parse('2026-08-09T12:00:00.000Z');
+    expect(rangeStartMs('all', now)).toBeNull();
+    expect(rangeStartMs('30d', now)).toBe(now - 30 * 86_400_000);
+    expect(rangeStartMs('90d', now)).toBe(now - 90 * 86_400_000);
+    expect(rangeStartMs('365d', now)).toBe(now - 365 * 86_400_000);
+  });
+
+  it('builds a set-level CSV with header', () => {
+    const rows: ExportSetRow[] = [
+      {
+        workoutId: 1,
+        workoutUuid: 'w1',
+        workoutName: 'Push, A',
+        startedAt: Date.parse('2026-08-01T10:00:00.000Z'),
+        endedAt: Date.parse('2026-08-01T11:00:00.000Z'),
+        durationSeconds: 3600,
+        totalVolume: 1000,
+        notes: '',
+        exerciseId: 2,
+        exerciseName: 'Bench',
+        exerciseExternalId: 'bench',
+        setIndex: 0,
+        weight: 60,
+        reps: 8,
+        completed: true,
+        restSeconds: 90,
+      },
+    ];
+    const csv = buildSetsCsv(rows);
+    expect(csv.startsWith('workout_id,')).toBe(true);
+    expect(csv).toContain('"Push, A"');
+    expect(csv).toContain(',60,8,1,90');
+  });
+
+  it('stamps filenames and pretty-prints JSON', () => {
+    expect(stampFilename('incline-workouts', 'csv', new Date('2026-08-09T00:00:00'))).toBe(
+      'incline-workouts-20260809.csv',
+    );
+    const json = buildExportJson({
+      exportedAt: '2026-08-09T00:00:00.000Z',
+      version: 1,
+      app: 'incline',
+      range: 'all',
+      profile: null,
+      workouts: [],
+      customExercises: [],
+      bodyweight: [],
+    });
+    expect(json).toContain('"app": "incline"');
+    expect(json.endsWith('\n')).toBe(true);
+  });
+});
