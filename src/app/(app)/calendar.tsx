@@ -12,19 +12,22 @@ import { Sheet } from '@/components/ui/sheet';
 import { Chip } from '@/components/common/chip';
 import { SegmentedControl } from '@/components/common/segmented-control';
 import { getWorkoutDays, getDailyCalendarMetrics, getStreak, type DailyCalendarMetrics } from '@/db/queries';
-import type { CalendarHeatMetric } from '@/db/types';
+import type { CalendarHeatMetric, WeekStartsOn } from '@/db/types';
 import { cn } from '@/lib/cn';
 import { SCREEN_CONTENT, SCREEN_HEADER } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
 import { usePrimaryHex } from '@/lib/theme';
 import { useSettings } from '@/store/settings-store';
 
-const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAY_LABELS_SUN = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
+const DAY_LABELS_MON = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const;
+const DAY_FULL_SUN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+const DAY_FULL_MON = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
 const DAY_CELL_HEIGHT = 56;
 const MONTH_TITLE_HEIGHT = 40;
@@ -68,25 +71,27 @@ function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
 }
 
-function getFirstDayOfWeek(year: number, month: number): number {
-  return new Date(year, month, 1).getDay();
+/** Column index (0–6) for the 1st of the month given week-start preference. */
+function getFirstColumn(year: number, month: number, weekStartsOn: WeekStartsOn): number {
+  const jsDay = new Date(year, month, 1).getDay(); // 0 = Sunday
+  return weekStartsOn === 'sunday' ? jsDay : (jsDay + 6) % 7;
 }
 
-function monthGridHeight(year: number, month: number): number {
+function monthGridHeight(year: number, month: number, weekStartsOn: WeekStartsOn): number {
   const days = getDaysInMonth(year, month);
-  const first = getFirstDayOfWeek(year, month);
+  const first = getFirstColumn(year, month, weekStartsOn);
   const rows = Math.ceil((first + days) / 7);
   return MONTH_TITLE_HEIGHT + rows * DAY_CELL_HEIGHT + MONTH_MARGIN;
 }
 
-function buildMonths(now: number, today: Date): MonthItem[] {
+function buildMonths(now: number, today: Date, weekStartsOn: WeekStartsOn): MonthItem[] {
   const list: MonthItem[] = [];
   const start = new Date(now - 5 * 365 * 86400000);
   let y = start.getFullYear();
   let m = start.getMonth();
   let offset = 0;
   while (y < today.getFullYear() || (y === today.getFullYear() && m <= today.getMonth())) {
-    const height = monthGridHeight(y, m);
+    const height = monthGridHeight(y, m, weekStartsOn);
     list.push({ year: y, month: m, height, offset });
     offset += height;
     m++;
@@ -104,6 +109,7 @@ const MonthGrid = memo(function MonthGrid({
   metricsByDate,
   heatMetric,
   maxMetric,
+  weekStartsOn,
   onDayPress,
   today,
 }: {
@@ -112,11 +118,12 @@ const MonthGrid = memo(function MonthGrid({
   metricsByDate: Record<string, DailyCalendarMetrics>;
   heatMetric: CalendarHeatMetric;
   maxMetric: number;
+  weekStartsOn: WeekStartsOn;
   onDayPress: (dayMs: number) => void;
   today: Date;
 }) {
   const daysInMonth = getDaysInMonth(year, month);
-  const firstDay = getFirstDayOfWeek(year, month);
+  const firstDay = getFirstColumn(year, month, weekStartsOn);
   const cells: (number | null)[] = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
@@ -197,21 +204,24 @@ const MiniMonth = memo(function MiniMonth({
   year,
   month,
   workoutDays,
+  weekStartsOn,
   today,
   onPress,
 }: {
   year: number;
   month: number;
   workoutDays: Set<string>;
+  weekStartsOn: WeekStartsOn;
   today: Date;
   onPress: () => void;
 }) {
   const daysInMonth = getDaysInMonth(year, month);
-  const firstDay = getFirstDayOfWeek(year, month);
+  const firstDay = getFirstColumn(year, month, weekStartsOn);
   const cells: (number | null)[] = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
   while (cells.length % 7 !== 0) cells.push(null);
+  const miniLabels = weekStartsOn === 'monday' ? DAY_LABELS_MON : DAY_LABELS_SUN;
 
   const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
   const isFutureMonth =
@@ -232,7 +242,7 @@ const MiniMonth = memo(function MiniMonth({
         {MONTH_SHORT[month]}
       </Caption>
       <View className="mb-0.5 flex-row">
-        {DAY_LABELS.map((label, i) => (
+        {miniLabels.map((label, i) => (
           <View key={`${label}-${i}`} className="flex-1 items-center">
             <Text className="text-[8px] text-muted-foreground">{label}</Text>
           </View>
@@ -274,6 +284,7 @@ export default function CalendarScreen() {
   const router = useRouter();
   const primary = usePrimaryHex();
   const calendarHeatMetric = useSettings((s) => s.calendarHeatMetric);
+  const weekStartsOn = useSettings((s) => s.weekStartsOn);
   const today = useMemo(() => new Date(), []);
   const [now] = useState(() => Date.now());
   const [mode, setMode] = useState<CalendarMode>('month');
@@ -289,7 +300,8 @@ export default function CalendarScreen() {
   const [minTimePassed, setMinTimePassed] = useState(false);
   const [calendarReady, setCalendarReady] = useState(false);
 
-  const [months] = useState<MonthItem[]>(() => buildMonths(now, today));
+  const months = useMemo(() => buildMonths(now, today, weekStartsOn), [now, today, weekStartsOn]);
+  const dayHeaders = weekStartsOn === 'monday' ? DAY_FULL_MON : DAY_FULL_SUN;
 
   const listRef = useRef<FlatList<MonthItem>>(null);
   const viewportHeightRef = useRef(0);
@@ -388,11 +400,11 @@ export default function CalendarScreen() {
   const getItemLayout = useCallback((_: ArrayLike<MonthItem> | null | undefined, index: number) => {
     const item = months[index];
     return {
-      length: item?.height ?? monthGridHeight(today.getFullYear(), today.getMonth()),
+      length: item?.height ?? monthGridHeight(today.getFullYear(), today.getMonth(), weekStartsOn),
       offset: item?.offset ?? 0,
       index,
     };
-  }, [months, today]);
+  }, [months, today, weekStartsOn]);
 
   const renderMonth = useCallback(({ item }: { item: MonthItem }) => (
     <View style={{ height: item.height }}>
@@ -402,11 +414,12 @@ export default function CalendarScreen() {
         metricsByDate={metricsByDate}
         heatMetric={calendarHeatMetric}
         maxMetric={maxMetric}
+        weekStartsOn={weekStartsOn}
         onDayPress={handleDayPress}
         today={today}
       />
     </View>
-  ), [metricsByDate, calendarHeatMetric, maxMetric, handleDayPress, today]);
+  ), [metricsByDate, calendarHeatMetric, maxMetric, weekStartsOn, handleDayPress, today]);
 
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length === 0) return;
@@ -529,7 +542,7 @@ export default function CalendarScreen() {
 
       {mode === 'month' ? (
         <View className="mx-4 mt-3 flex-row border-b border-border pb-2">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label) => (
+          {dayHeaders.map((label) => (
             <View key={label} className="flex-1 items-center">
               <Caption className="text-xs">{label}</Caption>
             </View>
@@ -585,10 +598,11 @@ export default function CalendarScreen() {
             }
             return (
               <MiniMonth
-                key={month}
+                key={`${yearViewYear}-${month}-${weekStartsOn}`}
                 year={yearViewYear}
                 month={month}
                 workoutDays={workoutDaySet}
+                weekStartsOn={weekStartsOn}
                 today={today}
                 onPress={() => openMonth(yearViewYear, month)}
               />
@@ -597,7 +611,7 @@ export default function CalendarScreen() {
         </ScrollView>
       </View>
 
-      <Sheet open={pickerOpen} onOpenChange={setPickerOpen} title="Jump to month" scroll>
+      <Sheet open={pickerOpen} onOpenChange={setPickerOpen} title="Jump to month" mode="expandable" scroll>
         <Caption className="mb-2">Year</Caption>
         <View className="mb-4 flex-row flex-wrap gap-2">
           {years.map((y) => (

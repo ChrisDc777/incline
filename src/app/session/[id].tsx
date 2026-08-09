@@ -58,9 +58,23 @@ export default function SessionScreen() {
   const { toast } = useToast();
   const { impact, notify } = useHaptics();
   const clear = useActiveWorkout((s) => s.clear);
-  const { unit, setUnit, restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets } = useSettings();
+  const { unit, setUnit, restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets, keepScreenAwake } = useSettings();
   const rest = useRestTimer({ notify: restSoundEnabled });
   const restSound = useRestTimerSound();
+
+  useEffect(() => {
+    if (!keepScreenAwake) return;
+    let cancelled = false;
+    void import('expo-keep-awake').then(({ activateKeepAwakeAsync }) => {
+      if (!cancelled) void activateKeepAwakeAsync('incline-session');
+    });
+    return () => {
+      cancelled = true;
+      void import('expo-keep-awake').then(({ deactivateKeepAwake }) => {
+        deactivateKeepAwake('incline-session');
+      });
+    };
+  }, [keepScreenAwake]);
 
   // Play sound when rest timer finishes
   useEffect(() => {
@@ -557,7 +571,7 @@ export default function SessionScreen() {
       />
       <DiscardSessionDialog open={discardOpen} onOpenChange={setDiscardOpen} onConfirm={discard} />
 
-      <Sheet open={timerSheetOpen} onOpenChange={setTimerSheetOpen} title="Workout Timer" snapPoints={['25%', '75%']} dynamicSizing={false}>
+      <Sheet open={timerSheetOpen} onOpenChange={setTimerSheetOpen} title="Workout Timer" mode="fit">
         <View className="items-center gap-3 py-2">
           <Body className="text-sm text-muted-foreground">Elapsed time</Body>
           <Body className="text-5xl font-bold tracking-tight text-foreground">{formatClock(elapsed)}</Body>

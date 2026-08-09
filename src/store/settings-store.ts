@@ -3,8 +3,8 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 
 import { STORAGE_KEYS } from '@/constants/config';
 import { kvStorage } from '@/db/kv';
-import type { Settings, Unit, ThemeMode, AccentTheme, CalendarHeatMetric } from '@/db/types';
-import { isCalendarHeatMetric } from '@/db/types';
+import type { Settings, Unit, ThemeMode, AccentTheme, CalendarHeatMetric, WeekStartsOn } from '@/db/types';
+import { isCalendarHeatMetric, isWeekStartsOn } from '@/db/types';
 import { DEFAULT_ACCENT_THEME, isAccentTheme } from '@/lib/accent-themes';
 
 interface SettingsState extends Settings {
@@ -17,6 +17,8 @@ interface SettingsState extends Settings {
   setDefaultRestSeconds: (seconds: number) => void;
   setShowWarmUpSets: (enabled: boolean) => void;
   setCalendarHeatMetric: (metric: CalendarHeatMetric) => void;
+  setWeekStartsOn: (day: WeekStartsOn) => void;
+  setKeepScreenAwake: (enabled: boolean) => void;
 }
 
 const DEFAULT_REST_OPTIONS = [30, 60, 90, 120] as const;
@@ -37,6 +39,8 @@ export const useSettings = create<SettingsState>()(
       defaultRestSeconds: 90,
       showWarmUpSets: true,
       calendarHeatMetric: 'volume',
+      weekStartsOn: 'monday',
+      keepScreenAwake: true,
       setUnit: (unit) => set({ unit }),
       setThemeMode: (themeMode) => set({ themeMode }),
       setAccentTheme: (accentTheme) => set({ accentTheme }),
@@ -46,6 +50,8 @@ export const useSettings = create<SettingsState>()(
       setDefaultRestSeconds: (seconds) => set({ defaultRestSeconds: seconds }),
       setShowWarmUpSets: (enabled) => set({ showWarmUpSets: enabled }),
       setCalendarHeatMetric: (calendarHeatMetric) => set({ calendarHeatMetric }),
+      setWeekStartsOn: (weekStartsOn) => set({ weekStartsOn }),
+      setKeepScreenAwake: (keepScreenAwake) => set({ keepScreenAwake }),
     }),
     {
       name: STORAGE_KEYS.settings,
@@ -60,6 +66,8 @@ export const useSettings = create<SettingsState>()(
         defaultRestSeconds: s.defaultRestSeconds,
         showWarmUpSets: s.showWarmUpSets,
         calendarHeatMetric: s.calendarHeatMetric,
+        weekStartsOn: s.weekStartsOn,
+        keepScreenAwake: s.keepScreenAwake,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<Settings>;
@@ -70,6 +78,8 @@ export const useSettings = create<SettingsState>()(
           calendarHeatMetric: isCalendarHeatMetric(p.calendarHeatMetric)
             ? p.calendarHeatMetric
             : 'volume',
+          weekStartsOn: isWeekStartsOn(p.weekStartsOn) ? p.weekStartsOn : 'monday',
+          keepScreenAwake: typeof p.keepScreenAwake === 'boolean' ? p.keepScreenAwake : true,
         };
       },
     },

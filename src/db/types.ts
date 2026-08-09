@@ -172,15 +172,26 @@ export interface Settings {
   showWarmUpSets: boolean;
   /** What the calendar month grid encodes in day cell color. */
   calendarHeatMetric: CalendarHeatMetric;
+  /** First day of the week for calendar grids. */
+  weekStartsOn: WeekStartsOn;
+  /** Keep the screen on while an active session is open. */
+  keepScreenAwake: boolean;
 }
 
 /** Month-view day coloring: presence (trained or not) or a load metric. */
 export type CalendarHeatMetric = 'presence' | 'volume' | 'intensity' | 'reps';
 
+/** Calendar / week-boundary preference. */
+export type WeekStartsOn = 'sunday' | 'monday';
+
 export const CALENDAR_HEAT_METRICS: CalendarHeatMetric[] = ['presence', 'volume', 'intensity', 'reps'];
 
 export function isCalendarHeatMetric(v: unknown): v is CalendarHeatMetric {
   return v === 'presence' || v === 'volume' || v === 'intensity' || v === 'reps';
+}
+
+export function isWeekStartsOn(v: unknown): v is WeekStartsOn {
+  return v === 'sunday' || v === 'monday';
 }
 
 /* ---- Query result shapes ---- */

@@ -199,7 +199,7 @@ export function ExercisePickerSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title={creating ? 'Create exercise' : 'Add exercise'} snapPoints={['75%', '95%']} scroll>
+    <Sheet open={open} onOpenChange={onOpenChange} title={creating ? 'Create exercise' : 'Add exercise'} mode="expandable" scroll>
       {creating ? (
         <CreateExerciseForm onCreated={handleCreated} onCancel={() => setCreating(false)} />
       ) : (

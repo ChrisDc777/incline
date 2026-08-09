@@ -231,8 +231,7 @@ export function ExerciseBlock({
         open={assistOpen}
         onOpenChange={setAssistOpen}
         title="Targets & shortcuts"
-        snapPoints={['50%']}
-        dynamicSizing={false}>
+        mode="half">
         <View className="gap-4 pb-2">
           <Caption className="text-foreground">{name}</Caption>
           <View className="gap-2">

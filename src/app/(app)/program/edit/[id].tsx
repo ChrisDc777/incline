@@ -275,7 +275,7 @@ export default function ProgramEditScreen() {
         </View>
       </ScrollView>
 
-      <Sheet open={!!slotPicker} onOpenChange={(open) => !open && setSlotPicker(null)}>
+      <Sheet open={!!slotPicker} onOpenChange={(open) => !open && setSlotPicker(null)} mode="expandable">
         <Caption className="mb-3 font-semibold uppercase tracking-wide">Choose routine</Caption>
         <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
           <View className="gap-2 pb-4">

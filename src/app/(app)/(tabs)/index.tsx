@@ -318,7 +318,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <FlatList
         data={feed.items}
         renderItem={renderItem}
