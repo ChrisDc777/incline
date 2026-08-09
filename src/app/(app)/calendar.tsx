@@ -611,7 +611,7 @@ export default function CalendarScreen() {
         </ScrollView>
       </View>
 
-      <Sheet open={pickerOpen} onOpenChange={setPickerOpen} title="Jump to month" scroll>
+      <Sheet open={pickerOpen} onOpenChange={setPickerOpen} title="Jump to month" mode="expandable" scroll>
         <Caption className="mb-2">Year</Caption>
         <View className="mb-4 flex-row flex-wrap gap-2">
           {years.map((y) => (

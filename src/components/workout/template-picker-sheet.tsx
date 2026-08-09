@@ -25,7 +25,7 @@ export function TemplatePickerSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title="Start a workout" snapPoints={['55%', '85%']} scroll>
+    <Sheet open={open} onOpenChange={onOpenChange} title="Start a workout" mode="expandable" scroll>
       {templates.loading ? (
         <View className="items-center py-10">
           <ActivityIndicator />

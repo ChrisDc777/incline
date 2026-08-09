@@ -240,7 +240,7 @@ export default function WorkoutsScreen() {
         open={menuTarget !== null}
         onOpenChange={(open) => { if (!open) setMenuTarget(null); }}
         title={menuTarget?.template.name ?? ''}
-        snapPoints={['35%', '50%']}>
+        mode="fit">
         <View className="gap-1">
           <Pressable
             onPress={() => {
