@@ -115,3 +115,8 @@ export {
   getLatestBodyweight,
   deleteBodyweightEntry,
 } from './bodyweight';
+
+export {
+  shareWorkoutCsv,
+  shareWorkoutJson,
+} from './export';

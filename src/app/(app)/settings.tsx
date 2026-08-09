@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Moon, Sun, Smartphone, Vibrate, Ruler, Bell, BellOff, Timer, Zap, Palette,
-  Cloud, RefreshCw, CalendarDays, MonitorSmartphone,
+  Cloud, RefreshCw, CalendarDays, MonitorSmartphone, Download,
 } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
@@ -11,11 +12,13 @@ import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Chip } from '@/components/common/chip';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
 import { useSettings, DEFAULT_REST_OPTIONS } from '@/store/settings-store';
 import { useProfile } from '@/hooks/use-data';
 import { useCloudSync } from '@/hooks/use-cloud-sync';
-import { saveProfile } from '@/db/queries';
+import { saveProfile, shareWorkoutCsv, shareWorkoutJson } from '@/db/queries';
 import { ACCENT_THEME_LIST } from '@/lib/accent-themes';
+import type { ExportRange } from '@/lib/export-data';
 import { SCREEN_CONTENT } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
 import { useAppColorScheme } from '@/lib/use-color-scheme';
@@ -81,6 +84,13 @@ function formatSyncTime(ms: number | null | undefined): string {
   }
 }
 
+const EXPORT_RANGES: { id: ExportRange; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: '30d', label: '30d' },
+  { id: '90d', label: '90d' },
+  { id: '365d', label: '1y' },
+];
+
 export default function SettingsScreen() {
   const {
     unit, themeMode, accentTheme, hapticsEnabled,
@@ -91,8 +101,11 @@ export default function SettingsScreen() {
   } = useSettings();
   const { data: profile, refetch } = useProfile();
   const scheme = useAppColorScheme();
+  const { toast } = useToast();
   const selectedAccent = ACCENT_THEME_LIST.find((t) => t.id === accentTheme) ?? ACCENT_THEME_LIST[0];
   const { status, pending, syncing, enabled, syncNow } = useCloudSync({ auto: false });
+  const [exportRange, setExportRange] = useState<ExportRange>('all');
+  const [exporting, setExporting] = useState<'csv' | 'json' | null>(null);
 
   const changeUnit = (u: Unit) => {
     setUnit(u);
@@ -106,6 +119,34 @@ export default function SettingsScreen() {
       : pending > 0
         ? `${pending} change${pending === 1 ? '' : 's'} waiting to upload`
         : `Last synced ${formatSyncTime(status?.lastPullAt ?? status?.lastPushAt)}`;
+
+  const runExport = async (format: 'csv' | 'json') => {
+    if (exporting) return;
+    setExporting(format);
+    try {
+      if (format === 'csv') {
+        const { rowCount, shared } = await shareWorkoutCsv(exportRange);
+        toast({
+          title: shared ? 'CSV ready to share' : 'No workouts in range',
+          description: shared ? `${rowCount} set row${rowCount === 1 ? '' : 's'}` : 'Try a wider date range',
+          variant: shared ? 'success' : 'warning',
+        });
+      } else {
+        const { workoutCount, shared } = await shareWorkoutJson(exportRange);
+        toast({
+          title: shared ? 'JSON ready to share' : 'Nothing to export',
+          description: shared
+            ? `${workoutCount} workout${workoutCount === 1 ? '' : 's'}`
+            : 'Try a wider date range',
+          variant: shared ? 'success' : 'warning',
+        });
+      }
+    } catch {
+      toast({ title: 'Could not export data', variant: 'destructive' });
+    } finally {
+      setExporting(null);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
@@ -125,6 +166,48 @@ export default function SettingsScreen() {
               <Icon icon={RefreshCw} size={16} color="primary" />
             </Button>
           </Row>
+        </Card>
+
+        <Caption className="mb-1 mt-5 font-semibold uppercase tracking-wide">Export</Caption>
+        <Card>
+          <View className="gap-3 py-3">
+            <View className="flex-row items-center gap-3">
+              <View className="h-9 w-9 items-center justify-center rounded-xl bg-muted">
+                <Icon icon={Download} size={18} color="muted-foreground" />
+              </View>
+              <View className="min-w-0 flex-1">
+                <Body className="font-medium text-foreground">Download your data</Body>
+                <Caption className="mt-0.5">CSV for spreadsheets, JSON for a full local backup</Caption>
+              </View>
+            </View>
+            <View className="flex-row flex-wrap gap-1.5">
+              {EXPORT_RANGES.map((r) => (
+                <Chip
+                  key={r.id}
+                  size="sm"
+                  label={r.label}
+                  selected={exportRange === r.id}
+                  onPress={() => setExportRange(r.id)}
+                />
+              ))}
+            </View>
+            <View className="flex-row gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                disabled={!!exporting}
+                onPress={() => void runExport('csv')}>
+                {exporting === 'csv' ? 'Preparing…' : 'Export CSV'}
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                disabled={!!exporting}
+                onPress={() => void runExport('json')}>
+                {exporting === 'json' ? 'Preparing…' : 'Export JSON'}
+              </Button>
+            </View>
+          </View>
         </Card>
 
         <Caption className="mb-1 mt-5 font-semibold uppercase tracking-wide">Units</Caption>
