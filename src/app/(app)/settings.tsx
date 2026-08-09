@@ -1,6 +1,9 @@
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Moon, Sun, Smartphone, Vibrate, Ruler, Bell, BellOff, Timer, Zap, Palette, Cloud, RefreshCw } from 'lucide-react-native';
+import {
+  Moon, Sun, Smartphone, Vibrate, Ruler, Bell, BellOff, Timer, Zap, Palette,
+  Cloud, RefreshCw, CalendarDays, MonitorSmartphone,
+} from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Body, Caption } from '@/components/common/text';
@@ -19,13 +22,50 @@ import { useAppColorScheme } from '@/lib/use-color-scheme';
 import { cn } from '@/lib/cn';
 import type { Unit } from '@/db/types';
 
-function Row({ icon, title, subtitle, children }: { icon: React.ReactNode; title: string; subtitle?: string; children: React.ReactNode }) {
+/** Inline control on the right (switches, short chip rows). */
+function Row({
+  icon,
+  title,
+  subtitle,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
   return (
     <View className="flex-row items-center gap-3 py-3">
       <View className="h-9 w-9 items-center justify-center rounded-xl bg-muted">{icon}</View>
-      <View className="flex-1">
+      <View className="min-w-0 flex-1">
         <Body className="font-medium text-foreground">{title}</Body>
         {subtitle ? <Caption className="mt-0.5">{subtitle}</Caption> : null}
+      </View>
+      {children}
+    </View>
+  );
+}
+
+/** Title on top, full-width controls below — for chip groups that wrap. */
+function StackedRow({
+  icon,
+  title,
+  subtitle,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View className="gap-3 py-3">
+      <View className="flex-row items-center gap-3">
+        <View className="h-9 w-9 items-center justify-center rounded-xl bg-muted">{icon}</View>
+        <View className="min-w-0 flex-1">
+          <Body className="font-medium text-foreground">{title}</Body>
+          {subtitle ? <Caption className="mt-0.5">{subtitle}</Caption> : null}
+        </View>
       </View>
       {children}
     </View>
@@ -45,9 +85,9 @@ export default function SettingsScreen() {
   const {
     unit, themeMode, accentTheme, hapticsEnabled,
     restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets,
-    calendarHeatMetric,
+    calendarHeatMetric, weekStartsOn, keepScreenAwake,
     setUnit, setThemeMode, setAccentTheme, setHaptics, setRestSound, setAutoStartRest, setDefaultRestSeconds, setShowWarmUpSets,
-    setCalendarHeatMetric,
+    setCalendarHeatMetric, setWeekStartsOn, setKeepScreenAwake,
   } = useSettings();
   const { data: profile, refetch } = useProfile();
   const scheme = useAppColorScheme();
@@ -103,13 +143,13 @@ export default function SettingsScreen() {
             <Switch value={autoStartRest} onValueChange={setAutoStartRest} accessibilityLabel="Auto-start rest timer" />
           </Row>
           <View className="h-px bg-border/60" />
-          <Row icon={<Icon icon={Timer} size={18} color="muted-foreground" />} title="Default rest" subtitle="Used for newly added exercises">
-            <View className="flex-row gap-1.5">
+          <StackedRow icon={<Icon icon={Timer} size={18} color="muted-foreground" />} title="Default rest" subtitle="Used for newly added exercises">
+            <View className="flex-row flex-wrap gap-1.5">
               {DEFAULT_REST_OPTIONS.map((s) => (
                 <Chip key={s} size="sm" label={`${s}s`} selected={defaultRestSeconds === s} onPress={() => setDefaultRestSeconds(s)} />
               ))}
             </View>
-          </Row>
+          </StackedRow>
           <View className="h-px bg-border/60" />
           <Row icon={restSoundEnabled ? <Icon icon={Bell} size={18} color="muted-foreground" /> : <Icon icon={BellOff} size={18} color="muted-foreground" />} title="Rest timer alerts" subtitle="Chime in-app and notify if you leave the session">
             <Switch value={restSoundEnabled} onValueChange={setRestSound} accessibilityLabel="Rest timer alerts" />
@@ -118,15 +158,22 @@ export default function SettingsScreen() {
           <Row icon={<Icon icon={METRIC_ICONS.warmUp} size={18} color="muted-foreground" />} title="Warm-up set button" subtitle="Quick 50% set in the session">
             <Switch value={showWarmUpSets} onValueChange={setShowWarmUpSets} accessibilityLabel="Warm-up set button" />
           </Row>
+          <View className="h-px bg-border/60" />
+          <Row
+            icon={<Icon icon={MonitorSmartphone} size={18} color="muted-foreground" />}
+            title="Keep screen on"
+            subtitle="While a workout session is open">
+            <Switch value={keepScreenAwake} onValueChange={setKeepScreenAwake} accessibilityLabel="Keep screen on during workout" />
+          </Row>
         </Card>
 
         <Caption className="mb-1 mt-5 font-semibold uppercase tracking-wide">Calendar</Caption>
         <Card>
-          <Row
+          <StackedRow
             icon={<Icon icon={METRIC_ICONS.sessions} size={18} color="muted-foreground" />}
             title="Month day color"
-            subtitle="What the month heatmap encodes">
-            <View className="flex-row flex-wrap justify-end gap-1.5">
+            subtitle="What each tinted day represents">
+            <View className="flex-row flex-wrap gap-2">
               {(
                 [
                   { id: 'presence' as const, label: 'Trained' },
@@ -144,18 +191,30 @@ export default function SettingsScreen() {
                 />
               ))}
             </View>
+          </StackedRow>
+          <View className="h-px bg-border/60" />
+          <Row
+            icon={<Icon icon={CalendarDays} size={18} color="muted-foreground" />}
+            title="Week starts on"
+            subtitle="Calendar grids and day headers">
+            <View className="flex-row gap-2">
+              <Chip label="Mon" selected={weekStartsOn === 'monday'} onPress={() => setWeekStartsOn('monday')} />
+              <Chip label="Sun" selected={weekStartsOn === 'sunday'} onPress={() => setWeekStartsOn('sunday')} />
+            </View>
           </Row>
         </Card>
 
         <Caption className="mb-1 mt-5 font-semibold uppercase tracking-wide">Appearance</Caption>
         <Card>
-          <Row icon={themeMode === 'dark' ? <Icon icon={Moon} size={18} color="muted-foreground" /> : themeMode === 'light' ? <Icon icon={Sun} size={18} color="muted-foreground" /> : <Icon icon={Smartphone} size={18} color="muted-foreground" />} title="Theme">
-            <View className="flex-row gap-2">
+          <StackedRow
+            icon={themeMode === 'dark' ? <Icon icon={Moon} size={18} color="muted-foreground" /> : themeMode === 'light' ? <Icon icon={Sun} size={18} color="muted-foreground" /> : <Icon icon={Smartphone} size={18} color="muted-foreground" />}
+            title="Theme">
+            <View className="flex-row flex-wrap gap-2">
               <Chip label="System" selected={themeMode === 'system'} onPress={() => setThemeMode('system')} />
               <Chip label="Light" selected={themeMode === 'light'} onPress={() => setThemeMode('light')} />
               <Chip label="Dark" selected={themeMode === 'dark'} onPress={() => setThemeMode('dark')} />
             </View>
-          </Row>
+          </StackedRow>
           <View className="h-px bg-border/60" />
           <View className="py-3">
             <View className="mb-3 flex-row items-center gap-3">
@@ -204,7 +263,7 @@ export default function SettingsScreen() {
           </Row>
         </Card>
 
-        <Caption className="mt-6 text-center">Incline · MVP · Built with Expo</Caption>
+        <Caption className="mt-6 text-center">Incline · Built with Expo</Caption>
       </ScrollView>
     </SafeAreaView>
   );

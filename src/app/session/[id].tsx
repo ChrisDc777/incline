@@ -58,9 +58,23 @@ export default function SessionScreen() {
   const { toast } = useToast();
   const { impact, notify } = useHaptics();
   const clear = useActiveWorkout((s) => s.clear);
-  const { unit, setUnit, restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets } = useSettings();
+  const { unit, setUnit, restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets, keepScreenAwake } = useSettings();
   const rest = useRestTimer({ notify: restSoundEnabled });
   const restSound = useRestTimerSound();
+
+  useEffect(() => {
+    if (!keepScreenAwake) return;
+    let cancelled = false;
+    void import('expo-keep-awake').then(({ activateKeepAwakeAsync }) => {
+      if (!cancelled) void activateKeepAwakeAsync('incline-session');
+    });
+    return () => {
+      cancelled = true;
+      void import('expo-keep-awake').then(({ deactivateKeepAwake }) => {
+        deactivateKeepAwake('incline-session');
+      });
+    };
+  }, [keepScreenAwake]);
 
   // Play sound when rest timer finishes
   useEffect(() => {
