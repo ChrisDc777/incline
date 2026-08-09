@@ -1,31 +1,40 @@
 # Incline — Roadmap
 
-Status: **pre-alpha**. The core loop (onboarding → log → finish → progress) is implemented and local-first. Items below are intentionally **not implemented yet**; the architecture leaves clear extension points for them.
+Status: **pre-alpha**. Core loop (onboarding → log → finish → progress) is local-first and working.
 
-## Data & infrastructure
-- ~~Incremental, idempotent database migrations~~ — **done** (`src/db/migrations/` runner + `schema_meta.version`).
-- ~~Split `db/queries` by domain~~ — **done** (`src/db/queries/` modules + barrel `index.ts`).
-- ~~Account binding~~ — **done** (`schema_meta.owner_user_id` via `src/db/account.ts`; account switch clears local user data).
-- **Materialized / cached workout statistics & PR calculations.** `getProgressStats` computes aggregates live; for large datasets, add a `stats_cache` table or incremental triggers.
-- **Full-text search (SQLite FTS5).** Enable the `expo-sqlite` `enableFTS` config plugin + a trigram tokenizer once we move to custom dev builds (it requires a native rebuild and breaks Expo Go). The current `LIKE` + fuzzy ranker covers the MVP catalog.
+Tracking lives in **GitHub milestones** (architecture notes are on each milestone description):
 
-## Sync & accounts
-- ~~Email/password auth~~ — **done** (Clerk).
-- ~~Cloud sync foundation~~ — **done** (local UUIDs / soft deletes / outbox; Supabase user tables + RLS in `supabase/sync-schema.sql`; sync engine in `src/sync/`).
-- **Operationalize sync** — run `supabase/sync-schema.sql`, configure Clerk JWT template `supabase` + Supabase third-party auth, verify multi-device backup/restore.
-- **Tombstone GC** — Edge Function / cron to hard-delete rows with `deleted_at` older than 90 days (see comments in sync-schema).
-- **Stronger conflict resolution** — field-level LWW or merge when concurrent multi-device logging is a product goal.
+| Milestone | Intent |
+|-----------|--------|
+| [P0 — Complete & trustworthy](https://github.com/ChrisDc777/incline/milestone/1) | Sync ops, export, reminders, finish moment, history filters |
+| [P1 — Habit loops](https://github.com/ChrisDc777/incline/milestone/2) | Home context, supersets, measurements, motion polish |
+| [P2 — Coaching & intelligence](https://github.com/ChrisDc777/incline/milestone/3) | Overload, insights, AI Edge Functions, analytics |
+| [P3 — Social & platform growth](https://github.com/ChrisDc777/incline/milestone/4) | Friends/public workouts, marketplace, Health/Fit |
+| [P4 — Target architecture](https://github.com/ChrisDc777/incline/milestone/5) | Deferred: GC, conflicts, API boundary, sync protocol evolution — [#83](https://github.com/ChrisDc777/incline/issues/83) |
 
-## Product features
-- ~~**Program builder**~~ — **done** (custom programs, day-slot editor, activate + Home today CTA). Seed programs remain view + activate.
-- **Workout notifications** — system-level reminders. (In-session rest-timer completion sound is already implemented.)
-- **Wearable integrations** — Apple Health / Google Fit (read workouts, write sessions, bodyweight).
-- **AI-powered workout recommendations** — suggest next session, auto-regulate load from recent logs (carry-over data already exists via `getLastSetsForExercise`).
-- **Advanced analytics** — volume/intensity trends, fatigue, deload suggestions, exercise substitution.
-- **Exercise & template authoring** — user-created exercises/templates/programs (schema already supports it).
-- ~~**Custom branding / icon**~~ — **done** (`icon.png` / `icon-preview.png` for app + splash; EAS `preview` profile builds shareable APK). Store listing assets later.
+**Prioritize P0.** Do not over-build P4 patterns until P0 sync is proven with real multi-device use.
 
-## Engineering
-- **Lint / typecheck baseline** — configured (`npm run lint`, `npm run typecheck`); one pre-existing `env.ts` lint error to clean up.
-- **Snapshot/interaction tests** for the component library and more `queries/` coverage (calc + migration fixtures exist under `src/db/__tests__`).
-- **E2E** for the core journey (onboarding → start → log → finish → progress).
+## Done (foundation)
+
+- Incremental migrations (`src/db/migrations/`), domain queries, account binding
+- Clerk auth + password reset
+- Cloud **sync foundation** (UUIDs, outbox, `src/sync/`, `supabase/sync-schema.sql`) — **ops still P0 (#57)**
+- Program builder (local); share card; milestones; calendar heat/year; rest OS alerts; PR assist; template duplicate/notes
+
+## Sync model (keep)
+
+- Offline-first SQLite → outbox → Supabase RLS (`user_id` = Clerk `sub`)
+- Opportunistic push/pull on foreground + Settings “Backup & restore” (`syncNow`)
+- Not a dated backup product; file export is separate (#6)
+- Sharing/social ≠ personal sync (visibility tables later; never disable RLS for “public”)
+
+## Explicitly later (see P4 / #83)
+
+- Tombstone GC, stronger than LWW conflicts, SyncClient extraction, thin domain API/workers
+- Programs + settings in sync protocol (same outbox pattern)
+- stats_cache / FTS5 at scale
+- Wearables, marketplace, full AI control plane
+
+## Engineering hygiene
+
+- Lint / typecheck baseline; expand query tests; E2E for core journey when P0 stabilizes
