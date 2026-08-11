@@ -190,6 +190,55 @@ export interface Settings {
   weeklyDigestEnabled: boolean;
   weeklyDigestHour: number;
   weeklyDigestMinute: number;
+  /** Which body metrics appear on the Measures screen (bodyweight always available). */
+  enabledBodyMetrics: BodyMetric[];
+}
+
+/** Trackable body metrics on the Measures screen. */
+export type BodyMetric =
+  | 'bodyweight'
+  | 'arms'
+  | 'chest'
+  | 'waist'
+  | 'hips'
+  | 'thighs'
+  | 'calves';
+
+export const BODY_METRICS: BodyMetric[] = [
+  'bodyweight',
+  'arms',
+  'chest',
+  'waist',
+  'hips',
+  'thighs',
+  'calves',
+];
+
+export const DEFAULT_ENABLED_BODY_METRICS: BodyMetric[] = [
+  'bodyweight',
+  'waist',
+  'arms',
+  'chest',
+];
+
+export function isBodyMetric(v: unknown): v is BodyMetric {
+  return (
+    v === 'bodyweight' ||
+    v === 'arms' ||
+    v === 'chest' ||
+    v === 'waist' ||
+    v === 'hips' ||
+    v === 'thighs' ||
+    v === 'calves'
+  );
+}
+
+export interface BodyMeasurementEntry {
+  id: number;
+  metric: Exclude<BodyMetric, 'bodyweight'>;
+  value: number;
+  unit: string;
+  recordedAt: number;
 }
 
 /** Month-view day coloring: presence (trained or not) or a load metric. */

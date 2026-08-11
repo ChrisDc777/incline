@@ -3,9 +3,10 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 
 import { STORAGE_KEYS } from '@/constants/config';
 import { kvStorage } from '@/db/kv';
-import type { Settings, Unit, ThemeMode, AccentTheme, CalendarHeatMetric, WeekStartsOn } from '@/db/types';
-import { isCalendarHeatMetric, isWeekStartsOn } from '@/db/types';
+import type { Settings, Unit, ThemeMode, AccentTheme, CalendarHeatMetric, WeekStartsOn, BodyMetric } from '@/db/types';
+import { isCalendarHeatMetric, isWeekStartsOn, DEFAULT_ENABLED_BODY_METRICS } from '@/db/types';
 import { DEFAULT_ACCENT_THEME, isAccentTheme } from '@/lib/accent-themes';
+import { sanitizeEnabledBodyMetrics } from '@/lib/body-metrics';
 
 interface SettingsState extends Settings {
   setUnit: (unit: Unit) => void;
@@ -24,6 +25,8 @@ interface SettingsState extends Settings {
   setWorkoutReminderTime: (hour: number, minute: number) => void;
   setWeeklyDigestEnabled: (enabled: boolean) => void;
   setWeeklyDigestTime: (hour: number, minute: number) => void;
+  setEnabledBodyMetrics: (metrics: BodyMetric[]) => void;
+  toggleBodyMetric: (metric: BodyMetric) => void;
 }
 
 const DEFAULT_REST_OPTIONS = [30, 60, 90, 120] as const;
@@ -88,6 +91,7 @@ export const useSettings = create<SettingsState>()(
       weeklyDigestEnabled: false,
       weeklyDigestHour: 18,
       weeklyDigestMinute: 0,
+      enabledBodyMetrics: [...DEFAULT_ENABLED_BODY_METRICS],
       setUnit: (unit) => set({ unit }),
       setThemeMode: (themeMode) => set({ themeMode }),
       setAccentTheme: (accentTheme) => set({ accentTheme }),
@@ -112,6 +116,17 @@ export const useSettings = create<SettingsState>()(
           weeklyDigestHour: sanitizeHour(hour, 18),
           weeklyDigestMinute: sanitizeMinute(minute, 0),
         }),
+      setEnabledBodyMetrics: (metrics) =>
+        set({ enabledBodyMetrics: sanitizeEnabledBodyMetrics(metrics) }),
+      toggleBodyMetric: (metric) =>
+        set((s) => {
+          if (metric === 'bodyweight') return s; // keep bodyweight always on
+          const has = s.enabledBodyMetrics.includes(metric);
+          const next = has
+            ? s.enabledBodyMetrics.filter((m) => m !== metric)
+            : [...s.enabledBodyMetrics, metric];
+          return { enabledBodyMetrics: sanitizeEnabledBodyMetrics(next) };
+        }),
     }),
     {
       name: STORAGE_KEYS.settings,
@@ -135,6 +150,7 @@ export const useSettings = create<SettingsState>()(
         weeklyDigestEnabled: s.weeklyDigestEnabled,
         weeklyDigestHour: s.weeklyDigestHour,
         weeklyDigestMinute: s.weeklyDigestMinute,
+        enabledBodyMetrics: s.enabledBodyMetrics,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<Settings>;
@@ -156,6 +172,7 @@ export const useSettings = create<SettingsState>()(
             typeof p.weeklyDigestEnabled === 'boolean' ? p.weeklyDigestEnabled : false,
           weeklyDigestHour: sanitizeHour(p.weeklyDigestHour, 18),
           weeklyDigestMinute: sanitizeMinute(p.weeklyDigestMinute, 0),
+          enabledBodyMetrics: sanitizeEnabledBodyMetrics(p.enabledBodyMetrics),
         };
       },
     },
