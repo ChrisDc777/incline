@@ -26,13 +26,15 @@ import {
   updateTemplateExercise,
   removeTemplateExercise,
   reorderTemplateExercises,
+  linkTemplateExerciseWithNext,
+  unlinkTemplateExercise,
 } from '@/db/queries';
 import { DIFFICULTY_LABELS } from '@/lib/labels';
 import { SCREEN_CONTENT_CTA } from '@/lib/layout';
 import type { Difficulty, TemplateExercise } from '@/db/types';
 
 type Exercise = TemplateExercise & { exercise?: { id: number; name: string; primaryMuscle: string; equipment: string } };
-type ExercisePatch = Partial<Pick<TemplateExercise, 'targetSets' | 'targetRepsMin' | 'targetRepsMax' | 'restSeconds' | 'notes'>>;
+type ExercisePatch = Partial<Pick<TemplateExercise, 'targetSets' | 'targetRepsMin' | 'targetRepsMax' | 'restSeconds' | 'notes' | 'supersetGroup'>>;
 
 const DIFFICULTIES: Difficulty[] = ['beginner', 'intermediate', 'advanced'];
 
@@ -86,6 +88,7 @@ export default function TemplateEditorScreen() {
           targetRepsMax: 12,
           restSeconds: 90,
           notes: '',
+          supersetGroup: null,
           exercise: { id: ex.id, name: ex.name, primaryMuscle: '', equipment: '', aliases: [], secondaryMuscles: [], movementPattern: '', category: '', instructions: '', tips: '', createdAt: '' },
         } as unknown as Exercise,
       ]);
@@ -223,6 +226,7 @@ export default function TemplateEditorScreen() {
                       <Body className="font-medium text-foreground">{te.exercise?.name ?? 'Exercise'}</Body>
                       <Caption>
                         {te.targetSets} × {te.targetRepsMin}–{te.targetRepsMax} reps · {te.restSeconds}s rest
+                        {te.supersetGroup != null ? ' · Superset' : ''}
                       </Caption>
                       {te.notes?.trim() ? (
                         <Caption className="mt-0.5" numberOfLines={1}>{te.notes.trim()}</Caption>
@@ -289,6 +293,31 @@ export default function TemplateEditorScreen() {
                 multiline
               />
             </View>
+            {!isNew && templateId ? (
+              <View className="mt-2 flex-row gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onPress={async () => {
+                    await linkTemplateExerciseWithNext(editingExercise.id);
+                    const t = await getTemplate(templateId);
+                    if (t) setExercises((t.exercises ?? []) as Exercise[]);
+                    toast({ title: 'Linked with next exercise', variant: 'success' });
+                  }}>
+                  Link with next
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onPress={async () => {
+                    await unlinkTemplateExercise(editingExercise.id);
+                    applyEdit({ supersetGroup: null });
+                    toast({ title: 'Removed from superset', variant: 'success' });
+                  }}>
+                  Unlink
+                </Button>
+              </View>
+            ) : null}
           </View>
         )}
       </Dialog>

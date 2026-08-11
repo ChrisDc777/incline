@@ -20,6 +20,7 @@ export default function AppLayout() {
         <Stack.Screen name="muscle-distribution" options={{ headerShown: false }} />
         <Stack.Screen name="milestones" options={{ headerShown: false }} />
         <Stack.Screen name="report/week" options={{ headerShown: false }} />
+        <Stack.Screen name="report/month" options={{ headerShown: false }} />
         <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
         <Stack.Screen name="day/[ms]" options={{ headerShown: false }} />
       </Stack>

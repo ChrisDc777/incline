@@ -42,6 +42,7 @@ export async function getTemplate(id: number): Promise<WorkoutTemplate | null> {
       targetRepsMax: te.target_reps_max,
       restSeconds: te.rest_seconds,
       notes: te.notes,
+      supersetGroup: te.superset_group ?? null,
       exercise: exercise ?? undefined,
     });
   }
@@ -234,16 +235,17 @@ export async function addExerciseToTemplate(
 
 export async function updateTemplateExercise(
   id: number,
-  patch: Partial<Pick<TemplateExercise, 'targetSets' | 'targetRepsMin' | 'targetRepsMax' | 'restSeconds' | 'notes'>>,
+  patch: Partial<Pick<TemplateExercise, 'targetSets' | 'targetRepsMin' | 'targetRepsMax' | 'restSeconds' | 'notes' | 'supersetGroup'>>,
 ): Promise<void> {
   const db = await openDatabase();
   const sets: string[] = [];
-  const args: (string | number)[] = [];
+  const args: (string | number | null)[] = [];
   if (patch.targetSets !== undefined) { sets.push('target_sets = ?'); args.push(patch.targetSets); }
   if (patch.targetRepsMin !== undefined) { sets.push('target_reps_min = ?'); args.push(patch.targetRepsMin); }
   if (patch.targetRepsMax !== undefined) { sets.push('target_reps_max = ?'); args.push(patch.targetRepsMax); }
   if (patch.restSeconds !== undefined) { sets.push('rest_seconds = ?'); args.push(patch.restSeconds); }
   if (patch.notes !== undefined) { sets.push('notes = ?'); args.push(patch.notes); }
+  if (patch.supersetGroup !== undefined) { sets.push('superset_group = ?'); args.push(patch.supersetGroup); }
   if (sets.length === 0) return;
   const now = Date.now();
   sets.push('updated_at = ?');
@@ -285,6 +287,39 @@ export async function reorderTemplateExercises(templateId: number, exerciseIds: 
   }
   await db.runAsync('UPDATE workout_templates SET updated_at = ? WHERE id = ?', now, templateId);
   await enqueueTemplateUpsert(templateId);
+}
+
+/** Link two adjacent template exercises into one superset group. */
+export async function linkTemplateExerciseWithNext(templateExerciseId: number): Promise<void> {
+  const db = await openDatabase();
+  const te = await db.getFirstAsync<TemplateExerciseRow>(
+    'SELECT * FROM template_exercises WHERE id = ? AND deleted_at IS NULL',
+    templateExerciseId,
+  );
+  if (!te) return;
+  const next = await db.getFirstAsync<TemplateExerciseRow>(
+    `SELECT * FROM template_exercises
+     WHERE template_id = ? AND deleted_at IS NULL AND sort_order > ?
+     ORDER BY sort_order ASC LIMIT 1`,
+    te.template_id,
+    te.sort_order,
+  );
+  if (!next) return;
+
+  let groupId = te.superset_group ?? next.superset_group;
+  if (groupId == null) {
+    const max = await db.getFirstAsync<{ m: number | null }>(
+      'SELECT MAX(superset_group) as m FROM template_exercises WHERE template_id = ?',
+      te.template_id,
+    );
+    groupId = (max?.m ?? 0) + 1;
+  }
+  await updateTemplateExercise(te.id, { supersetGroup: groupId });
+  await updateTemplateExercise(next.id, { supersetGroup: groupId });
+}
+
+export async function unlinkTemplateExercise(templateExerciseId: number): Promise<void> {
+  await updateTemplateExercise(templateExerciseId, { supersetGroup: null });
 }
 
 /** Copy a routine (custom or seed) into a new custom template with the same exercises. */

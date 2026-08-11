@@ -40,6 +40,41 @@ export function formatWeekRangeLabel(weekStartMs: number): string {
   return `${start.toLocaleDateString(undefined, opts)}–${end.toLocaleDateString(undefined, opts)}`;
 }
 
+/** Local midnight on the 1st of the month containing `ms`. */
+export function startOfMonth(ms: number): number {
+  const d = new Date(ms);
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+export function monthBounds(ms: number): { startMs: number; endMs: number } {
+  const startMs = startOfMonth(ms);
+  const end = new Date(startMs);
+  end.setMonth(end.getMonth() + 1);
+  return { startMs, endMs: end.getTime() };
+}
+
+/** `YYYY-MM` for the month containing `ms`. */
+export function monthKey(ms: number): string {
+  const d = new Date(startOfMonth(ms));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function formatMonthLabel(ms: number): string {
+  return new Date(startOfMonth(ms)).toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+/** First day of the calendar month before the one containing `ms`. */
+export function previousMonthStart(ms = Date.now()): number {
+  const d = new Date(startOfMonth(ms));
+  d.setMonth(d.getMonth() - 1);
+  return d.getTime();
+}
+
 /** Monday=1 … Sunday=7 (ISO-style weekday for program day slots). */
 export function weekdayMon1(ms: number): number {
   const d = new Date(ms).getDay();

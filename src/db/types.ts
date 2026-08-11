@@ -73,6 +73,8 @@ export interface TemplateExercise {
   targetRepsMax: number;
   restSeconds: number;
   notes: string;
+  /** Shared non-null id links adjacent exercises into a superset/circuit. */
+  supersetGroup: number | null;
   /** Joined exercise (populated by queries). */
   exercise?: Exercise;
 }
@@ -123,6 +125,8 @@ export interface SetEntry {
   reps: number;
   completed: boolean;
   restSeconds: number | null;
+  /** Copied from template; NULL = solo exercise. */
+  supersetGroup: number | null;
   createdAt: number;
 }
 
@@ -291,6 +295,34 @@ export interface WeeklyRecap {
   sessionsDeltaPct: number | null;
   prs: PR[];
   muscles: MuscleDistribution[];
+  insightLine: string;
+}
+
+export interface TopExerciseStat {
+  exerciseId: number;
+  exerciseName: string;
+  sets: number;
+  volume: number;
+}
+
+/** Calendar-month training recap (previous-month v1 for Home promo). */
+export interface MonthlyRecap {
+  monthKey: string;
+  monthStartMs: number;
+  monthEndMs: number;
+  sessions: number;
+  totalVolume: number;
+  totalSets: number;
+  streak: number;
+  trainedDays: number;
+  volumeDeltaPct: number | null;
+  sessionsDeltaPct: number | null;
+  prs: PR[];
+  muscles: MuscleDistribution[];
+  previousMuscles: MuscleDistribution[];
+  topExercises: TopExerciseStat[];
+  /** Local midnight timestamps for days with ≥1 finished session. */
+  trainedDayMs: number[];
   insightLine: string;
 }
 

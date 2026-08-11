@@ -19,11 +19,13 @@ export function RestTimer({
   total,
   onAdd,
   onSkip,
+  caption,
 }: {
   remaining: number;
   total: number;
   onAdd: (delta: number) => void;
   onSkip: () => void;
+  caption?: string;
 }) {
   const done = remaining <= 0 && total > 0;
   const progress = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
@@ -58,6 +60,9 @@ export function RestTimer({
         </Pressable>
 
         <View className="items-center px-4">
+          {caption ? (
+            <Text className="mb-0.5 text-[10px] font-medium text-primary">{caption}</Text>
+          ) : null}
           <Text className="text-2xl font-bold tracking-tight text-foreground">
             {formatClock(remaining)}
           </Text>

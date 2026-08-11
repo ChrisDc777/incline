@@ -184,8 +184,8 @@ export async function startWorkout(templateId: number | null, name: string): Pro
       const last = lastByExercise[te.exercise_id] ?? [];
       for (let s = 0; s < te.target_sets; s++) {
         const setRes = await db.runAsync(
-          `INSERT INTO set_entries (workout_log_id, exercise_id, set_index, weight, reps, completed, rest_seconds, uuid, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, NULL, ?, ?, ?)`,
-          logId, te.exercise_id, s, last[s]?.weight ?? 0, last[s]?.reps ?? te.target_reps_min, newUuid(), now, now,
+          `INSERT INTO set_entries (workout_log_id, exercise_id, set_index, weight, reps, completed, rest_seconds, superset_group, uuid, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?)`,
+          logId, te.exercise_id, s, last[s]?.weight ?? 0, last[s]?.reps ?? te.target_reps_min, te.superset_group ?? null, newUuid(), now, now,
         );
         setIds.push(setRes.lastInsertRowId as number);
       }

@@ -9,8 +9,7 @@ export function pathForNotificationPayload(payload: NotificationPayload): string
     case 'weekly_digest':
       return '/(app)/report/week';
     case 'monthly_recap':
-      // Phase C: monthly report. Home until then.
-      return '/(app)/(tabs)';
+      return '/(app)/report/month';
     default:
       return null;
   }
