@@ -26,6 +26,20 @@ export function startOfWeek(ms: number): number {
   return d.getTime();
 }
 
+export function weekBounds(weekStartMs: number): { startMs: number; endMs: number } {
+  const startMs = startOfWeek(weekStartMs);
+  return { startMs, endMs: startMs + 7 * 86_400_000 };
+}
+
+/** Human label e.g. "Aug 4–10" for a Monday-based week. */
+export function formatWeekRangeLabel(weekStartMs: number): string {
+  const { startMs, endMs } = weekBounds(weekStartMs);
+  const start = new Date(startMs);
+  const end = new Date(endMs - 1);
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  return `${start.toLocaleDateString(undefined, opts)}–${end.toLocaleDateString(undefined, opts)}`;
+}
+
 /** Monday=1 … Sunday=7 (ISO-style weekday for program day slots). */
 export function weekdayMon1(ms: number): number {
   const d = new Date(ms).getDay();

@@ -108,6 +108,13 @@ export {
 } from './progress';
 
 export {
+  getWeeklyRecap,
+  weekBounds,
+  formatWeekRangeLabel,
+  weeklyDigestNotificationBody,
+} from './recap';
+
+export {
   getProfile,
   saveProfile,
   completeOnboarding,

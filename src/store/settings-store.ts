@@ -22,6 +22,8 @@ interface SettingsState extends Settings {
   setWorkoutRemindersEnabled: (enabled: boolean) => void;
   setWorkoutReminderDays: (days: number[]) => void;
   setWorkoutReminderTime: (hour: number, minute: number) => void;
+  setWeeklyDigestEnabled: (enabled: boolean) => void;
+  setWeeklyDigestTime: (hour: number, minute: number) => void;
 }
 
 const DEFAULT_REST_OPTIONS = [30, 60, 90, 120] as const;
@@ -83,6 +85,9 @@ export const useSettings = create<SettingsState>()(
       workoutReminderDays: [...DEFAULT_WORKOUT_REMINDER_DAYS],
       workoutReminderHour: 18,
       workoutReminderMinute: 0,
+      weeklyDigestEnabled: false,
+      weeklyDigestHour: 18,
+      weeklyDigestMinute: 0,
       setUnit: (unit) => set({ unit }),
       setThemeMode: (themeMode) => set({ themeMode }),
       setAccentTheme: (accentTheme) => set({ accentTheme }),
@@ -100,6 +105,12 @@ export const useSettings = create<SettingsState>()(
         set({
           workoutReminderHour: sanitizeHour(hour),
           workoutReminderMinute: sanitizeMinute(minute),
+        }),
+      setWeeklyDigestEnabled: (weeklyDigestEnabled) => set({ weeklyDigestEnabled }),
+      setWeeklyDigestTime: (hour, minute) =>
+        set({
+          weeklyDigestHour: sanitizeHour(hour, 18),
+          weeklyDigestMinute: sanitizeMinute(minute, 0),
         }),
     }),
     {
@@ -121,6 +132,9 @@ export const useSettings = create<SettingsState>()(
         workoutReminderDays: s.workoutReminderDays,
         workoutReminderHour: s.workoutReminderHour,
         workoutReminderMinute: s.workoutReminderMinute,
+        weeklyDigestEnabled: s.weeklyDigestEnabled,
+        weeklyDigestHour: s.weeklyDigestHour,
+        weeklyDigestMinute: s.weeklyDigestMinute,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<Settings>;
@@ -138,6 +152,10 @@ export const useSettings = create<SettingsState>()(
           workoutReminderDays: sanitizeReminderDays(p.workoutReminderDays),
           workoutReminderHour: sanitizeHour(p.workoutReminderHour, 18),
           workoutReminderMinute: sanitizeMinute(p.workoutReminderMinute, 0),
+          weeklyDigestEnabled:
+            typeof p.weeklyDigestEnabled === 'boolean' ? p.weeklyDigestEnabled : false,
+          weeklyDigestHour: sanitizeHour(p.weeklyDigestHour, 18),
+          weeklyDigestMinute: sanitizeMinute(p.weeklyDigestMinute, 0),
         };
       },
     },

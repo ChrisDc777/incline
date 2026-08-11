@@ -23,6 +23,7 @@ import { ToastProvider } from '@/components/ui/toast';
 import { ErrorBoundary } from '@/components/common/error-boundary';
 import { useDatabaseReady } from '@/hooks/use-database';
 import { useNotificationRouting } from '@/hooks/use-notification-routing';
+import { useWeeklyDigestSync } from '@/hooks/use-weekly-digest-sync';
 import { useWorkoutReminderSync } from '@/hooks/use-workout-reminder-sync';
 import { useAppColorScheme } from '@/lib/use-color-scheme';
 import { useSettings } from '@/store/settings-store';
@@ -32,6 +33,7 @@ SplashScreen.preventAutoHideAsync();
 function NotificationBootstrap() {
   useNotificationRouting();
   useWorkoutReminderSync();
+  useWeeklyDigestSync();
   return null;
 }
 
@@ -76,6 +78,7 @@ export default function RootLayout() {
                     <Stack.Screen name="session/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="summary/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="share/[id]" options={{ headerShown: false, presentation: 'modal' }} />
+                    <Stack.Screen name="share/week" options={{ headerShown: false, presentation: 'modal' }} />
                     <Stack.Screen name="edit-workout/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
                   </Stack>

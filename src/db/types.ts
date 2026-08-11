@@ -182,6 +182,10 @@ export interface Settings {
   workoutReminderDays: number[];
   workoutReminderHour: number;
   workoutReminderMinute: number;
+  /** Opt-in Sunday evening weekly digest notification. */
+  weeklyDigestEnabled: boolean;
+  weeklyDigestHour: number;
+  weeklyDigestMinute: number;
 }
 
 /** Month-view day coloring: presence (trained or not) or a load metric. */
@@ -272,6 +276,22 @@ export interface PeriodStats {
   previousMuscleDistribution: MuscleDistribution[];
   prs: PR[];
   trend: Trend | null;
+}
+
+/** Monday–Sunday training recap for reports + digests. */
+export interface WeeklyRecap {
+  weekStart: string;
+  weekStartMs: number;
+  weekEndMs: number;
+  sessions: number;
+  totalVolume: number;
+  totalSets: number;
+  streak: number;
+  volumeDeltaPct: number | null;
+  sessionsDeltaPct: number | null;
+  prs: PR[];
+  muscles: MuscleDistribution[];
+  insightLine: string;
 }
 
 export interface SearchHit {
