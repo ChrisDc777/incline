@@ -92,4 +92,57 @@ describe('session query SQL', () => {
     expect(active.name).toBe('Active');
     db.close();
   });
+
+  it('filters completed logs by date, template, and exercise', () => {
+    const db = createSessionDb();
+    // Soft-delete columns used by production filters
+    db.exec(`ALTER TABLE workout_logs ADD COLUMN deleted_at INTEGER`);
+    db.exec(`ALTER TABLE set_entries ADD COLUMN deleted_at INTEGER`);
+
+    const now = Date.now();
+    const day = 86_400_000;
+    const insertLog = db.prepare(
+      `INSERT INTO workout_logs (template_id, name, started_at, ended_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    );
+    const insertSet = db.prepare(
+      `INSERT INTO set_entries (workout_log_id, exercise_id, set_index, weight, reps, completed, created_at)
+       VALUES (?, ?, 0, 100, 5, 1, ?)`,
+    );
+
+    const recentPush = Number(insertLog.run(1, 'Push', now - day, now - day, now, now).lastInsertRowid);
+    const oldPull = Number(insertLog.run(2, 'Pull', now - 40 * day, now - 40 * day, now, now).lastInsertRowid);
+    insertSet.run(recentPush, 10, now);
+    insertSet.run(oldPull, 20, now);
+
+    const byDate = db
+      .prepare(
+        `SELECT w.name FROM workout_logs w
+         WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND w.started_at >= ?
+         ORDER BY w.started_at DESC`,
+      )
+      .all(now - 30 * day) as { name: string }[];
+    expect(byDate.map((r) => r.name)).toEqual(['Push']);
+
+    const byTemplate = db
+      .prepare(
+        `SELECT w.name FROM workout_logs w
+         WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND w.template_id = ?`,
+      )
+      .all(2) as { name: string }[];
+    expect(byTemplate.map((r) => r.name)).toEqual(['Pull']);
+
+    const byExercise = db
+      .prepare(
+        `SELECT w.name FROM workout_logs w
+         WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL
+           AND EXISTS (
+             SELECT 1 FROM set_entries s
+             WHERE s.workout_log_id = w.id AND s.exercise_id = ? AND s.completed = 1 AND s.deleted_at IS NULL
+           )`,
+      )
+      .all(10) as { name: string }[];
+    expect(byExercise.map((r) => r.name)).toEqual(['Push']);
+    db.close();
+  });
 });

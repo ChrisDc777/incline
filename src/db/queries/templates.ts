@@ -308,3 +308,50 @@ export async function duplicateTemplate(sourceId: number): Promise<number> {
   }
   return newId;
 }
+
+/**
+ * Create a custom template from a finished workout's completed exercises.
+ * Target sets/reps come from what was logged (avg reps, set count).
+ */
+export async function createTemplateFromWorkoutLog(logId: number): Promise<number> {
+  const db = await openDatabase();
+  const log = await db.getFirstAsync<{ name: string }>(
+    'SELECT name FROM workout_logs WHERE id = ? AND deleted_at IS NULL',
+    logId,
+  );
+  if (!log) throw new Error('Workout not found');
+
+  const rows = await db.getAllAsync<{
+    exercise_id: number;
+    set_count: number;
+    avg_reps: number;
+    rest_seconds: number | null;
+  }>(
+    `SELECT s.exercise_id,
+            COUNT(*) as set_count,
+            CAST(ROUND(AVG(s.reps)) AS INTEGER) as avg_reps,
+            MAX(s.rest_seconds) as rest_seconds
+     FROM set_entries s
+     WHERE s.workout_log_id = ? AND s.completed = 1 AND s.deleted_at IS NULL
+     GROUP BY s.exercise_id
+     ORDER BY MIN(s.id)`,
+    logId,
+  );
+  if (rows.length === 0) throw new Error('No completed sets to save');
+
+  const name = log.name?.trim() ? `${log.name} template` : 'Saved workout';
+  const templateId = await createTemplate(name, 'Saved from a completed workout', 'intermediate');
+
+  for (const row of rows) {
+    const reps = Math.max(1, row.avg_reps || 8);
+    await addExerciseToTemplate(
+      templateId,
+      row.exercise_id,
+      Math.max(1, row.set_count),
+      Math.max(1, reps - 2),
+      reps + 2,
+      row.rest_seconds ?? 90,
+    );
+  }
+  return templateId;
+}

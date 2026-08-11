@@ -345,8 +345,8 @@ export default function SessionScreen() {
     const pausedMs = totalPausedMsRef.current + pauseBonus;
     await finishWorkout(logId, { pausedMs });
     clear();
-    toast({ title: 'Workout saved', description: 'Great session — check your progress.', variant: 'success' });
-    router.replace(`/summary/${logId}`);
+    toast({ title: 'Workout saved', variant: 'success' });
+    router.replace(`/summary/${logId}?celebrate=1`);
   };
   const discard = async () => {
     setDiscardOpen(false);

@@ -398,16 +398,68 @@ export async function discardWorkout(logId: number): Promise<void> {
   enqueueLogUpsertBackground(logId);
 }
 
-export async function listWorkoutLogs(offset = 0, limit = PAGINATION.pageSize): Promise<Paginated<WorkoutLog>> {
+/** Optional filters for paginated workout history (Progress → History). */
+export type WorkoutLogFilters = {
+  /** Inclusive lower bound on `started_at` (ms). Omit for all time. */
+  sinceMs?: number;
+  templateId?: number;
+  exerciseId?: number;
+};
+
+export async function listWorkoutLogs(
+  offset = 0,
+  limit = PAGINATION.pageSize,
+  filters: WorkoutLogFilters = {},
+): Promise<Paginated<WorkoutLog>> {
   const db = await openDatabase();
+  const clauses = ['w.ended_at IS NOT NULL', 'w.deleted_at IS NULL'];
+  const params: (number | string)[] = [];
+
+  if (filters.sinceMs != null && filters.sinceMs > 0) {
+    clauses.push('w.started_at >= ?');
+    params.push(filters.sinceMs);
+  }
+  if (filters.templateId != null) {
+    clauses.push('w.template_id = ?');
+    params.push(filters.templateId);
+  }
+  if (filters.exerciseId != null) {
+    clauses.push(
+      `EXISTS (
+        SELECT 1 FROM set_entries s
+        WHERE s.workout_log_id = w.id
+          AND s.exercise_id = ?
+          AND s.completed = 1
+          AND s.deleted_at IS NULL
+      )`,
+    );
+    params.push(filters.exerciseId);
+  }
+
+  params.push(limit, offset);
   const rows = await db.getAllAsync<LogRow>(
-    'SELECT * FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL ORDER BY started_at DESC LIMIT ? OFFSET ?',
-    limit,
-    offset,
+    `SELECT w.* FROM workout_logs w
+     WHERE ${clauses.join(' AND ')}
+     ORDER BY w.started_at DESC
+     LIMIT ? OFFSET ?`,
+    ...params,
   );
   const items = rows.map(mapLog);
   const nextOffset = items.length === limit ? offset + limit : null;
   return { items, nextOffset };
+}
+
+/** Exercises that appear in at least one completed workout — for history filters. */
+export async function listExercisesUsedInHistory(): Promise<{ id: number; name: string }[]> {
+  const db = await openDatabase();
+  return db.getAllAsync<{ id: number; name: string }>(
+    `SELECT DISTINCT e.id, e.name
+     FROM exercises e
+     JOIN set_entries s ON s.exercise_id = e.id AND s.completed = 1 AND s.deleted_at IS NULL
+     JOIN workout_logs w ON w.id = s.workout_log_id AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL
+     WHERE e.deleted_at IS NULL
+     ORDER BY e.name COLLATE NOCASE`,
+  );
 }
 
 export async function listWorkoutFeedLogs(offset = 0, limit = PAGINATION.pageSize): Promise<Paginated<FeedWorkoutLog>> {
@@ -510,21 +562,39 @@ async function enrichWorkoutFeed(db: SQLiteDatabase, rows: LogRow[]): Promise<Fe
 
 /** Count exercises in this finished session that match the all-time heaviest weight. */
 export async function getWorkoutPrCount(logId: number): Promise<number> {
+  const prs = await getWorkoutPrs(logId);
+  return prs.length;
+}
+
+export type WorkoutPr = {
+  exerciseId: number;
+  exerciseName: string;
+  weight: number;
+};
+
+/** Named weight PRs achieved in this finished session (all-time heaviest). */
+export async function getWorkoutPrs(logId: number): Promise<WorkoutPr[]> {
   const db = await openDatabase();
-  const logSets = await db.getAllAsync<{ exercise_id: number; weight: number }>(
-    `SELECT exercise_id, weight FROM set_entries
-     WHERE workout_log_id = ? AND completed = 1 AND deleted_at IS NULL`,
+  const logSets = await db.getAllAsync<{ exercise_id: number; exercise_name: string; weight: number }>(
+    `SELECT s.exercise_id, e.name as exercise_name, s.weight
+     FROM set_entries s
+     JOIN exercises e ON e.id = s.exercise_id
+     WHERE s.workout_log_id = ? AND s.completed = 1 AND s.deleted_at IS NULL`,
     logId,
   );
-  if (logSets.length === 0) return 0;
-  const exerciseMax = new Map<number, number>();
+  if (logSets.length === 0) return [];
+
+  const exerciseMax = new Map<number, { name: string; weight: number }>();
   for (const s of logSets) {
-    const prev = exerciseMax.get(s.exercise_id) ?? 0;
-    if (s.weight > prev) exerciseMax.set(s.exercise_id, s.weight);
+    const prev = exerciseMax.get(s.exercise_id);
+    if (!prev || s.weight > prev.weight) {
+      exerciseMax.set(s.exercise_id, { name: s.exercise_name, weight: s.weight });
+    }
   }
-  let count = 0;
-  for (const [exId, maxW] of exerciseMax) {
-    if (maxW <= 0) continue;
+
+  const out: WorkoutPr[] = [];
+  for (const [exId, { name, weight }] of exerciseMax) {
+    if (weight <= 0) continue;
     const best = await db.getFirstAsync<{ max_weight: number }>(
       `SELECT MAX(s.weight) as max_weight FROM set_entries s
        JOIN workout_logs w ON w.id = s.workout_log_id
@@ -532,9 +602,41 @@ export async function getWorkoutPrCount(logId: number): Promise<number> {
          AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL`,
       exId,
     );
-    if ((best?.max_weight ?? 0) === maxW) count++;
+    if ((best?.max_weight ?? 0) === weight) {
+      out.push({ exerciseId: exId, exerciseName: name, weight });
+    }
   }
-  return count;
+  return out.sort((a, b) => b.weight - a.weight);
+}
+
+/** Volume of the previous completed log with the same template (null if none / no template). */
+export async function getPreviousTemplateVolume(
+  logId: number,
+): Promise<{ previousVolume: number; deltaPct: number | null } | null> {
+  const db = await openDatabase();
+  const current = await db.getFirstAsync<{ template_id: number | null; total_volume: number; started_at: number }>(
+    'SELECT template_id, total_volume, started_at FROM workout_logs WHERE id = ? AND deleted_at IS NULL',
+    logId,
+  );
+  if (!current?.template_id) return null;
+
+  const prev = await db.getFirstAsync<{ total_volume: number }>(
+    `SELECT total_volume FROM workout_logs
+     WHERE template_id = ? AND id != ? AND ended_at IS NOT NULL AND deleted_at IS NULL
+       AND started_at < ?
+     ORDER BY started_at DESC LIMIT 1`,
+    current.template_id,
+    logId,
+    current.started_at,
+  );
+  if (!prev) return null;
+
+  const previousVolume = prev.total_volume;
+  let deltaPct: number | null = null;
+  if (previousVolume > 0) {
+    deltaPct = Math.round(((current.total_volume - previousVolume) / previousVolume) * 100);
+  }
+  return { previousVolume, deltaPct };
 }
 
 export async function deleteWorkout(logId: number): Promise<void> {

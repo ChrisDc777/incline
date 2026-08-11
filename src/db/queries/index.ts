@@ -40,6 +40,7 @@ export {
   removeTemplateExercise,
   reorderTemplateExercises,
   duplicateTemplate,
+  createTemplateFromWorkoutLog,
   type TemplateSummary,
 } from './templates';
 
@@ -79,13 +80,18 @@ export {
   finishWorkout,
   discardWorkout,
   listWorkoutLogs,
+  listExercisesUsedInHistory,
   listWorkoutFeedLogs,
   getWorkoutFeedForDay,
   getWorkoutPrCount,
+  getWorkoutPrs,
+  getPreviousTemplateVolume,
   deleteWorkout,
   clearWorkoutHistory,
   type MuscleSplit,
   type SetPatch,
+  type WorkoutLogFilters,
+  type WorkoutPr,
 } from './sessions';
 
 export {

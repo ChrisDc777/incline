@@ -18,6 +18,13 @@ import { VolumeChart } from '@/components/progress/volume-chart';
 import { TrendChip } from '@/components/progress/trend-chip';
 import { PRCard } from '@/components/progress/pr-card';
 import { HistoryRow } from '@/components/progress/history-row';
+import {
+  HistoryFilters,
+  HistoryExerciseFilterSheet,
+  HistoryTemplateFilterSheet,
+  historyRangeSinceMs,
+  type HistoryFilterSelection,
+} from '@/components/progress/history-filters';
 import { usePeriodStats, useWorkoutLogs } from '@/hooks/use-data';
 import { useSettings } from '@/store/settings-store';
 import { formatVolume } from '@/db/calc';
@@ -25,6 +32,7 @@ import { MUSCLE_LABELS } from '@/lib/labels';
 import { SCREEN_CONTENT } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
 import type { ProgressRange } from '@/db/types';
+import type { WorkoutLogFilters } from '@/db/queries';
 
 const RANGES: { value: ProgressRange; label: string }[] = [
   { value: '1w', label: '7d' },
@@ -49,8 +57,31 @@ export default function ProgressScreen() {
   const router = useRouter();
   const { unit } = useSettings();
   const [range, setRange] = useState<ProgressRange>('30d');
+  const [historyRange, setHistoryRange] = useState<ProgressRange>('all');
+  const [historyExercise, setHistoryExercise] = useState<HistoryFilterSelection | null>(null);
+  const [historyTemplate, setHistoryTemplate] = useState<HistoryFilterSelection | null>(null);
+  const [exerciseSheetOpen, setExerciseSheetOpen] = useState(false);
+  const [templateSheetOpen, setTemplateSheetOpen] = useState(false);
   const { data: stats, loading, error, refetch } = usePeriodStats(range);
-  const history = useWorkoutLogs();
+
+  const historyFilters = useMemo<WorkoutLogFilters>(() => {
+    const filters: WorkoutLogFilters = {};
+    const sinceMs = historyRangeSinceMs(historyRange);
+    if (sinceMs != null) filters.sinceMs = sinceMs;
+    if (historyExercise) filters.exerciseId = historyExercise.id;
+    if (historyTemplate) filters.templateId = historyTemplate.id;
+    return filters;
+  }, [historyRange, historyExercise, historyTemplate]);
+
+  const history = useWorkoutLogs(historyFilters);
+  const historyFiltered =
+    historyRange !== 'all' || historyExercise != null || historyTemplate != null;
+
+  const clearHistoryFilters = () => {
+    setHistoryRange('all');
+    setHistoryExercise(null);
+    setHistoryTemplate(null);
+  };
 
   const volumeData = useMemo(() => {
     if (!stats) return [];
@@ -160,6 +191,16 @@ export default function ProgressScreen() {
                 </View>
 
                 <SectionHeader title="History" className="mt-1" />
+                <HistoryFilters
+                  range={historyRange}
+                  onRangeChange={setHistoryRange}
+                  exercise={historyExercise}
+                  onExerciseChange={setHistoryExercise}
+                  template={historyTemplate}
+                  onTemplateChange={setHistoryTemplate}
+                  onOpenExerciseSheet={() => setExerciseSheetOpen(true)}
+                  onOpenTemplateSheet={() => setTemplateSheetOpen(true)}
+                />
               </>
             ) : null}
           </View>
@@ -168,8 +209,14 @@ export default function ProgressScreen() {
           history.items.length === 0 && !history.loading ? (
             <EmptyState
               icon={<Icon icon={Dumbbell} size={28} color="muted-foreground" />}
-              title="No workouts logged"
-              description="Complete a workout to start building your history."
+              title={historyFiltered ? 'No matching workouts' : 'No workouts logged'}
+              description={
+                historyFiltered
+                  ? 'Try a wider date range or clear exercise / template filters.'
+                  : 'Complete a workout to start building your history.'
+              }
+              actionLabel={historyFiltered ? 'Clear filters' : undefined}
+              onAction={historyFiltered ? clearHistoryFilters : undefined}
             />
           ) : null
         }
@@ -178,6 +225,34 @@ export default function ProgressScreen() {
             <View className="py-4"><PrimaryActivityIndicator /></View>
           ) : null
         }
+      />
+
+      {/* Sheets must sit outside FlashList or they render empty on native. */}
+      <HistoryExerciseFilterSheet
+        open={exerciseSheetOpen}
+        onOpenChange={setExerciseSheetOpen}
+        selectedId={historyExercise?.id ?? null}
+        onPick={(picked) => {
+          setHistoryExercise(picked);
+          setExerciseSheetOpen(false);
+        }}
+        onClear={() => {
+          setHistoryExercise(null);
+          setExerciseSheetOpen(false);
+        }}
+      />
+      <HistoryTemplateFilterSheet
+        open={templateSheetOpen}
+        onOpenChange={setTemplateSheetOpen}
+        selectedId={historyTemplate?.id ?? null}
+        onPick={(picked) => {
+          setHistoryTemplate(picked);
+          setTemplateSheetOpen(false);
+        }}
+        onClear={() => {
+          setHistoryTemplate(null);
+          setTemplateSheetOpen(false);
+        }}
       />
     </SafeAreaView>
   );
