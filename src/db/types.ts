@@ -176,6 +176,12 @@ export interface Settings {
   weekStartsOn: WeekStartsOn;
   /** Keep the screen on while an active session is open. */
   keepScreenAwake: boolean;
+  /** Opt-in local weekly workout reminders. */
+  workoutRemindersEnabled: boolean;
+  /** JS weekdays Sunday=0 … Saturday=6. */
+  workoutReminderDays: number[];
+  workoutReminderHour: number;
+  workoutReminderMinute: number;
 }
 
 /** Month-view day coloring: presence (trained or not) or a load metric. */

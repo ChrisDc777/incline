@@ -13,7 +13,11 @@ import { Switch } from '@/components/ui/switch';
 import { Chip } from '@/components/common/chip';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
-import { useSettings, DEFAULT_REST_OPTIONS } from '@/store/settings-store';
+import {
+  useSettings,
+  DEFAULT_REST_OPTIONS,
+  WORKOUT_REMINDER_TIME_PRESETS,
+} from '@/store/settings-store';
 import { useProfile } from '@/hooks/use-data';
 import { useCloudSync } from '@/hooks/use-cloud-sync';
 import { saveProfile, shareWorkoutCsv, shareWorkoutJson } from '@/db/queries';
@@ -21,9 +25,24 @@ import { ACCENT_THEME_LIST } from '@/lib/accent-themes';
 import type { ExportRange } from '@/lib/export-data';
 import { SCREEN_CONTENT } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
+import {
+  notificationsAvailable,
+  prepareNotifications,
+  NOTIFICATION_CHANNELS,
+} from '@/lib/notifications';
 import { useAppColorScheme } from '@/lib/use-color-scheme';
 import { cn } from '@/lib/cn';
 import type { Unit } from '@/db/types';
+
+const WEEKDAY_CHIPS: { jsDay: number; label: string }[] = [
+  { jsDay: 1, label: 'Mon' },
+  { jsDay: 2, label: 'Tue' },
+  { jsDay: 3, label: 'Wed' },
+  { jsDay: 4, label: 'Thu' },
+  { jsDay: 5, label: 'Fri' },
+  { jsDay: 6, label: 'Sat' },
+  { jsDay: 0, label: 'Sun' },
+];
 
 /** Inline control on the right (switches, short chip rows). */
 function Row({
@@ -96,8 +115,10 @@ export default function SettingsScreen() {
     unit, themeMode, accentTheme, hapticsEnabled,
     restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets,
     calendarHeatMetric, weekStartsOn, keepScreenAwake,
+    workoutRemindersEnabled, workoutReminderDays, workoutReminderHour, workoutReminderMinute,
     setUnit, setThemeMode, setAccentTheme, setHaptics, setRestSound, setAutoStartRest, setDefaultRestSeconds, setShowWarmUpSets,
     setCalendarHeatMetric, setWeekStartsOn, setKeepScreenAwake,
+    setWorkoutRemindersEnabled, setWorkoutReminderDays, setWorkoutReminderTime,
   } = useSettings();
   const { data: profile, refetch } = useProfile();
   const scheme = useAppColorScheme();
@@ -110,6 +131,43 @@ export default function SettingsScreen() {
   const changeUnit = (u: Unit) => {
     setUnit(u);
     if (profile) saveProfile({ unit: u }).then(refetch);
+  };
+
+  const toggleReminderDay = (jsDay: number) => {
+    const has = workoutReminderDays.includes(jsDay);
+    if (has && workoutReminderDays.length === 1) {
+      toast({ title: 'Keep at least one day', variant: 'warning' });
+      return;
+    }
+    const next = has
+      ? workoutReminderDays.filter((d) => d !== jsDay)
+      : [...workoutReminderDays, jsDay];
+    setWorkoutReminderDays(next);
+  };
+
+  const onRemindersToggle = async (next: boolean) => {
+    if (!next) {
+      setWorkoutRemindersEnabled(false);
+      return;
+    }
+    if (!notificationsAvailable) {
+      toast({
+        title: 'Reminders need a dev build',
+        description: 'Local alerts are unavailable in Android Expo Go',
+        variant: 'warning',
+      });
+      return;
+    }
+    const mod = await prepareNotifications(NOTIFICATION_CHANNELS.workoutReminders);
+    if (!mod) {
+      toast({
+        title: 'Permission needed',
+        description: 'Allow notifications to schedule workout reminders',
+        variant: 'warning',
+      });
+      return;
+    }
+    setWorkoutRemindersEnabled(true);
   };
 
   const syncSubtitle = !enabled
@@ -248,6 +306,58 @@ export default function SettingsScreen() {
             subtitle="While a workout session is open">
             <Switch value={keepScreenAwake} onValueChange={setKeepScreenAwake} accessibilityLabel="Keep screen on during workout" />
           </Row>
+        </Card>
+
+        <Caption className="mb-1 mt-5 font-semibold uppercase tracking-wide">Reminders</Caption>
+        <Card>
+          <Row
+            icon={<Icon icon={Bell} size={18} color="muted-foreground" />}
+            title="Workout reminders"
+            subtitle="Local weekly alerts on the days you choose">
+            <Switch
+              value={workoutRemindersEnabled}
+              onValueChange={(v) => void onRemindersToggle(v)}
+              accessibilityLabel="Workout reminders"
+            />
+          </Row>
+          {workoutRemindersEnabled ? (
+            <>
+              <View className="h-px bg-border/60" />
+              <StackedRow
+                icon={<Icon icon={CalendarDays} size={18} color="muted-foreground" />}
+                title="Days"
+                subtitle="Tap to include or remove">
+                <View className="flex-row flex-wrap gap-1.5">
+                  {WEEKDAY_CHIPS.map((d) => (
+                    <Chip
+                      key={d.jsDay}
+                      size="sm"
+                      label={d.label}
+                      selected={workoutReminderDays.includes(d.jsDay)}
+                      onPress={() => toggleReminderDay(d.jsDay)}
+                    />
+                  ))}
+                </View>
+              </StackedRow>
+              <View className="h-px bg-border/60" />
+              <StackedRow
+                icon={<Icon icon={Timer} size={18} color="muted-foreground" />}
+                title="Time"
+                subtitle="Same time each selected day">
+                <View className="flex-row flex-wrap gap-1.5">
+                  {WORKOUT_REMINDER_TIME_PRESETS.map((t) => (
+                    <Chip
+                      key={t.label}
+                      size="sm"
+                      label={t.label}
+                      selected={workoutReminderHour === t.hour && workoutReminderMinute === t.minute}
+                      onPress={() => setWorkoutReminderTime(t.hour, t.minute)}
+                    />
+                  ))}
+                </View>
+              </StackedRow>
+            </>
+          ) : null}
         </Card>
 
         <Caption className="mb-1 mt-5 font-semibold uppercase tracking-wide">Calendar</Caption>
