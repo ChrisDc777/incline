@@ -7,6 +7,7 @@ import { migration005 } from './005_nullable_exercise_cols';
 import { migration006 } from './006_owner_user_id';
 import { migration007 } from './007_sync_readiness';
 import { migration008 } from './008_program_builder';
+import { migration009 } from './009_superset_group';
 import type { Migration } from './types';
 
 export type { Migration } from './types';
@@ -21,6 +22,7 @@ export const MIGRATIONS: Migration[] = [
   migration006,
   migration007,
   migration008,
+  migration009,
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 1;

@@ -14,6 +14,7 @@ import {
   getTemplate,
   getTodayProgramSlot,
   getWeeklyRecap,
+  getMonthlyRecap,
   getWorkoutLog,
   listExercises,
   listPrograms,
@@ -26,7 +27,7 @@ import {
   type TodayProgramSlot,
   type WorkoutLogFilters,
 } from '@/db/queries';
-import type { Exercise, FeedWorkoutLog, MuscleGroup, PR, PeriodStats, ProgressRange, Program, ProgressStats, SearchHit, UserProfile, WeeklyRecap, WorkoutLog, WorkoutTemplate } from '@/db/types';
+import type { Exercise, FeedWorkoutLog, MuscleGroup, MonthlyRecap, PR, PeriodStats, ProgressRange, Program, ProgressStats, SearchHit, UserProfile, WeeklyRecap, WorkoutLog, WorkoutTemplate } from '@/db/types';
 import { useSettings } from '@/store/settings-store';
 
 /* ---- catalog ---- */
@@ -76,6 +77,10 @@ export function usePeriodStats(range: ProgressRange) {
 export function useWeeklyRecap(weekStartMs?: number) {
   const { unit } = useSettings();
   return useAsync<WeeklyRecap>(() => getWeeklyRecap(weekStartMs ?? Date.now(), unit), [weekStartMs, unit]);
+}
+export function useMonthlyRecap(monthStartMs?: number) {
+  const { unit } = useSettings();
+  return useAsync<MonthlyRecap>(() => getMonthlyRecap(monthStartMs ?? Date.now(), unit), [monthStartMs, unit]);
 }
 export function useProfile() {
   return useAsync<UserProfile>(() => getProfile(), []);

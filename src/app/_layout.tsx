@@ -79,6 +79,7 @@ export default function RootLayout() {
                     <Stack.Screen name="summary/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="share/[id]" options={{ headerShown: false, presentation: 'modal' }} />
                     <Stack.Screen name="share/week" options={{ headerShown: false, presentation: 'modal' }} />
+                    <Stack.Screen name="share/month" options={{ headerShown: false, presentation: 'modal' }} />
                     <Stack.Screen name="edit-workout/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
                   </Stack>

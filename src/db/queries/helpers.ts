@@ -62,6 +62,7 @@ export interface TemplateExerciseRow {
   target_reps_max: number;
   rest_seconds: number;
   notes: string;
+  superset_group: number | null;
   uuid: string | null;
   updated_at: number | null;
   deleted_at: number | null;
@@ -112,6 +113,7 @@ export interface SetRow {
   reps: number;
   completed: number;
   rest_seconds: number | null;
+  superset_group: number | null;
   uuid: string | null;
   deleted_at: number | null;
   created_at: number;
@@ -181,6 +183,7 @@ export function mapSet(r: SetRow): SetEntry {
     reps: r.reps,
     completed: !!r.completed,
     restSeconds: r.rest_seconds,
+    supersetGroup: r.superset_group ?? null,
     createdAt: r.created_at,
   };
 }

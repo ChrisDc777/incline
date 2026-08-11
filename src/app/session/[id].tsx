@@ -43,12 +43,15 @@ import { estimated1RM, formatClock, formatVolume, formatWeight } from '@/db/calc
 import { SCREEN_CONTENT_CTA } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
 import { MuscleBodyMap } from '@/components/progress/muscle-body-map';
+import { shouldStartRestAfterComplete } from '@/lib/superset-rest';
+
 import type { Exercise, MuscleGroup, SetEntry } from '@/db/types';
 
 interface Group {
   exerciseId: number;
   exerciseName: string;
   sets: SetEntry[];
+  supersetGroup: number | null;
 }
 
 export default function SessionScreen() {
@@ -101,6 +104,7 @@ export default function SessionScreen() {
   const [pausedAt, setPausedAt] = useState<number | null>(null);
   const totalPausedMsRef = useRef(0);
   const [timerSheetOpen, setTimerSheetOpen] = useState(false);
+  const [restKind, setRestKind] = useState<'set' | 'superset'>('set');
   const pausedAtRef = useRef<number | null>(null);
   const seededRestRef = useRef(false);
 
@@ -174,7 +178,12 @@ export default function SessionScreen() {
   for (const s of session?.sets ?? []) {
     let g = groups.find((x) => x.exerciseId === s.exerciseId);
     if (!g) {
-      g = { exerciseId: s.exerciseId, exerciseName: s.exerciseName, sets: [] };
+      g = {
+        exerciseId: s.exerciseId,
+        exerciseName: s.exerciseName,
+        sets: [],
+        supersetGroup: s.supersetGroup ?? null,
+      };
       groups.push(g);
     }
     g.sets.push(s);
@@ -302,10 +311,17 @@ export default function SessionScreen() {
         }
       }
       if (autoStartRest) {
-        // Rest per exercise (seeded from the template or exercise default), else
-        // the global default. A value of 0 ("Off") is respected and starts nothing.
-        const exRest = restSecondsMap[target.exerciseId] ?? defaultRestSeconds;
-        if (exRest > 0) rest.start(exRest);
+        const nextSets = (session?.sets ?? []).map((s) =>
+          s.id === setId ? { ...s, completed: true } : s,
+        );
+        const decision = shouldStartRestAfterComplete(nextSets, setId);
+        if (decision.start) {
+          const exRest = restSecondsMap[target.exerciseId] ?? defaultRestSeconds;
+          if (exRest > 0) {
+            setRestKind(decision.kind);
+            rest.start(exRest);
+          }
+        }
       }
     }
   };
@@ -459,9 +475,22 @@ export default function SessionScreen() {
           </View>
         ) : (
           <View className="gap-5">
-            {groups.map((g, i) => (
-              <View key={g.exerciseId} ref={(el) => { groupRefs.current[i] = el; }}>
-                {i > 0 && <View className="mb-5 h-px bg-border/40" />}
+            {groups.map((g, i) => {
+              const prev = i > 0 ? groups[i - 1] : null;
+              const inSuperset = g.supersetGroup != null;
+              const continueSuperset =
+                inSuperset && prev != null && prev.supersetGroup === g.supersetGroup;
+              return (
+              <View
+                key={g.exerciseId}
+                ref={(el) => { groupRefs.current[i] = el; }}
+                className={inSuperset ? 'border-l-2 border-primary/50 pl-3' : undefined}>
+                {i > 0 && !continueSuperset ? <View className="mb-5 h-px bg-border/40" /> : null}
+                {continueSuperset ? (
+                  <Caption className="mb-2 text-primary">Superset</Caption>
+                ) : inSuperset && (!prev || prev.supersetGroup !== g.supersetGroup) ? (
+                  <Caption className="mb-2 text-primary">Superset</Caption>
+                ) : null}
                 <ExerciseBlock
                   name={g.exerciseName}
                   exerciseId={g.exerciseId}
@@ -482,7 +511,7 @@ export default function SessionScreen() {
                   showWarmUpSets={showWarmUpSets}
                 />
               </View>
-            ))}
+            );})}
           </View>
         )}
 
@@ -546,6 +575,7 @@ export default function SessionScreen() {
         <RestTimer
           remaining={rest.remaining}
           total={rest.total}
+          caption={restKind === 'superset' ? 'Superset rest' : undefined}
           onAdd={rest.add}
           onSkip={rest.stop}
         />

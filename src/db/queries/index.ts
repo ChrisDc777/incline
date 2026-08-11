@@ -39,6 +39,8 @@ export {
   updateTemplateExercise,
   removeTemplateExercise,
   reorderTemplateExercises,
+  linkTemplateExerciseWithNext,
+  unlinkTemplateExercise,
   duplicateTemplate,
   createTemplateFromWorkoutLog,
   type TemplateSummary,
@@ -109,9 +111,15 @@ export {
 
 export {
   getWeeklyRecap,
+  getMonthlyRecap,
   weekBounds,
   formatWeekRangeLabel,
+  monthBounds,
+  formatMonthLabel,
+  previousMonthStart,
+  monthKey,
   weeklyDigestNotificationBody,
+  monthlyRecapNotificationBody,
 } from './recap';
 
 export {

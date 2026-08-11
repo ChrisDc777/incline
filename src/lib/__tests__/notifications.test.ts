@@ -41,6 +41,7 @@ describe('pathForNotificationPayload', () => {
   it('routes reminder and digests to the right screens', () => {
     expect(pathForNotificationPayload({ type: 'workout_reminder' })).toBe('/(app)/(tabs)');
     expect(pathForNotificationPayload({ type: 'weekly_digest' })).toBe('/(app)/report/week');
+    expect(pathForNotificationPayload({ type: 'monthly_recap' })).toBe('/(app)/report/month');
     expect(pathForNotificationPayload({ type: 'rest_complete' })).toBe('/(app)/(tabs)');
   });
 });
