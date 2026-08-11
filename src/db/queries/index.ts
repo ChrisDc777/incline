@@ -138,6 +138,12 @@ export {
 } from './bodyweight';
 
 export {
+  addBodyMeasurement,
+  getBodyMeasurements,
+  deleteBodyMeasurement,
+} from './measurements';
+
+export {
   shareWorkoutCsv,
   shareWorkoutJson,
 } from './export';

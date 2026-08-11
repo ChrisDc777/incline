@@ -11,6 +11,7 @@ const UUID_TABLES = [
   'set_entries',
   'user_profile',
   'bodyweight_entries',
+  'body_measurements',
   'programs',
   'program_workouts',
 ] as const;
