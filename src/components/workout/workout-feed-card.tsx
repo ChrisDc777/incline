@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Clock, Weight, Medal } from 'lucide-react-native';
+import { useRouter, type Href } from 'expo-router';
+import { Clock, Weight, Medal, MoreHorizontal, Share2 } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Text } from '@/components/ui/text';
@@ -19,12 +19,15 @@ export function WorkoutFeedCard({
   unit,
   profileName,
   avatarUrl,
+  onMenuPress,
   className,
 }: {
   log: FeedWorkoutLog;
   unit: Unit;
   profileName: string;
   avatarUrl?: string | null;
+  /** Opens overflow sheet (edit / save routine / delete). Share has its own icon. */
+  onMenuPress?: () => void;
   className?: string;
 }) {
   const router = useRouter();
@@ -40,13 +43,37 @@ export function WorkoutFeedCard({
       onPress={() => router.push(`/summary/${log.id}`)}
       style={({ pressed }) => (pressed ? { opacity: 0.75 } : undefined)}
       className={`bg-card p-4 ${className ?? ''}`}>
-      {/* Header: avatar + name + time */}
+      {/* Header: avatar + name + share / more */}
       <View className="flex-row items-center gap-3">
         <InitialsAvatar name={profileName} uri={avatarUrl} size={44} />
         <View className="flex-1">
           <Text className="text-sm font-semibold text-foreground">{profileName}</Text>
           <Caption>{relativeTime(log.startedAt)}</Caption>
         </View>
+        <Pressable
+          onPress={(e) => {
+            e.stopPropagation?.();
+            router.push(`/share/${log.id}` as Href);
+          }}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Share workout"
+          className="h-10 w-10 items-center justify-center rounded-lg">
+          <Icon icon={Share2} size={18} color="muted-foreground" />
+        </Pressable>
+        {onMenuPress ? (
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onMenuPress();
+            }}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`More options for ${log.name}`}
+            className="h-10 w-10 items-center justify-center rounded-lg">
+            <Icon icon={MoreHorizontal} size={20} color="muted-foreground" />
+          </Pressable>
+        ) : null}
       </View>
 
       {/* Workout name */}
@@ -78,7 +105,10 @@ export function WorkoutFeedCard({
         {visibleExercises.map((ex) => (
           <Pressable
             key={ex.exerciseId}
-            onPress={() => router.push(`/exercise/${ex.exerciseId}`)}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              router.push(`/exercise/${ex.exerciseId}`);
+            }}
             style={({ pressed }) => (pressed ? { opacity: 0.6 } : undefined)}
             className="flex-row items-center gap-3"
             accessibilityRole="button"
@@ -94,7 +124,10 @@ export function WorkoutFeedCard({
       {/* See more */}
       {!expanded && hiddenCount > 0 ? (
         <Pressable
-          onPress={() => setExpanded(true)}
+          onPress={(e) => {
+            e.stopPropagation?.();
+            setExpanded(true);
+          }}
           style={({ pressed }) => (pressed ? { opacity: 0.6 } : undefined)}
           className="mt-3 items-center py-1">
           <Caption className="text-primary">See {hiddenCount} more exercise{hiddenCount !== 1 ? 's' : ''}</Caption>

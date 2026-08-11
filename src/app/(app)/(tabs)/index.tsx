@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Play, Plus, ArrowRight, Dumbbell } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { StatCard } from '@/components/common/stat-card';
 import { WorkoutFeedCard } from '@/components/workout/workout-feed-card';
+import { WorkoutLogActionsSheet } from '@/components/workout/workout-log-actions-sheet';
 import { TemplatePickerSheet } from '@/components/workout/template-picker-sheet';
 import { ActiveSessionConflictDialog } from '@/components/workout/active-session-conflict-dialog';
 import { MuscleBodyMap } from '@/components/progress/muscle-body-map';
@@ -21,7 +22,7 @@ import { useSettings } from '@/store/settings-store';
 import { useActiveWorkout } from '@/store/active-workout-store';
 import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
-import { startWorkout, discardWorkout, deleteWorkout } from '@/db/queries';
+import { startWorkout, discardWorkout, deleteWorkout, createTemplateFromWorkoutLog } from '@/db/queries';
 import { formatVolume, formatFullDate } from '@/db/calc';
 import { METRIC_ICONS } from '@/lib/metric-icons';
 import { weekInsightFromStats } from '@/lib/week-insight';
@@ -52,6 +53,8 @@ export default function HomeScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingStart, setPendingStart] = useState<{ templateId: number | null; name: string } | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [menuLog, setMenuLog] = useState<FeedWorkoutLog | null>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [today] = useState(() => formatFullDate(Date.now()));
   const didFocus = useRef(false);
 
@@ -308,6 +311,7 @@ export default function HomeScreen() {
       unit={unit}
       profileName={profile?.name?.trim() || 'Athlete'}
       avatarUrl={profile?.avatarUrl}
+      onMenuPress={() => setMenuLog(item)}
     />
   );
 
@@ -315,6 +319,26 @@ export default function HomeScreen() {
 
   const onEndReached = () => {
     if (feed.hasMore && !feed.loading) feed.loadMore();
+  };
+
+  const onSaveAsRoutine = async () => {
+    if (!menuLog || savingTemplate) return;
+    const logId = menuLog.id;
+    setSavingTemplate(true);
+    setMenuLog(null);
+    try {
+      const templateId = await createTemplateFromWorkoutLog(logId);
+      toast({ title: 'Routine saved', description: 'Open it from Workouts anytime.', variant: 'success' });
+      router.push(`/template/${templateId}` as Href);
+    } catch (e) {
+      toast({
+        title: 'Could not save routine',
+        description: e instanceof Error ? e.message : 'Try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingTemplate(false);
+    }
   };
 
   return (
@@ -341,6 +365,23 @@ export default function HomeScreen() {
         onResume={resumeActive}
         onStartNew={startNewAndDiscard}
         onCancel={() => setPendingStart(null)}
+      />
+
+      <WorkoutLogActionsSheet
+        open={menuLog !== null}
+        onOpenChange={(open) => { if (!open) setMenuLog(null); }}
+        title={menuLog?.name ?? ''}
+        canSaveAsRoutine={!savingTemplate}
+        onEdit={() => {
+          if (!menuLog) return;
+          router.push({ pathname: '/edit-workout/[id]', params: { id: String(menuLog.id) } } as Href);
+        }}
+        onSaveAsRoutine={onSaveAsRoutine}
+        onDelete={() => {
+          if (!menuLog) return;
+          setDeleteId(menuLog.id);
+          setMenuLog(null);
+        }}
       />
 
       <Dialog

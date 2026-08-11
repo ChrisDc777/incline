@@ -3,50 +3,66 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Clock, Medal, PencilLine, Share2 } from 'lucide-react-native';
+import { ArrowLeft, Medal, MoreHorizontal, PencilLine, Share2 } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Body, Caption } from '@/components/common/text';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { InitialsAvatar } from '@/components/common/initials-avatar';
-import { SummaryStat } from '@/components/workout/summary-stat';
+import { FinishCelebration } from '@/components/workout/finish-celebration';
+import { WorkoutLogActionsSheet } from '@/components/workout/workout-log-actions-sheet';
 import { ExerciseThumb } from '@/components/exercise/exercise-media';
 import { MuscleBodyMap } from '@/components/progress/muscle-body-map';
+import { useToast } from '@/components/ui/toast';
 import {
+  createTemplateFromWorkoutLog,
+  deleteWorkout,
+  getPreviousTemplateVolume,
   getWorkoutLog,
   getWorkoutMuscleSplit,
-  getWorkoutPrCount,
+  getWorkoutPrs,
   type SessionWorkout,
   type SessionSet,
   type MuscleSplit,
+  type WorkoutPr,
 } from '@/db/queries';
 import { useSettings } from '@/store/settings-store';
 import { useProfile } from '@/hooks/use-data';
 import { formatDuration, formatVolume, formatWeight, formatFullDateTime } from '@/db/calc';
 import { MUSCLE_LABELS } from '@/lib/labels';
-import { METRIC_ICONS } from '@/lib/metric-icons';
+import { SCREEN_CONTENT } from '@/lib/layout';
 import type { MuscleDistribution } from '@/db/types';
 
 export default function SummaryScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, celebrate } = useLocalSearchParams<{ id: string; celebrate?: string }>();
   const logId = Number(id);
+  const showCelebration = celebrate === '1' || celebrate === 'true';
   const router = useRouter();
+  const { toast } = useToast();
   const { unit } = useSettings();
   const { data: profile } = useProfile();
   const [log, setLog] = useState<SessionWorkout | null>(null);
   const [muscleSplit, setMuscleSplit] = useState<MuscleSplit[]>([]);
-  const [prCount, setPrCount] = useState(0);
+  const [prs, setPrs] = useState<WorkoutPr[]>([]);
+  const [volumeDelta, setVolumeDelta] = useState<{ previousVolume: number; deltaPct: number | null } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const reload = useCallback(async () => {
-    const [s, split, prs] = await Promise.all([
+    const [s, split, prList, prevVol] = await Promise.all([
       getWorkoutLog(logId),
       getWorkoutMuscleSplit(logId),
-      getWorkoutPrCount(logId),
+      getWorkoutPrs(logId),
+      getPreviousTemplateVolume(logId),
     ]);
     setLog(s);
     setMuscleSplit(split);
-    setPrCount(prs);
+    setPrs(prList);
+    setVolumeDelta(prevVol);
     setLoading(false);
   }, [logId]);
 
@@ -82,6 +98,41 @@ export default function SummaryScreen() {
   const athleteName = profile?.name?.trim() || 'Athlete';
   const volumeLabel = log ? formatVolume(log.totalVolume, unit) : '';
   const completedSets = log?.sets.filter((s) => s.completed).length ?? 0;
+  const totalSets = log?.sets.length ?? 0;
+
+  const onSaveTemplate = async () => {
+    if (savingTemplate) return;
+    setSavingTemplate(true);
+    try {
+      const templateId = await createTemplateFromWorkoutLog(logId);
+      toast({ title: 'Routine saved', description: 'Open it from Workouts anytime.', variant: 'success' });
+      router.push(`/template/${templateId}` as Href);
+    } catch (e) {
+      toast({
+        title: 'Could not save routine',
+        description: e instanceof Error ? e.message : 'Try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const onDeleteWorkout = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await deleteWorkout(logId);
+      setDeleteOpen(false);
+      toast({ title: 'Workout deleted', variant: 'info' });
+      if (router.canGoBack()) router.back();
+      else router.replace('/(app)/(tabs)');
+    } catch {
+      toast({ title: 'Could not delete workout', variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -107,49 +158,90 @@ export default function SummaryScreen() {
         <Pressable onPress={() => router.back()} className="p-1" accessibilityRole="button" accessibilityLabel="Go back">
           <Icon icon={ArrowLeft} size={24} color="foreground" />
         </Pressable>
-        <Body className="text-base font-semibold text-foreground">Workout Detail</Body>
+        <View className="items-center">
+          <Body className="font-semibold text-foreground">{log.name}</Body>
+          <Caption>{formatFullDateTime(log.startedAt)}</Caption>
+        </View>
         <Pressable
-          onPress={() => router.push(`/share/${logId}` as Href)}
+          onPress={() => setMenuOpen(true)}
           className="p-1"
           accessibilityRole="button"
-          accessibilityLabel="Share workout">
-          <Icon icon={Share2} size={22} color="foreground" />
+          accessibilityLabel="Workout options">
+          <Icon icon={MoreHorizontal} size={22} color="foreground" />
         </Pressable>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      {/* Session-style stats strip */}
+      <View className="flex-row items-center justify-between px-4 py-3">
+        <View className="flex-1 items-center">
+          <Caption>Duration</Caption>
+          <Body className="mt-0.5 font-semibold text-primary">{formatDuration(log.durationSeconds)}</Body>
+        </View>
+        <View className="flex-1 items-center">
+          <Caption>Volume · {unit === 'metric' ? 'kg' : 'lb'}</Caption>
+          <Body className="mt-0.5 font-semibold text-foreground">{volumeLabel}</Body>
+        </View>
+        <View className="flex-1 items-center">
+          <Caption>Sets</Caption>
+          <Body className="mt-0.5 font-semibold text-foreground">
+            {completedSets}/{totalSets || completedSets}
+          </Body>
+        </View>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ ...SCREEN_CONTENT, paddingTop: 4 }}>
         <View className="mb-3 flex-row items-center gap-3">
-          <InitialsAvatar name={athleteName} uri={profile?.avatarUrl} size={44} />
+          <InitialsAvatar name={athleteName} uri={profile?.avatarUrl} size={40} />
           <View className="flex-1">
             <Body className="font-semibold text-foreground">{athleteName}</Body>
-            <Caption>{formatFullDateTime(log.startedAt)}</Caption>
+            {volumeDelta?.deltaPct != null ? (
+              <Caption>
+                vs last {log.name}: {volumeDelta.deltaPct > 0 ? '+' : ''}
+                {volumeDelta.deltaPct}% volume
+              </Caption>
+            ) : (
+              <Caption>Completed session</Caption>
+            )}
           </View>
-        </View>
-
-        <Body className="mb-3 text-xl font-bold text-foreground">{log.name}</Body>
-
-        <View className="mb-4 flex-row gap-3">
-          <SummaryStat label="Time" value={formatDuration(log.durationSeconds)} icon={<Icon icon={Clock} size={18} color="primary" />} />
-          <SummaryStat label="Volume" value={volumeLabel} icon={<Icon icon={METRIC_ICONS.volume} size={18} color="info" />} />
-          <SummaryStat label="Sets" value={`${completedSets}`} icon={<Icon icon={METRIC_ICONS.sets} size={18} color="warning" />} />
-          {prCount > 0 ? (
-            <SummaryStat label="Records" value={`${prCount}`} icon={<Icon icon={Medal} size={18} color="warning" />} />
+          {prs.length > 0 ? (
+            <View className="flex-row items-center gap-1 rounded-full bg-warning/15 px-2.5 py-1">
+              <Icon icon={Medal} size={14} color="warning" />
+              <Caption className="font-medium text-foreground">{prs.length} PR{prs.length === 1 ? '' : 's'}</Caption>
+            </View>
           ) : null}
         </View>
 
+        <FinishCelebration active={showCelebration} prCount={prs.length} />
+
         <Button
           variant="outline"
-          className="mb-5"
+          className="mb-4"
           leftIcon={<Icon icon={Share2} size={16} color="primary" />}
           onPress={() => router.push(`/share/${logId}` as Href)}>
-          Share
+          Share workout
         </Button>
 
+        {prs.length > 0 ? (
+          <View className="mb-4 rounded-2xl bg-card p-3">
+            <Caption className="mb-2 font-semibold text-foreground">Records this session</Caption>
+            <View className="gap-2">
+              {prs.map((pr) => (
+                <View key={pr.exerciseId} className="flex-row items-center justify-between">
+                  <Body className="flex-1 text-sm text-foreground" numberOfLines={1}>
+                    {pr.exerciseName}
+                  </Body>
+                  <Caption className="font-medium text-primary">{formatWeight(pr.weight, unit)}</Caption>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
         {distribution.length > 0 ? (
-          <View className="mb-5">
-            <Caption className="mb-3 text-base font-semibold text-foreground">Muscles trained</Caption>
+          <View className="mb-4 rounded-3xl bg-card px-3 py-3">
+            <Caption className="mb-2 font-semibold text-foreground">Muscles trained</Caption>
             <MuscleBodyMap distribution={distribution} scale={0.95} />
-            <View className="mt-3 gap-2">
+            <View className="mt-2 gap-1.5">
               {muscleSplit.map((s) => (
                 <View key={s.muscle} className="flex-row items-center justify-between">
                   <Body className="text-sm text-foreground">{MUSCLE_LABELS[s.muscle]}</Body>
@@ -169,7 +261,7 @@ export default function SummaryScreen() {
             style={({ pressed }) => (pressed ? { opacity: 0.6 } : undefined)}
             className="flex-row items-center gap-1">
             <Icon icon={PencilLine} size={14} color="primary" />
-            <Caption className="font-medium text-primary">Edit Workout</Caption>
+            <Caption className="font-medium text-primary">Edit</Caption>
           </Pressable>
         </View>
 
@@ -177,8 +269,9 @@ export default function SummaryScreen() {
           {breakdown.length === 0 ? (
             <Caption>No completed sets in this session.</Caption>
           ) : (
-            breakdown.map((b) => (
+            breakdown.map((b, i) => (
               <View key={b.exerciseId}>
+                {i > 0 ? <View className="mb-5 h-px bg-border/40" /> : null}
                 <Pressable
                   onPress={() => router.push(`/exercise/${b.exerciseId}`)}
                   style={({ pressed }) => (pressed ? { opacity: 0.6 } : undefined)}
@@ -186,16 +279,17 @@ export default function SummaryScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`Open ${b.exerciseName} details`}>
                   <ExerciseThumb uri={b.imageUrl} />
-                  <Body className="flex-1 text-base font-semibold text-primary">{b.exerciseName}</Body>
+                  <Body className="flex-1 text-base font-semibold text-foreground">{b.exerciseName}</Body>
+                  <Caption>{b.sets.length} sets</Caption>
                 </Pressable>
-                <View className="mb-1 flex-row items-center gap-3 px-2">
+                <View className="mb-1 flex-row items-center gap-3 px-1">
                   <Caption className="w-10">SET</Caption>
                   <Caption className="flex-1">WEIGHT & REPS</Caption>
                 </View>
                 {b.sets.map((s) => (
-                  <View key={s.id} className="flex-row items-center gap-3 px-2 py-1.5">
+                  <View key={s.id} className="flex-row items-center gap-3 px-1 py-1.5">
                     <Caption className="w-10 font-medium">{s.setIndex + 1}</Caption>
-                    <Body className="flex-1 text-sm">
+                    <Body className="flex-1 text-sm text-foreground">
                       {s.weight > 0 ? `${formatWeight(s.weight, unit)} × ${s.reps}` : `${s.reps} reps`}
                     </Body>
                   </View>
@@ -205,6 +299,35 @@ export default function SummaryScreen() {
           )}
         </View>
       </ScrollView>
+
+      <WorkoutLogActionsSheet
+        open={menuOpen}
+        onOpenChange={setMenuOpen}
+        title={log.name}
+        canSaveAsRoutine={completedSets > 0 && !savingTemplate}
+        onEdit={() =>
+          router.push({ pathname: '/edit-workout/[id]', params: { id: String(logId) } } as Href)
+        }
+        onSaveAsRoutine={onSaveTemplate}
+        onDelete={() => setDeleteOpen(true)}
+      />
+
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Delete workout?"
+        description="This workout will be permanently removed from your history."
+        footer={
+          <>
+            <Button variant="outline" onPress={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onPress={onDeleteWorkout} disabled={deleting}>
+              {deleting ? 'Deleting…' : 'Delete'}
+            </Button>
+          </>
+        }
+      />
     </SafeAreaView>
   );
 }

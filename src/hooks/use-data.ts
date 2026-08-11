@@ -23,6 +23,7 @@ import {
   type ExerciseFilters,
   type SessionWorkout,
   type TodayProgramSlot,
+  type WorkoutLogFilters,
 } from '@/db/queries';
 import type { Exercise, FeedWorkoutLog, MuscleGroup, PR, PeriodStats, ProgressRange, Program, ProgressStats, SearchHit, UserProfile, WorkoutLog, WorkoutTemplate } from '@/db/types';
 import { useSettings } from '@/store/settings-store';
@@ -76,19 +77,22 @@ export function useProfile() {
 }
 
 /* ---- paginated history (infinite scroll) ---- */
-export function useWorkoutLogs() {
+export function useWorkoutLogs(filters: WorkoutLogFilters = {}) {
   const [items, setItems] = useState<WorkoutLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const offsetRef = useRef(0);
+  const filtersKey = `${filters.sinceMs ?? ''}:${filters.templateId ?? ''}:${filters.exerciseId ?? ''}`;
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
 
   const load = useCallback(async (reset: boolean) => {
     setLoading(true);
     setError(null);
     try {
       const offset = reset ? 0 : offsetRef.current;
-      const page = await listWorkoutLogs(offset);
+      const page = await listWorkoutLogs(offset, undefined, filtersRef.current);
       setItems((prev) => (reset ? page.items : [...prev, ...page.items]));
       offsetRef.current = page.nextOffset ?? offset;
       setHasMore(page.nextOffset !== null);
@@ -101,8 +105,12 @@ export function useWorkoutLogs() {
   }, []);
 
   useEffect(() => {
+    // Keep prior rows until the new page arrives so FlashList doesn't jump
+    // when History date/exercise/template chips change.
+    offsetRef.current = 0;
+    setHasMore(true);
     load(true);
-  }, [load]);
+  }, [load, filtersKey]);
 
   return {
     items,
