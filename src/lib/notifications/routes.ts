@@ -5,9 +5,11 @@ export function pathForNotificationPayload(payload: NotificationPayload): string
   switch (payload.type) {
     case 'workout_reminder':
     case 'rest_complete':
+      return '/(app)/(tabs)';
     case 'weekly_digest':
+      return '/(app)/report/week';
     case 'monthly_recap':
-      // Digests get dedicated screens in Phase B/C; Home until then.
+      // Phase C: monthly report. Home until then.
       return '/(app)/(tabs)';
     default:
       return null;

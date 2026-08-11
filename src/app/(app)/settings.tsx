@@ -116,9 +116,11 @@ export default function SettingsScreen() {
     restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets,
     calendarHeatMetric, weekStartsOn, keepScreenAwake,
     workoutRemindersEnabled, workoutReminderDays, workoutReminderHour, workoutReminderMinute,
+    weeklyDigestEnabled, weeklyDigestHour, weeklyDigestMinute,
     setUnit, setThemeMode, setAccentTheme, setHaptics, setRestSound, setAutoStartRest, setDefaultRestSeconds, setShowWarmUpSets,
     setCalendarHeatMetric, setWeekStartsOn, setKeepScreenAwake,
     setWorkoutRemindersEnabled, setWorkoutReminderDays, setWorkoutReminderTime,
+    setWeeklyDigestEnabled, setWeeklyDigestTime,
   } = useSettings();
   const { data: profile, refetch } = useProfile();
   const scheme = useAppColorScheme();
@@ -168,6 +170,31 @@ export default function SettingsScreen() {
       return;
     }
     setWorkoutRemindersEnabled(true);
+  };
+
+  const onDigestToggle = async (next: boolean) => {
+    if (!next) {
+      setWeeklyDigestEnabled(false);
+      return;
+    }
+    if (!notificationsAvailable) {
+      toast({
+        title: 'Digests need a dev build',
+        description: 'Local alerts are unavailable in Android Expo Go',
+        variant: 'warning',
+      });
+      return;
+    }
+    const mod = await prepareNotifications(NOTIFICATION_CHANNELS.digests);
+    if (!mod) {
+      toast({
+        title: 'Permission needed',
+        description: 'Allow notifications to schedule the weekly digest',
+        variant: 'warning',
+      });
+      return;
+    }
+    setWeeklyDigestEnabled(true);
   };
 
   const syncSubtitle = !enabled
@@ -352,6 +379,41 @@ export default function SettingsScreen() {
                       label={t.label}
                       selected={workoutReminderHour === t.hour && workoutReminderMinute === t.minute}
                       onPress={() => setWorkoutReminderTime(t.hour, t.minute)}
+                    />
+                  ))}
+                </View>
+              </StackedRow>
+            </>
+          ) : null}
+        </Card>
+
+        <Caption className="mb-1 mt-5 font-semibold uppercase tracking-wide">Weekly digest</Caption>
+        <Card>
+          <Row
+            icon={<Icon icon={METRIC_ICONS.sessions} size={18} color="muted-foreground" />}
+            title="Sunday digest"
+            subtitle="Optional local alert with your week summary">
+            <Switch
+              value={weeklyDigestEnabled}
+              onValueChange={(v) => void onDigestToggle(v)}
+              accessibilityLabel="Sunday weekly digest"
+            />
+          </Row>
+          {weeklyDigestEnabled ? (
+            <>
+              <View className="h-px bg-border/60" />
+              <StackedRow
+                icon={<Icon icon={Timer} size={18} color="muted-foreground" />}
+                title="Time"
+                subtitle="Fires every Sunday">
+                <View className="flex-row flex-wrap gap-1.5">
+                  {WORKOUT_REMINDER_TIME_PRESETS.map((t) => (
+                    <Chip
+                      key={`digest-${t.label}`}
+                      size="sm"
+                      label={t.label}
+                      selected={weeklyDigestHour === t.hour && weeklyDigestMinute === t.minute}
+                      onPress={() => setWeeklyDigestTime(t.hour, t.minute)}
                     />
                   ))}
                 </View>

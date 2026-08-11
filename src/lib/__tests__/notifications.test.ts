@@ -38,9 +38,9 @@ describe('NOTIFICATION_IDS', () => {
 });
 
 describe('pathForNotificationPayload', () => {
-  it('routes reminder and digests to Home for Phase A', () => {
+  it('routes reminder and digests to the right screens', () => {
     expect(pathForNotificationPayload({ type: 'workout_reminder' })).toBe('/(app)/(tabs)');
-    expect(pathForNotificationPayload({ type: 'weekly_digest' })).toBe('/(app)/(tabs)');
+    expect(pathForNotificationPayload({ type: 'weekly_digest' })).toBe('/(app)/report/week');
     expect(pathForNotificationPayload({ type: 'rest_complete' })).toBe('/(app)/(tabs)');
   });
 });

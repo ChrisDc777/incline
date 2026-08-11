@@ -19,3 +19,8 @@ export {
 } from '@/lib/notifications/types';
 export { navigateFromNotificationData } from '@/lib/notifications/deep-link';
 export { pathForNotificationPayload } from '@/lib/notifications/routes';
+export {
+  syncWeeklyDigestSchedule,
+  cancelWeeklyDigest,
+  type WeeklyDigestPrefs,
+} from '@/lib/notifications/digest';

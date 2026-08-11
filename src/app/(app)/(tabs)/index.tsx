@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Plus, ArrowRight, Dumbbell } from 'lucide-react-native';
+import { Play, Plus, ArrowRight, Dumbbell, Sparkles } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Hero, Body, Caption } from '@/components/common/text';
@@ -23,10 +23,16 @@ import { useActiveWorkout } from '@/store/active-workout-store';
 import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
 import { startWorkout, discardWorkout, deleteWorkout, createTemplateFromWorkoutLog } from '@/db/queries';
-import { formatVolume, formatFullDate } from '@/db/calc';
+import { formatVolume, formatFullDate, startOfWeek } from '@/db/calc';
 import { METRIC_ICONS } from '@/lib/metric-icons';
 import { weekInsightFromStats } from '@/lib/week-insight';
 import type { FeedWorkoutLog, MuscleGroup } from '@/db/types';
+
+const WEEK_MS = 7 * 86_400_000;
+
+function isMondayLocal(now = Date.now()): boolean {
+  return new Date(now).getDay() === 1;
+}
 
 function greeting() {
   const h = new Date().getHours();
@@ -128,9 +134,14 @@ export default function HomeScreen() {
   const hasData = (stats?.totalSessions ?? 0) > 0;
   const streak = stats?.streak ?? 0;
   const thisWeek = stats?.weeklyVolume?.[stats.weeklyVolume.length - 1];
+  const prevWeek = stats?.weeklyVolume && stats.weeklyVolume.length > 1
+    ? stats.weeklyVolume[stats.weeklyVolume.length - 2]
+    : null;
   const weekSessions = thisWeek?.sessions ?? 0;
   const weekVolume = thisWeek?.volume ?? 0;
   const weekInsight = weekInsightFromStats(stats, unit);
+  const showMondayRecap = hasData && isMondayLocal() && (prevWeek?.sessions ?? 0) > 0;
+  const lastWeekStartMs = startOfWeek(Date.now()) - WEEK_MS;
   const suggestedMuscles = (suggested?.exercises ?? [])
     .map((e) => e.exercise?.primaryMuscle)
     .filter((m, i, arr): m is MuscleGroup => !!m && arr.indexOf(m) === i);
@@ -153,6 +164,32 @@ export default function HomeScreen() {
       <Body className="mt-1 text-muted-foreground">{today}</Body>
       {hasData && weekInsight ? (
         <Caption className="mt-2 text-foreground/80">{weekInsight.line}</Caption>
+      ) : null}
+
+      {showMondayRecap ? (
+        <Pressable
+          className="mt-4"
+          onPress={() =>
+            router.push(`/(app)/report/week?weekStartMs=${lastWeekStartMs}` as Href)
+          }
+          accessibilityRole="button"
+          accessibilityLabel="Open last week's report">
+          <Card elevation="raised">
+            <View className="flex-row items-center gap-3">
+              <View className="h-9 w-9 items-center justify-center rounded-xl bg-muted">
+                <Icon icon={Sparkles} size={18} color="primary" />
+              </View>
+              <View className="min-w-0 flex-1">
+                <Body className="font-semibold text-foreground">Your week</Body>
+                <Caption className="mt-0.5">
+                  {prevWeek!.sessions} session{prevWeek!.sessions === 1 ? '' : 's'} ·{' '}
+                  {formatVolume(prevWeek!.volume, unit)} last week
+                </Caption>
+              </View>
+              <Icon icon={ArrowRight} size={18} color="muted-foreground" />
+            </View>
+          </Card>
+        </Pressable>
       ) : null}
 
       <View className="mt-6 gap-3">
