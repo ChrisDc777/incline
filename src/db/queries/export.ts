@@ -137,6 +137,15 @@ async function buildJsonPayload(range: ExportRange, rows: ExportSetRow[]): Promi
     unit: string;
     recorded_at: number;
   }>('SELECT id, weight, unit, recorded_at FROM bodyweight_entries WHERE deleted_at IS NULL ORDER BY recorded_at ASC');
+  const bodyMeasurements = await db.getAllAsync<{
+    id: number;
+    metric: string;
+    value: number;
+    unit: string;
+    recorded_at: number;
+  }>(
+    'SELECT id, metric, value, unit, recorded_at FROM body_measurements WHERE deleted_at IS NULL ORDER BY recorded_at ASC',
+  );
 
   return {
     exportedAt: new Date().toISOString(),
@@ -160,6 +169,13 @@ async function buildJsonPayload(range: ExportRange, rows: ExportSetRow[]): Promi
       weight: b.weight,
       unit: b.unit,
       recordedAt: b.recorded_at,
+    })),
+    bodyMeasurements: bodyMeasurements.map((m) => ({
+      id: m.id,
+      metric: m.metric,
+      value: m.value,
+      unit: m.unit,
+      recordedAt: m.recorded_at,
     })),
   };
 }
@@ -193,7 +209,7 @@ export async function shareWorkoutJson(
 ): Promise<{ workoutCount: number; shared: boolean }> {
   const rows = await loadExportSetRows(range);
   const payload = await buildJsonPayload(range, rows);
-  if (payload.workouts.length === 0 && payload.customExercises.length === 0 && payload.bodyweight.length === 0) {
+  if (payload.workouts.length === 0 && payload.customExercises.length === 0 && payload.bodyweight.length === 0 && payload.bodyMeasurements.length === 0) {
     return { workoutCount: 0, shared: false };
   }
   const json = buildExportJson(payload);

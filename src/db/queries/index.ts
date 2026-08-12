@@ -106,8 +106,18 @@ export {
   getWorkoutsByDateRange,
   getWorkoutsForDay,
   getWorkoutCountInRange,
+  getWeeklyConsistency,
+  getBestWeeklyStreak,
+  getSessionsInWeek,
   type DailyCalendarMetrics,
+  type WeeklyConsistency,
 } from './progress';
+
+export {
+  getTemplateSuggestions,
+  getExerciseSuggestion,
+  getMuscleExposureDays,
+} from './coaching/suggestions';
 
 export {
   getWeeklyRecap,

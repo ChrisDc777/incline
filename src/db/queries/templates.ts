@@ -91,9 +91,25 @@ export async function getSuggestedTemplate(): Promise<WorkoutTemplate | null> {
   const last = await db.getFirstAsync<{ template_id: number | null }>(
     'SELECT template_id FROM workout_logs WHERE ended_at IS NOT NULL AND template_id IS NOT NULL AND deleted_at IS NULL ORDER BY started_at DESC LIMIT 1',
   );
-  const ids = [1, 2, 3, 4, 5, 6];
-  const next = last?.template_id ? ids[(ids.indexOf(last.template_id) + 1) % ids.length] : 1;
-  return getTemplate(next);
+  if (last?.template_id) {
+    const recent = await getTemplate(last.template_id);
+    if (recent) return recent;
+  }
+  const frequent = await db.getFirstAsync<{ template_id: number }>(
+    `SELECT template_id, COUNT(*) as c FROM workout_logs
+     WHERE ended_at IS NOT NULL AND template_id IS NOT NULL AND deleted_at IS NULL
+       AND started_at >= ?
+     GROUP BY template_id ORDER BY c DESC LIMIT 1`,
+    Date.now() - 30 * 86_400_000,
+  );
+  if (frequent?.template_id) {
+    const t = await getTemplate(frequent.template_id);
+    if (t) return t;
+  }
+  const first = await db.getFirstAsync<{ id: number }>(
+    'SELECT id FROM workout_templates WHERE deleted_at IS NULL ORDER BY is_custom DESC, name ASC LIMIT 1',
+  );
+  return first ? getTemplate(first.id) : null;
 }
 
 async function enqueueTemplateUpsert(templateId: number): Promise<void> {
@@ -150,13 +166,14 @@ export async function createTemplate(name: string, description: string, difficul
   return id;
 }
 
-export async function updateTemplate(id: number, patch: Partial<Pick<WorkoutTemplate, 'name' | 'description' | 'difficulty'>>): Promise<void> {
+export async function updateTemplate(id: number, patch: Partial<Pick<WorkoutTemplate, 'name' | 'description' | 'difficulty' | 'estimatedMinutes'>>): Promise<void> {
   const db = await openDatabase();
   const sets: string[] = [];
   const args: (string | number)[] = [];
   if (patch.name !== undefined) { sets.push('name = ?'); args.push(patch.name); }
   if (patch.description !== undefined) { sets.push('description = ?'); args.push(patch.description); }
   if (patch.difficulty !== undefined) { sets.push('difficulty = ?'); args.push(patch.difficulty); }
+  if (patch.estimatedMinutes !== undefined) { sets.push('estimated_minutes = ?'); args.push(patch.estimatedMinutes); }
   if (sets.length === 0) return;
   sets.push('updated_at = ?');
   args.push(Date.now());

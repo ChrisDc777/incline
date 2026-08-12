@@ -114,6 +114,7 @@ export interface SetRow {
   completed: number;
   rest_seconds: number | null;
   superset_group: number | null;
+  set_type?: string | null;
   uuid: string | null;
   deleted_at: number | null;
   created_at: number;
@@ -174,6 +175,7 @@ export async function mapExercise(db: DB, row: ExerciseRow): Promise<Exercise> {
 }
 
 export function mapSet(r: SetRow): SetEntry {
+  const setType = r.set_type === 'warmup' ? 'warmup' : 'working';
   return {
     id: r.id,
     workoutLogId: r.workout_log_id,
@@ -184,6 +186,7 @@ export function mapSet(r: SetRow): SetEntry {
     completed: !!r.completed,
     restSeconds: r.rest_seconds,
     supersetGroup: r.superset_group ?? null,
+    setType,
     createdAt: r.created_at,
   };
 }

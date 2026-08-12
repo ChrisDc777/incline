@@ -114,11 +114,11 @@ export default function SettingsScreen() {
   const {
     unit, themeMode, accentTheme, hapticsEnabled,
     restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets,
-    calendarHeatMetric, weekStartsOn, keepScreenAwake,
+    calendarHeatMetric, weekStartsOn, keepScreenAwake, weeklyWorkoutGoal,
     workoutRemindersEnabled, workoutReminderDays, workoutReminderHour, workoutReminderMinute,
     weeklyDigestEnabled, weeklyDigestHour, weeklyDigestMinute,
     setUnit, setThemeMode, setAccentTheme, setHaptics, setRestSound, setAutoStartRest, setDefaultRestSeconds, setShowWarmUpSets,
-    setCalendarHeatMetric, setWeekStartsOn, setKeepScreenAwake,
+    setCalendarHeatMetric, setWeekStartsOn, setKeepScreenAwake, setWeeklyWorkoutGoal,
     setWorkoutRemindersEnabled, setWorkoutReminderDays, setWorkoutReminderTime,
     setWeeklyDigestEnabled, setWeeklyDigestTime,
   } = useSettings();
@@ -457,6 +457,23 @@ export default function SettingsScreen() {
               <Chip label="Sun" selected={weekStartsOn === 'sunday'} onPress={() => setWeekStartsOn('sunday')} />
             </View>
           </Row>
+          <View className="h-px bg-border/60" />
+          <StackedRow
+            icon={<Icon icon={METRIC_ICONS.sessions} size={18} color="muted-foreground" />}
+            title="Weekly workout goal"
+            subtitle="Sessions per week for consistency tracking">
+            <View className="flex-row flex-wrap gap-1.5">
+              {[0, 3, 4, 5, 6].map((g) => (
+                <Chip
+                  key={g}
+                  size="sm"
+                  label={g === 0 ? 'Off' : `${g}×`}
+                  selected={weeklyWorkoutGoal === g}
+                  onPress={() => setWeeklyWorkoutGoal(g)}
+                />
+              ))}
+            </View>
+          </StackedRow>
         </Card>
 
         <Caption className="mb-1 mt-5 font-semibold uppercase tracking-wide">Appearance</Caption>

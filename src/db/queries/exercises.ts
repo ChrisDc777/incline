@@ -339,6 +339,7 @@ export async function getLastSetsForExercises(exerciseIds: number[]): Promise<Re
      JOIN workout_logs w ON w.id = s.workout_log_id
      WHERE s.exercise_id IN (${placeholders})
        AND s.completed = 1 AND s.deleted_at IS NULL
+       AND (s.set_type IS NULL OR s.set_type = 'working')
        AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL
        AND w.started_at = (
          SELECT MAX(w2.started_at)

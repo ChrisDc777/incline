@@ -116,6 +116,8 @@ export interface Program {
   workouts?: ProgramWorkout[];
 }
 
+export type SetType = 'working' | 'warmup';
+
 export interface SetEntry {
   id: number;
   workoutLogId: number;
@@ -127,6 +129,8 @@ export interface SetEntry {
   restSeconds: number | null;
   /** Copied from template; NULL = solo exercise. */
   supersetGroup: number | null;
+  /** Warm-up sets are excluded from coaching overload calculations. */
+  setType?: SetType;
   createdAt: number;
 }
 
@@ -192,6 +196,10 @@ export interface Settings {
   weeklyDigestMinute: number;
   /** Which body metrics appear on the Measures screen (bodyweight always available). */
   enabledBodyMetrics: BodyMetric[];
+  /** Target finished sessions per week (consistency goal). 0 = off. */
+  weeklyWorkoutGoal: number;
+  /** Dismissed in-app announcement ids (#90). */
+  dismissedAnnouncementIds: string[];
 }
 
 /** Trackable body metrics on the Measures screen. */

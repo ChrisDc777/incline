@@ -1,8 +1,8 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Plus, ArrowRight, Dumbbell, Sparkles, CalendarRange } from 'lucide-react-native';
+import { Play, Plus, ArrowRight, Dumbbell } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Hero, Body, Caption } from '@/components/common/text';
@@ -16,27 +16,20 @@ import { TemplatePickerSheet } from '@/components/workout/template-picker-sheet'
 import { ActiveSessionConflictDialog } from '@/components/workout/active-session-conflict-dialog';
 import { MuscleBodyMap } from '@/components/progress/muscle-body-map';
 import { CardSkeleton } from '@/components/common/skeleton';
+import { HomeContextCard } from '@/components/home/home-context-card';
 import { useProfile, useSuggestedTemplate, useProgressStats, useWorkoutFeedLogs, useTodayProgramSlot } from '@/hooks/use-data';
 import { useActiveSession } from '@/hooks/use-active-session';
 import { useSettings } from '@/store/settings-store';
 import { useActiveWorkout } from '@/store/active-workout-store';
 import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
-import { startWorkout, discardWorkout, deleteWorkout, createTemplateFromWorkoutLog } from '@/db/queries';
-import { formatVolume, formatFullDate, startOfWeek, previousMonthStart, formatMonthLabel } from '@/db/calc';
+import { startWorkout, discardWorkout, deleteWorkout, createTemplateFromWorkoutLog, getWeeklyConsistency, getMuscleExposureDays, type WeeklyConsistency } from '@/db/queries';
+import { formatVolume, formatFullDate } from '@/db/calc';
 import { METRIC_ICONS } from '@/lib/metric-icons';
-import { weekInsightFromStats } from '@/lib/week-insight';
+import { buildHomeContextCards, homeWeekCaption, type HomeContextCard as HomeContextCardModel } from '@/lib/home-context';
+import { ANNOUNCEMENT_PACK } from '@/lib/announcements';
+import { pickHomeCoachingInsight } from '@/coaching/insights';
 import type { FeedWorkoutLog, MuscleGroup } from '@/db/types';
-
-const WEEK_MS = 7 * 86_400_000;
-
-function isMondayLocal(now = Date.now()): boolean {
-  return new Date(now).getDay() === 1;
-}
-
-function isEarlyMonth(now = Date.now()): boolean {
-  return new Date(now).getDate() <= 7;
-}
 
 function greeting() {
   const h = new Date().getHours();
@@ -49,7 +42,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { toast } = useToast();
   const { impact } = useHaptics();
-  const { unit } = useSettings();
+  const { unit, weeklyWorkoutGoal, dismissedAnnouncementIds, dismissAnnouncement } = useSettings();
   const { data: profile, refetch: refetchProfile } = useProfile();
   const { data: suggested, loading: sugLoading } = useSuggestedTemplate();
   const { data: todaySlot, loading: todayLoading, refetch: refetchToday } = useTodayProgramSlot();
@@ -66,7 +59,36 @@ export default function HomeScreen() {
   const [menuLog, setMenuLog] = useState<FeedWorkoutLog | null>(null);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [today] = useState(() => formatFullDate(Date.now()));
+  const [consistency, setConsistency] = useState<WeeklyConsistency | null>(null);
+  const [contextCards, setContextCards] = useState<HomeContextCardModel[]>([]);
   const didFocus = useRef(false);
+
+  const refreshContext = useCallback(async () => {
+    const [cons, muscleDays] = await Promise.all([
+      getWeeklyConsistency(weeklyWorkoutGoal),
+      getMuscleExposureDays(),
+    ]);
+    setConsistency(cons);
+    const coaching = pickHomeCoachingInsight(stats, unit, muscleDays);
+    const recentPr = stats?.prs?.find((p) => p.achievedAt >= Date.now() - 14 * 86_400_000);
+    const cards = buildHomeContextCards({
+      stats,
+      unit,
+      weeklyGoal: weeklyWorkoutGoal,
+      sessionsThisWeek: cons.sessionsThisWeek,
+      goalMet: cons.goalMet,
+      sessionsToGoal: cons.sessionsToGoal,
+      dismissedAnnouncementIds,
+      announcements: ANNOUNCEMENT_PACK,
+      coachingTitle: coaching?.title ?? null,
+      coachingSubtitle: coaching?.body ?? null,
+      coachingHref: coaching?.href ?? null,
+      prNudge: recentPr
+        ? { exerciseName: recentPr.exerciseName, weight: recentPr.maxWeight, reps: recentPr.maxReps }
+        : null,
+    });
+    setContextCards(cards);
+  }, [stats, unit, weeklyWorkoutGoal, dismissedAnnouncementIds]);
 
   useFocusEffect(
     useCallback(() => {
@@ -74,11 +96,16 @@ export default function HomeScreen() {
         refetchProfile();
         refreshFeed();
         refetchToday();
+        void refreshContext();
       } else {
         didFocus.current = true;
       }
-    }, [refetchProfile, refreshFeed, refetchToday]),
+    }, [refetchProfile, refreshFeed, refetchToday, refreshContext]),
   );
+
+  useEffect(() => {
+    if (stats) void refreshContext();
+  }, [stats, refreshContext]);
 
   const doStart = async (templateId: number | null, name: string) => {
     setStarting(true);
@@ -138,16 +165,13 @@ export default function HomeScreen() {
   const hasData = (stats?.totalSessions ?? 0) > 0;
   const streak = stats?.streak ?? 0;
   const thisWeek = stats?.weeklyVolume?.[stats.weeklyVolume.length - 1];
-  const prevWeek = stats?.weeklyVolume && stats.weeklyVolume.length > 1
-    ? stats.weeklyVolume[stats.weeklyVolume.length - 2]
-    : null;
-  const weekSessions = thisWeek?.sessions ?? 0;
+  const weekSessions = consistency?.sessionsThisWeek ?? thisWeek?.sessions ?? 0;
   const weekVolume = thisWeek?.volume ?? 0;
-  const weekInsight = weekInsightFromStats(stats, unit);
-  const showMondayRecap = hasData && isMondayLocal() && (prevWeek?.sessions ?? 0) > 0;
-  const lastWeekStartMs = startOfWeek(Date.now()) - WEEK_MS;
-  const lastMonthStartMs = previousMonthStart();
-  const showMonthRecap = hasData && isEarlyMonth();
+  const weekInsightLine = homeWeekCaption(stats, unit);
+  const goalLabel =
+    weeklyWorkoutGoal > 0 && consistency
+      ? `${consistency.sessionsThisWeek}/${weeklyWorkoutGoal}`
+      : null;
   const suggestedMuscles = (suggested?.exercises ?? [])
     .map((e) => e.exercise?.primaryMuscle)
     .filter((m, i, arr): m is MuscleGroup => !!m && arr.indexOf(m) === i);
@@ -168,59 +192,21 @@ export default function HomeScreen() {
       </View>
       <Hero className="mt-0.5">Let&apos;s train, {name.split(' ')[0]}</Hero>
       <Body className="mt-1 text-muted-foreground">{today}</Body>
-      {hasData && weekInsight ? (
-        <Caption className="mt-2 text-foreground/80">{weekInsight.line}</Caption>
+      {hasData && weekInsightLine ? (
+        <Caption className="mt-2 text-foreground/80">{weekInsightLine}</Caption>
       ) : null}
 
-      {showMonthRecap ? (
-        <Pressable
-          className="mt-4"
-          onPress={() =>
-            router.push(`/(app)/report/month?monthStartMs=${lastMonthStartMs}` as Href)
-          }
-          accessibilityRole="button"
-          accessibilityLabel="Open last month's report">
-          <Card elevation="raised">
-            <View className="flex-row items-center gap-3">
-              <View className="h-9 w-9 items-center justify-center rounded-xl bg-muted">
-                <Icon icon={CalendarRange} size={18} color="primary" />
-              </View>
-              <View className="min-w-0 flex-1">
-                <Body className="font-semibold text-foreground">Your month</Body>
-                <Caption className="mt-0.5">
-                  {formatMonthLabel(lastMonthStartMs)} report is ready
-                </Caption>
-              </View>
-              <Icon icon={ArrowRight} size={18} color="muted-foreground" />
-            </View>
-          </Card>
-        </Pressable>
-      ) : null}
-
-      {showMondayRecap ? (
-        <Pressable
-          className="mt-4"
-          onPress={() =>
-            router.push(`/(app)/report/week?weekStartMs=${lastWeekStartMs}` as Href)
-          }
-          accessibilityRole="button"
-          accessibilityLabel="Open last week's report">
-          <Card elevation="raised">
-            <View className="flex-row items-center gap-3">
-              <View className="h-9 w-9 items-center justify-center rounded-xl bg-muted">
-                <Icon icon={Sparkles} size={18} color="primary" />
-              </View>
-              <View className="min-w-0 flex-1">
-                <Body className="font-semibold text-foreground">Your week</Body>
-                <Caption className="mt-0.5">
-                  {prevWeek!.sessions} session{prevWeek!.sessions === 1 ? '' : 's'} ·{' '}
-                  {formatVolume(prevWeek!.volume, unit)} last week
-                </Caption>
-              </View>
-              <Icon icon={ArrowRight} size={18} color="muted-foreground" />
-            </View>
-          </Card>
-        </Pressable>
+      {contextCards.length > 0 ? (
+        <View className="mt-4 gap-3">
+          {contextCards.map((card, i) => (
+            <HomeContextCard
+              key={card.id}
+              card={card}
+              index={i}
+              onDismiss={card.dismissKey ? () => dismissAnnouncement(card.dismissKey!) : undefined}
+            />
+          ))}
+        </View>
       ) : null}
 
       <View className="mt-6 gap-3">
@@ -290,7 +276,7 @@ export default function HomeScreen() {
                 disabled={starting}>
                 Start workout
               </Button>
-              <Caption className="mt-3 text-center">Suggested based on your recent sessions</Caption>
+              <Caption className="mt-3 text-center">Suggested from your recent training</Caption>
             </Card>
           </Pressable>
         ) : null}
@@ -309,7 +295,7 @@ export default function HomeScreen() {
 
       {hasData ? (
         <View className="mt-6 flex-row gap-3">
-          <StatCard label="This week" value={weekSessions} icon={<Icon icon={METRIC_ICONS.sessions} size={16} color="muted-foreground" />} />
+          <StatCard label="This week" value={goalLabel ?? weekSessions} icon={<Icon icon={METRIC_ICONS.sessions} size={16} color="muted-foreground" />} />
           <StatCard
             label="Volume"
             value={formatVolume(weekVolume, unit)}

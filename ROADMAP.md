@@ -20,6 +20,8 @@ Tracking lives in **GitHub milestones** (architecture notes are on each mileston
 - Clerk auth + password reset
 - Cloud **sync foundation** (UUIDs, outbox, `src/sync/`, `supabase/sync-schema.sql`) — **ops still P0 (#57)**
 - Program builder (local); share card; milestones; calendar heat/year; rest OS alerts; PR assist; template duplicate/notes
+- **P1 habit loops:** dynamic Home context, weekly goal, announcements pack, measurement export, template duration — see [docs/P1-P2-COACHING.md](docs/P1-P2-COACHING.md)
+- **P2 Stage A:** explainable progressive overload (offline rules) — same doc
 
 ## Sync model (keep)
 

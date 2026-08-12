@@ -1,7 +1,7 @@
-import { useLayoutEffect, useState } from 'react';
+import { useLayoutEffect, useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation, type Href } from 'expo-router';
-import { Clock, Play } from 'lucide-react-native';
+import { Clock, Play, TrendingUp } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Heading, Body, Caption } from '@/components/common/text';
@@ -18,10 +18,13 @@ import { useActiveSession } from '@/hooks/use-active-session';
 import { useActiveWorkout } from '@/store/active-workout-store';
 import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
-import { startWorkout, discardWorkout } from '@/db/queries';
+import { useSettings } from '@/store/settings-store';
+import { startWorkout, discardWorkout, getTemplateSuggestions } from '@/db/queries';
+import { formatWeight } from '@/db/calc';
 import { DIFFICULTY_LABELS, EQUIPMENT_LABELS } from '@/lib/labels';
 import { METRIC_ICONS } from '@/lib/metric-icons';
 import type { MuscleGroup } from '@/db/types';
+import type { TrainingSuggestion } from '@/coaching/types';
 
 export default function WorkoutPreviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -31,6 +34,8 @@ export default function WorkoutPreviewScreen() {
   const { toast } = useToast();
   const { impact } = useHaptics();
   const { data: template, loading, error, refetch } = useTemplate(templateId);
+  const { unit } = useSettings();
+  const [suggestions, setSuggestions] = useState<TrainingSuggestion[]>([]);
   const { session } = useActiveSession();
   const clear = useActiveWorkout((s) => s.clear);
   const [starting, setStarting] = useState(false);
@@ -39,6 +44,11 @@ export default function WorkoutPreviewScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: true, title: 'Workout' });
   }, [navigation]);
+
+  useEffect(() => {
+    if (!template) return;
+    void getTemplateSuggestions(template.id, unit).then(setSuggestions);
+  }, [template, unit]);
 
   const doStart = async () => {
     if (!template) return;
@@ -84,6 +94,9 @@ export default function WorkoutPreviewScreen() {
     .map((e) => e.exercise?.primaryMuscle)
     .filter((m, i, arr): m is MuscleGroup => !!m && arr.indexOf(m) === i);
 
+  const suggestionByExercise = new Map(suggestions.map((s) => [s.exerciseId, s]));
+  const actionableSuggestions = suggestions.filter((s) => s.weight > 0);
+
   return (
     <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 16, paddingBottom: 180 }}>
       <Caption>Workout routine</Caption>
@@ -108,8 +121,30 @@ export default function WorkoutPreviewScreen() {
         </Card>
       ) : null}
 
+      {actionableSuggestions.length > 0 ? (
+        <Card className="mt-4 border-primary/20 bg-primary/5">
+          <View className="flex-row items-center gap-2">
+            <Icon icon={TrendingUp} size={16} color="primary" />
+            <Body className="font-semibold text-foreground">Suggested targets</Body>
+          </View>
+          <Caption className="mt-2">From your last session — offline, explainable coaching.</Caption>
+          <View className="mt-3 gap-2">
+            {actionableSuggestions.slice(0, 4).map((s) => (
+              <View key={s.exerciseId}>
+                <Body className="text-sm font-medium text-foreground">{s.exerciseName}</Body>
+                <Caption>
+                  {formatWeight(s.weight, unit)} × {s.reps} — {s.reasonText}
+                </Caption>
+              </View>
+            ))}
+          </View>
+        </Card>
+      ) : null}
+
       <View className="mt-6 gap-3">
-        {(template.exercises ?? []).map((te) => (
+        {(template.exercises ?? []).map((te) => {
+          const sug = suggestionByExercise.get(te.exerciseId);
+          return (
           <Card key={te.id}>
             <View className="flex-row items-center justify-between">
               <Body className="flex-1 font-semibold text-foreground">{te.exercise?.name ?? 'Exercise'}</Body>
@@ -118,6 +153,11 @@ export default function WorkoutPreviewScreen() {
                 {te.targetRepsMax !== te.targetRepsMin ? `–${te.targetRepsMax}` : ''}
               </Badge>
             </View>
+            {sug && sug.weight > 0 ? (
+              <Caption className="mt-1 text-primary">
+                Try {formatWeight(sug.weight, unit)} × {sug.reps}
+              </Caption>
+            ) : null}
             <View className="mt-2 flex-row items-center gap-4">
               <View className="flex-row items-center gap-1.5">
                 <Icon icon={METRIC_ICONS.equipment} size={13} color="muted-foreground" />
@@ -129,7 +169,8 @@ export default function WorkoutPreviewScreen() {
               </View>
             </View>
           </Card>
-        ))}
+          );
+        })}
       </View>
 
       <View className="absolute inset-x-0 bottom-0 border-t border-border bg-background p-5 pb-8 shadow-xl">

@@ -13,6 +13,7 @@ import { RestTimerPickerSheet } from './rest-timer-picker-sheet';
 import { estimated1RM, formatWeight, repsToBeat1RM } from '@/db/calc';
 import type { SetEntry, Unit } from '@/db/types';
 import type { ExercisePRSummary } from '@/db/queries';
+import type { TrainingSuggestion } from '@/coaching/types';
 import { Plus, Clock, Flame, CircleHelp, ChevronRight } from 'lucide-react-native';
 import { SET_COL } from './set-layout';
 
@@ -41,6 +42,7 @@ export function ExerciseBlock({
   onApplyLoad,
   onOpenExercise,
   showWarmUpSets = true,
+  loadSuggestion,
   className,
 }: {
   name: string;
@@ -62,6 +64,7 @@ export function ExerciseBlock({
   /** Open exercise detail (history / charts). */
   onOpenExercise?: () => void;
   showWarmUpSets?: boolean;
+  loadSuggestion?: TrainingSuggestion | null;
   className?: string;
 }) {
   const [restPickerOpen, setRestPickerOpen] = useState(false);
@@ -122,6 +125,11 @@ export function ExerciseBlock({
             <PreviousBestBadge lastSets={lastSets} unit={unit} />
             {alreadyBeating ? (
               <Text className="text-xs font-medium text-primary">PR pace</Text>
+            ) : null}
+            {loadSuggestion && loadSuggestion.weight > 0 ? (
+              <Text className="text-xs font-medium text-primary">
+                Suggested {formatWeight(loadSuggestion.weight, unit)} × {loadSuggestion.reps}
+              </Text>
             ) : null}
             {hasAssist ? (
               <Pressable
@@ -266,9 +274,14 @@ export function ExerciseBlock({
             ) : null}
           </View>
 
-          {onApplyLoad && (lastTop || prWeight) ? (
+            {onApplyLoad && (lastTop || prWeight || (loadSuggestion && loadSuggestion.weight > 0)) ? (
             <View className="gap-2">
               <Caption className="font-medium uppercase tracking-wide">Fill next incomplete set</Caption>
+              {loadSuggestion && loadSuggestion.weight > 0 ? (
+                <Button onPress={() => applyAndClose(loadSuggestion.weight, loadSuggestion.reps)}>
+                  {`Use suggestion — ${formatWeight(loadSuggestion.weight, unit)} × ${loadSuggestion.reps}`}
+                </Button>
+              ) : null}
               {lastTop && lastTop.weight > 0 ? (
                 <Button
                   variant="outline"

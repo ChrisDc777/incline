@@ -31,6 +31,7 @@ import {
   getExercisePRSummary,
   getLastSetsForExercises,
   getRestDefaultsForSession,
+  getTemplateSuggestions,
   getWorkoutLog,
   removeSet,
   restoreSet,
@@ -46,6 +47,7 @@ import { MuscleBodyMap } from '@/components/progress/muscle-body-map';
 import { shouldStartRestAfterComplete } from '@/lib/superset-rest';
 
 import type { Exercise, MuscleGroup, SetEntry } from '@/db/types';
+import type { TrainingSuggestion } from '@/coaching/types';
 
 interface Group {
   exerciseId: number;
@@ -87,6 +89,7 @@ export default function SessionScreen() {
   const [session, setSession] = useState<SessionWorkout | null>(null);
   const [lastSetsMap, setLastSetsMap] = useState<Record<number, SetEntry[]>>({});
   const [prMap, setPrMap] = useState<Record<number, ExercisePRSummary>>({});
+  const [suggestionMap, setSuggestionMap] = useState<Record<number, TrainingSuggestion>>({});
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<ScrollView>(null);
   const groupRefs = useRef<(View | null)[]>([]);
@@ -122,14 +125,16 @@ export default function SessionScreen() {
     }
     // PR / last-session assist is secondary — load after the set list is interactive.
     void (async () => {
-      const [lastMap, prEntries] = await Promise.all([
+      const [lastMap, prEntries, templateSug] = await Promise.all([
         getLastSetsForExercises(exIds),
         Promise.all(exIds.map(async (eid) => [eid, await getExercisePRSummary(eid)] as const)),
+        s.templateId ? getTemplateSuggestions(s.templateId, unit) : Promise.resolve([]),
       ]);
       setLastSetsMap(lastMap);
       setPrMap(Object.fromEntries(prEntries));
+      setSuggestionMap(Object.fromEntries(templateSug.map((sug) => [sug.exerciseId, sug])));
     })();
-  }, [logId]);
+  }, [logId, unit]);
 
   useEffect(() => {
     load();
@@ -509,6 +514,7 @@ export default function SessionScreen() {
                   onApplyLoad={(weight, reps) => onApplyLoad(g.exerciseId, weight, reps)}
                   onOpenExercise={() => router.push(`/exercise/${g.exerciseId}` as Href)}
                   showWarmUpSets={showWarmUpSets}
+                  loadSuggestion={suggestionMap[g.exerciseId] ?? null}
                 />
               </View>
             );})}

@@ -11,7 +11,7 @@ import { Text } from '@/components/ui/text';
 import { Sheet } from '@/components/ui/sheet';
 import { Chip } from '@/components/common/chip';
 import { SegmentedControl } from '@/components/common/segmented-control';
-import { getWorkoutDays, getDailyCalendarMetrics, getStreak, type DailyCalendarMetrics } from '@/db/queries';
+import { getWorkoutDays, getDailyCalendarMetrics, getWeeklyConsistency, type DailyCalendarMetrics } from '@/db/queries';
 import type { CalendarHeatMetric, WeekStartsOn } from '@/db/types';
 import { cn } from '@/lib/cn';
 import { SCREEN_CONTENT, SCREEN_HEADER } from '@/lib/layout';
@@ -285,6 +285,7 @@ export default function CalendarScreen() {
   const primary = usePrimaryHex();
   const calendarHeatMetric = useSettings((s) => s.calendarHeatMetric);
   const weekStartsOn = useSettings((s) => s.weekStartsOn);
+  const weeklyWorkoutGoal = useSettings((s) => s.weeklyWorkoutGoal);
   const today = useMemo(() => new Date(), []);
   const [now] = useState(() => Date.now());
   const [mode, setMode] = useState<CalendarMode>('month');
@@ -292,6 +293,8 @@ export default function CalendarScreen() {
   const [workoutDaySet, setWorkoutDaySet] = useState<Set<string>>(new Set());
   const [metricsByDate, setMetricsByDate] = useState<Record<string, DailyCalendarMetrics>>({});
   const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [weekGoalProgress, setWeekGoalProgress] = useState<string | null>(null);
   const [restDays, setRestDays] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(today.getFullYear());
@@ -334,11 +337,20 @@ export default function CalendarScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const [days, metrics] = await Promise.all([getWorkoutDays(), getDailyCalendarMetrics()]);
+        const [days, metrics, consistency] = await Promise.all([
+          getWorkoutDays(),
+          getDailyCalendarMetrics(),
+          getWeeklyConsistency(weeklyWorkoutGoal),
+        ]);
         setWorkoutDaySet(new Set(days.map((d) => toDateKey(new Date(d)))));
         setMetricsByDate(metrics);
-        const s = await getStreak();
-        setStreak(s);
+        setStreak(consistency.currentWeeklyStreak);
+        setBestStreak(consistency.bestWeeklyStreak);
+        setWeekGoalProgress(
+          consistency.goal > 0
+            ? `${consistency.sessionsThisWeek}/${consistency.goal} this week`
+            : null,
+        );
         if (days.length > 0) {
           const firstDay = days[0];
           const totalDays = Math.floor((now - firstDay) / 86400000) + 1;
@@ -350,7 +362,7 @@ export default function CalendarScreen() {
         // Leave the calendar usable even if stats fail to load.
       }
     })();
-  }, [now]);
+  }, [now, weeklyWorkoutGoal]);
 
   const handleDayPress = useCallback((dayMs: number) => {
     router.push({ pathname: '/(app)/day/[ms]', params: { ms: String(dayMs) } });
@@ -518,12 +530,15 @@ export default function CalendarScreen() {
       <View className="mx-4 mt-2 flex-row gap-3">
         <View className="flex-1 flex-row items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-3">
           <Icon icon={METRIC_ICONS.streak} size={16} color="warning" />
-          <Caption className="text-sm font-medium text-foreground">{streak} week streak</Caption>
+          <Caption className="text-sm font-medium text-foreground">
+            {streak}w streak{bestStreak > streak ? ` · best ${bestStreak}w` : ''}
+          </Caption>
         </View>
         <View className="flex-1 flex-row items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-3">
-          <Icon icon={Moon} size={16} color="info" />
+          <Icon icon={weekGoalProgress ? METRIC_ICONS.sessions : Moon} size={16} color="info" />
           <Caption className="text-sm font-medium text-foreground">
-            {mode === 'year' ? `${yearWorkoutCount} days` : `${restDays} rest days`}
+            {weekGoalProgress ??
+              (mode === 'year' ? `${yearWorkoutCount} days` : `${restDays} rest days`)}
           </Caption>
         </View>
       </View>

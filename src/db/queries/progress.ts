@@ -35,6 +35,72 @@ export async function getStreak(): Promise<number> {
   return streak;
 }
 
+export interface WeeklyConsistency {
+  weekStartMs: number;
+  sessionsThisWeek: number;
+  goal: number;
+  goalMet: boolean;
+  sessionsToGoal: number;
+  currentWeeklyStreak: number;
+  bestWeeklyStreak: number;
+}
+
+/** Sessions in the week containing `now` (Monday-based week bounds). */
+export async function getSessionsInWeek(weekStartMs: number): Promise<number> {
+  const db = await openDatabase();
+  const end = weekStartMs + 7 * 86_400_000;
+  const row = await db.getFirstAsync<{ c: number }>(
+    'SELECT COUNT(*) as c FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL AND started_at >= ? AND started_at < ?',
+    weekStartMs,
+    end,
+  );
+  return row?.c ?? 0;
+}
+
+/** Best consecutive weeks-with-session streak ever (Monday-based). */
+export async function getBestWeeklyStreak(): Promise<number> {
+  const db = await openDatabase();
+  const rows = await db.getAllAsync<{ started_at: number }>(
+    'SELECT started_at FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL ORDER BY started_at ASC',
+  );
+  if (rows.length === 0) return 0;
+  const weeks = [...new Set(rows.map((r) => isoDate(startOfWeek(r.started_at))))].sort();
+  let best = 1;
+  let run = 1;
+  for (let i = 1; i < weeks.length; i++) {
+    const prev = new Date(`${weeks[i - 1]}T00:00:00`).getTime();
+    const cur = new Date(`${weeks[i]}T00:00:00`).getTime();
+    if (cur - prev === 7 * 86_400_000) {
+      run++;
+      best = Math.max(best, run);
+    } else {
+      run = 1;
+    }
+  }
+  return best;
+}
+
+export async function getWeeklyConsistency(weeklyGoal: number, now = Date.now()): Promise<WeeklyConsistency> {
+  const weekStartMs = startOfWeek(now);
+  const sessionsThisWeek = await getSessionsInWeek(weekStartMs);
+  const goal = Math.max(0, weeklyGoal);
+  const goalMet = goal > 0 && sessionsThisWeek >= goal;
+  const sessionsToGoal = goal > 0 ? Math.max(0, goal - sessionsThisWeek) : 0;
+  const [currentWeeklyStreak, bestWeeklyStreak] = await Promise.all([
+    getStreak(),
+    getBestWeeklyStreak(),
+  ]);
+  return {
+    weekStartMs,
+    sessionsThisWeek,
+    goal,
+    goalMet,
+    sessionsToGoal,
+    currentWeeklyStreak,
+    bestWeeklyStreak,
+  };
+}
+
 export async function getProgressStats(weeks = 8): Promise<ProgressStats> {
   const db = await openDatabase();
   const now = Date.now();
