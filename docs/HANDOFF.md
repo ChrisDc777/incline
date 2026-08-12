@@ -1,6 +1,6 @@
 # Agent handoff — read this after `git pull`
 
-Last updated: **2026-08-12** (P1 closeout + P2 Stage A coaching merged).
+Last updated: **2026-08-12** (P1 closeout + P2 Stage A coaching merged; stale `AUTH_AND_API_PLAN.md` removed).
 
 ## Current product state
 
@@ -42,6 +42,7 @@ src/components/home/             # HomeContextCard UI
 
 ## Architecture constraints (do not break)
 
+- Auth is **Clerk** (JWT template `supabase` for cloud). Do not reintroduce Supabase Auth.
 - SQLite + outbox = source of truth; coaching is **recomputed**, not synced
 - Rules own load/reps; LLM (later) may only narrate — never invent numbers
 - Session logging must never await network or AI
