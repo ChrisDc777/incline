@@ -1,119 +1,116 @@
 # Incline
 
-A workout tracker built with React Native + Expo. Log sets with per-exercise rest timers, follow multi-week programs, and watch your volume and personal records grow.
+Offline-first strength training app for React Native + Expo. Log sets in the gym, follow programs and routines, and get **explainable progressive overload** suggestions from your own history — even without a network.
 
-> **Status:** pre-alpha. Local-first and single-device (SQLite); there is **no cloud sync yet** and accounts are required to use the app.
+> **Status:** pre-alpha. Core loop (onboard → log → finish → progress) works locally. Cloud sync is **implemented in code** (Clerk JWT + Supabase outbox/RLS) but **ops are not fully proven** for multi-device yet — see [#57](https://github.com/ChrisDc777/incline/issues/57). Accounts (Clerk) are required.
 
-## Features
+**Product north star:** the offline coach that tells you the next weight/reps, shows *why*, and knows when to hold — not another social logger.
 
-- **Accounts** — Email sign-up / sign-in via Clerk (mandatory)
-- **Workout logging** — Live session screen with weight/reps per set, warm-up sets, previous-session carry-over, one-tap complete, undo, and an auto-advancing keyboard flow
-- **Rest timer** — Per-exercise countdown with presets, ±15s, skip, and a completion sound + haptic
-- **Templates** — Save reusable workouts and start one in a tap; Home suggests a routine
-- **Programs** — Multi-week programs with a day-by-day grid (view-only today; builder planned — see ROADMAP)
-- **Progress & insights** — Volume over time, streaks, estimated 1RM, personal records, muscle split, PR calls
-- **Bodyweight tracking** — Trend chart with optional goal
-- **Exercise library** — Large catalog with muscles, equipment, and instructions (Supabase-backed, with a bundled fallback catalog)
-- **Home feed** — Recent workout history with stats and a "no workouts yet" first-run state
-- **Tools** — Plate calculator (bar type + include-bar toggle), 1RM / bodyweight calculators, calendar
-- **Preferences** — kg/lb unit toggle, dark/light/system theme, accent color (indigo default + alternatives), haptics, warm-up sets, auto-start rest, default rest duration
-- **Offline-first** — Everything is stored locally in SQLite; works without internet
+## What’s in the app today
 
-## Tech Stack
+### Logging & gym UX
+- Live sessions: weight/reps, warm-up sets (`set_type`), previous-session carry-over, one-tap complete, undo
+- Rest timer: per-exercise / after-superset, OS alerts, sound + haptics
+- Supersets / circuits on templates and in-session
+- Templates (routines), program builder (local), Quick Start
+
+### Habit loops
+- Dynamic Home context cards (reports, inactivity, weekly goal, coaching, announcements)
+- Workout reminders + optional Sunday weekly digest (local notifications)
+- Weekly / monthly recaps and share slides
+- Calendar heatmap, weekly streak, weekly workout goal
+- Bodyweight + circumference measures; JSON/CSV export (incl. measurements)
+
+### Coaching (Stage A — offline rules)
+- Plate-aware double progression with reason codes
+- Surfaces: workout preview, session assist, post-workout “Next time”, Home insight card
+- Rules live in `src/coaching/`; suggestions are recomputed from SQLite (not synced)
+
+### Progress & tools
+- Volume, estimated 1RM / PRs, muscle distribution, achievements
+- Plate calculator, 1RM / bodyweight tools
+- Settings: units, theme, accent, rest defaults, calendar prefs, reminders
+
+### Trust & identity
+- Clerk email auth (mandatory)
+- Local SQLite source of truth; sync outbox → Supabase when configured
+- Soft-delete / UUID-ready rows; Settings “Backup & restore” triggers sync
+
+## What is *not* ready yet
+
+| Area | Notes |
+|------|--------|
+| Sync ops | Deploy schema + multi-device verification — [#57](https://github.com/ChrisDc777/incline/issues/57) |
+| Coaching Stage B/C | Fatigue, deload, RPE, adaptive plans — [#97](https://github.com/ChrisDc777/incline/issues/97), [#98](https://github.com/ChrisDc777/incline/issues/98) |
+| Cloud AI narrations | Edge Function after sync is proven — [#99](https://github.com/ChrisDc777/incline/issues/99) |
+| Social / Health / marketplace | P3+ |
+
+## Docs for humans & agents
+
+| Doc | Purpose |
+|-----|---------|
+| [docs/HANDOFF.md](docs/HANDOFF.md) | **Start here after `git pull`** — current state, next issues |
+| [docs/P1-P2-COACHING.md](docs/P1-P2-COACHING.md) | P1 habit closeout + P2 Stage A architecture |
+| [ROADMAP.md](ROADMAP.md) | Milestones P0–P4 |
+| [AGENTS.md](AGENTS.md) | Agent entry (Expo SDK 57 + doc pointers) |
+
+Tracking: [GitHub milestones](https://github.com/ChrisDc777/incline/milestones).
+
+## Tech stack
 
 | Layer | Technology |
-|---|---|
-| Framework | Expo SDK 57, React Native 0.86 |
-| Navigation | Expo Router (file-based) |
-| Styling | NativeWind v4 (TailwindCSS) |
-| Database | expo-sqlite (local) |
+|-------|------------|
+| App | Expo SDK 57, React Native 0.86, Expo Router |
+| UI | NativeWind v4, Reanimated, Lucide, Gifted Charts, FlashList, Geist |
+| Local data | expo-sqlite (schema v11), Zustand + SQLite `kv` |
 | Auth | Clerk (`@clerk/clerk-expo`) |
-| Remote data | Supabase (exercise library) |
-| State | Zustand (persisted) |
-| Icons | Lucide React Native |
-| Animations | React Native Reanimated |
-| Charts | react-native-gifted-charts |
-| Lists | FlashList |
-| Fonts | Geist (`@expo-google-fonts/geist`) |
+| Cloud | Supabase (exercise catalog + user sync tables / RLS) |
+| Coaching | Pure TypeScript rules in `src/coaching/` (no model keys in the app) |
 
-## Getting Started
+## Getting started
 
-Prerequisites: Node 20+, an Expo account for running on a device.
+Prerequisites: Node 20+, Expo tooling for device/simulator.
 
 ```bash
-# Install dependencies
 npm install
-
-# Copy and fill in the environment variables
-cp .env.example .env.local
-
-# Start the dev server
+cp .env.example .env.local   # fill Clerk (required); Supabase optional for catalog/sync
 npx expo start
-
-# Run on Android / iOS
-npx expo start --android
-npx expo start --ios
+# npx expo start --android | --ios
 ```
 
-### Environment variables
+### Environment
 
 | Variable | Required | Purpose |
-|---|---|---|
-| `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes | Clerk publishable key (auth is mandatory) |
-| `EXPO_PUBLIC_SUPABASE_URL` | No | Supabase project URL for the exercise library |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | No | Supabase anon key for the exercise library |
-| `EXPO_PUBLIC_EXERCISEDB_API_KEY` / `_HOST` | No | Only needed for the one-time exercise import script |
+|----------|----------|---------|
+| `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes | Auth |
+| `EXPO_PUBLIC_SUPABASE_URL` | No* | Catalog + sync |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | No* | Catalog + sync |
 
-If the Supabase variables are missing, the app falls back to the bundled local exercise catalog.
+\*Without Supabase, the app uses the bundled exercise catalog and stays fully local. Sync needs a deployed `supabase/sync-schema.sql` and a Clerk JWT template named `supabase`.
 
-## Project Structure
+## Project structure (high level)
 
 ```
 src/
-├── app/                    # Expo Router file-based routes
-│   ├── (auth)/             # Sign-in / sign-up
-│   ├── (onboarding)/       # First-run setup (name, bodyweight, goal, level)
-│   ├── (app)/              # Authenticated area
-│   │   ├── (tabs)/         # Home, Workouts, Progress, Profile
-│   │   ├── settings/       # App settings
-│   │   ├── program/[id]    # Program detail (view-only)
-│   │   └── plate-calculator/, bodyweight/, calendar/, calculator/
-│   ├── session/[id]        # Active workout session
-│   ├── summary/[id]        # Post-workout summary
-│   ├── workout/[id]        # Workout preview / template detail
-│   ├── edit-workout/[id]   # Edit a logged workout
-│   └── exercise/[id]       # Exercise detail
-├── components/
-│   ├── common/             # Shared components (Text, TabBar, Screen, states)
-│   ├── ui/                 # Primitives (Button, Card, Dialog, Sheet, Input…)
-│   ├── workout/            # Session-specific (SetRow, RestTimer, NumberStepper…)
-│   ├── progress/           # Charts, PR cards, muscle donut
-│   └── exercise/           # Exercise list items, create form
-├── db/                     # SQLite schema, queries, types, helpers
-├── hooks/                  # Custom hooks (rest timer, haptics, data fetching)
-├── store/                  # Zustand stores (settings, active workout)
-├── lib/                    # Utilities (cn, icon-color, plate-calculator, env)
-└── auth/                   # Clerk token cache (secure store)
+├── app/                 # Expo Router routes (auth, onboarding, tabs, session, reports…)
+├── components/          # UI, workout, progress, home context cards
+├── coaching/            # Offline overload + insight rules
+├── db/                  # Schema, migrations, queries (incl. coaching/)
+├── sync/                # Outbox → Supabase engine
+├── lib/                 # Home context, announcements, notifications, export…
+├── store/               # Settings, active workout
+├── hooks/               # Data, rest timer, sync, reminders
+└── auth/                # Clerk secure token cache
+docs/                    # HANDOFF, P1-P2 coaching notes
+supabase/                # Catalog + sync SQL
 ```
 
-## Database
-
-Local SQLite database (all user data lives on-device):
-
-- `exercises`, `exercise_aliases`, `exercise_secondary_muscles`, `exercise_instructions`, `exercise_images`
-- `workout_templates`, `template_exercises`
-- `programs`, `program_workouts`
-- `workout_logs`, `set_entries`
-- `user_profile`, `bodyweight_entries`
-- `kv` (persisted app settings), `schema_meta` (schema version + seed tracking)
-
-## Scripts
+## Verify
 
 ```bash
-npm run typecheck    # TypeScript type checking
-npm run lint         # ESLint
-npm run lint:fix     # ESLint with auto-fix
-npm test             # Unit tests (calc helpers, migrations, session SQL)
+npm run typecheck
+npm run test
+npm run lint
 ```
 
 ## License
