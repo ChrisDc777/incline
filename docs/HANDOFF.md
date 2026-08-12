@@ -1,20 +1,24 @@
 # Agent handoff — read this after `git pull`
 
-Last updated: **2026-08-12** (P1 closeout + P2 Stage A coaching merged; stale `AUTH_AND_API_PLAN.md` removed).
+Last updated: **2026-08-12** (#12 calendar day streak + yearly/monthly frequency).
 
 ## Current product state
 
-- **Branch:** `main`
+- **Branch:** `feat/issue-12-streaks-heatmap` (not yet merged)
 - **Schema version:** 11 (`011_set_type` — warm-up vs working sets)
 - **Status:** Pre-alpha; offline-first logger with habit loops + explainable overload coaching (Stage A)
 
 ## What was just shipped
 
-Full detail: [P1-P2-COACHING.md](./P1-P2-COACHING.md)
+Calendar remainder of [#12](https://github.com/ChrisDc777/incline/issues/12): day streak (calendar-only; Home/achievements stay weekly), monthly + yearly frequency, per-month trained-day counts on the year grid. Tap-a-day and weekly goal were already on main.
+
+Pure helpers: [`src/lib/consistency.ts`](../src/lib/consistency.ts)
+
+Full P1/P2 Stage A detail: [P1-P2-COACHING.md](./P1-P2-COACHING.md)
 
 | Area | Summary |
 |------|---------|
-| P1 | Ranked Home context cards, weekly workout goal, announcements pack, credible template suggestions, editable duration, measurement export |
+| P1 | Ranked Home context cards, weekly workout goal, announcements pack, credible template suggestions, editable duration, measurement export, calendar streaks/frequency |
 | P2 Stage A | `src/coaching/` — double-progression load suggestions with reason codes on workout preview, session, summary, Home |
 
 **Closed issues:** [#41](https://github.com/ChrisDc777/incline/issues/41), [#90](https://github.com/ChrisDc777/incline/issues/90)
@@ -22,17 +26,18 @@ Full detail: [P1-P2-COACHING.md](./P1-P2-COACHING.md)
 ## Recommended next work (priority order)
 
 1. **P0 ops** — [#57](https://github.com/ChrisDc777/incline/issues/57) Supabase sync (multi-device proof; deploy `supabase/sync-schema.sql` incl. `set_type` / `superset_group`)
-2. **P1 remainder** — [#12](https://github.com/ChrisDc777/incline/issues/12) day streak / yearly frequency (weekly goal + best streak shipped)
-3. **P2 Stage B** — [#97](https://github.com/ChrisDc777/incline/issues/97) fatigue, deload, substitution, expanded insights
-4. **P2 hygiene** — [#100](https://github.com/ChrisDc777/incline/issues/100) unify PR semantics; [#101](https://github.com/ChrisDc777/incline/issues/101) warm-up backfill
-5. **P2 Stage C** — [#98](https://github.com/ChrisDc777/incline/issues/98) RPE, readiness, adaptive program diffs
-6. **AI layer** — [#99](https://github.com/ChrisDc777/incline/issues/99) Edge Function `coach-narrate` (only after #57 proven)
+2. **P2 Stage B** — [#97](https://github.com/ChrisDc777/incline/issues/97) fatigue, deload, substitution, expanded insights
+3. **P2 hygiene** — [#100](https://github.com/ChrisDc777/incline/issues/100) unify PR semantics; [#101](https://github.com/ChrisDc777/incline/issues/101) warm-up backfill
+4. **P2 Stage C** — [#98](https://github.com/ChrisDc777/incline/issues/98) RPE, readiness, adaptive program diffs
+5. **AI layer** — [#99](https://github.com/ChrisDc777/incline/issues/99) Edge Function `coach-narrate` (only after #57 proven)
 
 Optional P1: [#94](https://github.com/ChrisDc777/incline/issues/94) measurement goals, [#95](https://github.com/ChrisDc777/incline/issues/95) export polish, [#23](https://github.com/ChrisDc777/incline/issues/23) progress photos.
 
 ## Key code paths
 
 ```
+src/lib/consistency.ts           # Day/week streaks + month/year frequency
+src/app/(app)/calendar.tsx       # Heatmap, streaks, tap-a-day
 src/lib/home-context.ts          # Home card ranking
 src/coaching/                    # Rules engine (overload, insights)
 src/db/queries/coaching/         # Template/exercise suggestions
