@@ -2,6 +2,8 @@
 
 Status: **pre-alpha**. Core loop (onboarding → log → finish → progress) is local-first and working.
 
+**Agents:** After pulling, read [docs/HANDOFF.md](docs/HANDOFF.md) for current state and next issues.
+
 Tracking lives in **GitHub milestones** (architecture notes are on each milestone description):
 
 | Milestone | Intent |
