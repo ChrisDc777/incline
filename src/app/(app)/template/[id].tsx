@@ -49,6 +49,7 @@ export default function TemplateEditorScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>('intermediate');
+  const [estimatedMinutes, setEstimatedMinutes] = useState(45);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -68,6 +69,7 @@ export default function TemplateEditorScreen() {
         setName(t.name);
         setDescription(t.description);
         setDifficulty(t.difficulty);
+        setEstimatedMinutes(t.estimatedMinutes);
         setExercises((t.exercises ?? []) as Exercise[]);
       }
       setLoading(false);
@@ -135,7 +137,7 @@ export default function TemplateEditorScreen() {
         toast({ title: 'Routine created', variant: 'success' });
         router.replace(`/workout/${newId}`);
       } else if (templateId) {
-        await updateTemplate(templateId, { name: name.trim(), description: description.trim(), difficulty });
+        await updateTemplate(templateId, { name: name.trim(), description: description.trim(), difficulty, estimatedMinutes });
         toast({ title: 'Routine saved', variant: 'success' });
         router.back();
       }
@@ -200,6 +202,10 @@ export default function TemplateEditorScreen() {
                 <Chip key={d} label={DIFFICULTY_LABELS[d]} selected={difficulty === d} onPress={() => setDifficulty(d)} />
               ))}
             </View>
+          </View>
+          <View className="gap-1">
+            <Label>Duration target (minutes)</Label>
+            <NumberStepper value={estimatedMinutes} min={15} max={180} step={5} onChange={setEstimatedMinutes} />
           </View>
         </View>
 

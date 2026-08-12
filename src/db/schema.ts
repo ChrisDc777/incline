@@ -8,7 +8,7 @@
  * `runMigrations` in `client.ts`. Keep SCHEMA_VERSION in sync with the latest
  * migration version.
  */
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 export const SCHEMA_STATEMENTS: string[] = [
   // ---- exercises (catalog + custom) ----
@@ -150,6 +150,7 @@ export const SCHEMA_STATEMENTS: string[] = [
     completed INTEGER NOT NULL DEFAULT 0,
     rest_seconds INTEGER,
     superset_group INTEGER,
+    set_type TEXT NOT NULL DEFAULT 'working',
     uuid TEXT,
     deleted_at INTEGER,
     created_at INTEGER NOT NULL,

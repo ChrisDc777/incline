@@ -70,6 +70,8 @@ async function enqueueSetUpsert(setId: number): Promise<void> {
     reps: row.reps,
     completed: row.completed,
     rest_seconds: row.rest_seconds,
+    superset_group: row.superset_group,
+    set_type: row.set_type ?? 'working',
     created_at: row.created_at,
     updated_at: row.updated_at,
     deleted_at: row.deleted_at,
@@ -231,7 +233,7 @@ export async function addWarmUpSet(logId: number, exerciseId: number): Promise<n
   const warmUpWeight = Math.max(0, Math.round((workingWeight * 0.5) / 2.5) * 2.5);
   const nextIndex = last ? last.set_index + 1 : 0;
   const res = await db.runAsync(
-    `INSERT INTO set_entries (workout_log_id, exercise_id, set_index, weight, reps, completed, rest_seconds, uuid, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, NULL, ?, ?, ?)`,
+    `INSERT INTO set_entries (workout_log_id, exercise_id, set_index, weight, reps, completed, rest_seconds, set_type, uuid, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, NULL, 'warmup', ?, ?, ?)`,
     logId, exerciseId, nextIndex, warmUpWeight, heaviest?.reps ?? 10, newUuid(), now, now,
   );
   const setId = res.lastInsertRowId as number;

@@ -107,6 +107,8 @@ CREATE TABLE IF NOT EXISTS set_entries (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   deleted_at TIMESTAMPTZ
 );
+ALTER TABLE set_entries ADD COLUMN IF NOT EXISTS superset_group INTEGER;
+ALTER TABLE set_entries ADD COLUMN IF NOT EXISTS set_type TEXT NOT NULL DEFAULT 'working';
 CREATE INDEX IF NOT EXISTS idx_set_entries_user_updated
   ON set_entries (user_id, updated_at);
 CREATE INDEX IF NOT EXISTS idx_set_entries_log

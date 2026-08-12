@@ -19,6 +19,7 @@ import {
   createTemplateFromWorkoutLog,
   deleteWorkout,
   getPreviousTemplateVolume,
+  getTemplateSuggestions,
   getWorkoutLog,
   getWorkoutMuscleSplit,
   getWorkoutPrs,
@@ -27,6 +28,8 @@ import {
   type MuscleSplit,
   type WorkoutPr,
 } from '@/db/queries';
+import { postSessionInsights } from '@/coaching/insights';
+import type { TrainingSuggestion } from '@/coaching/types';
 import { useSettings } from '@/store/settings-store';
 import { useProfile } from '@/hooks/use-data';
 import { formatDuration, formatVolume, formatWeight, formatFullDateTime } from '@/db/calc';
@@ -46,6 +49,7 @@ export default function SummaryScreen() {
   const [muscleSplit, setMuscleSplit] = useState<MuscleSplit[]>([]);
   const [prs, setPrs] = useState<WorkoutPr[]>([]);
   const [volumeDelta, setVolumeDelta] = useState<{ previousVolume: number; deltaPct: number | null } | null>(null);
+  const [nextSuggestions, setNextSuggestions] = useState<TrainingSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -63,8 +67,14 @@ export default function SummaryScreen() {
     setMuscleSplit(split);
     setPrs(prList);
     setVolumeDelta(prevVol);
+    if (s?.templateId) {
+      const sug = await getTemplateSuggestions(s.templateId, unit);
+      setNextSuggestions(sug.filter((x) => x.weight > 0).slice(0, 3));
+    } else {
+      setNextSuggestions([]);
+    }
     setLoading(false);
-  }, [logId]);
+  }, [logId, unit]);
 
   useFocusEffect(
     useCallback(() => {
@@ -212,6 +222,31 @@ export default function SummaryScreen() {
         </View>
 
         <FinishCelebration active={showCelebration} prCount={prs.length} />
+
+        {postSessionInsights({
+          prCount: prs.length,
+          volumeDeltaPct: volumeDelta?.deltaPct ?? null,
+          suggestions: nextSuggestions.map((s) => ({
+            exerciseName: s.exerciseName,
+            reasonText: s.reasonText,
+          })),
+        }).length > 0 ? (
+          <View className="mb-4 rounded-2xl bg-card p-3">
+            <Caption className="mb-2 font-semibold text-foreground">Next time</Caption>
+            {postSessionInsights({
+              prCount: prs.length,
+              volumeDeltaPct: volumeDelta?.deltaPct ?? null,
+              suggestions: nextSuggestions.map((s) => ({
+                exerciseName: s.exerciseName,
+                reasonText: s.reasonText,
+              })),
+            }).map((line) => (
+              <Body key={line} className="mt-1 text-sm text-foreground">
+                {line}
+              </Body>
+            ))}
+          </View>
+        ) : null}
 
         <Button
           variant="outline"

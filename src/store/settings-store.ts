@@ -27,6 +27,8 @@ interface SettingsState extends Settings {
   setWeeklyDigestTime: (hour: number, minute: number) => void;
   setEnabledBodyMetrics: (metrics: BodyMetric[]) => void;
   toggleBodyMetric: (metric: BodyMetric) => void;
+  setWeeklyWorkoutGoal: (goal: number) => void;
+  dismissAnnouncement: (id: string) => void;
 }
 
 const DEFAULT_REST_OPTIONS = [30, 60, 90, 120] as const;
@@ -66,6 +68,18 @@ function sanitizeMinute(minute: unknown, fallback = 0): number {
   return Math.min(59, Math.max(0, Math.round(minute)));
 }
 
+function sanitizeWeeklyGoal(goal: unknown): number {
+  if (typeof goal !== 'number' || !Number.isFinite(goal)) return 4;
+  const g = Math.round(goal);
+  if (g <= 0) return 0;
+  return Math.min(7, Math.max(1, g));
+}
+
+function sanitizeDismissedIds(ids: unknown): string[] {
+  if (!Array.isArray(ids)) return [];
+  return [...new Set(ids.filter((id): id is string => typeof id === 'string' && id.length > 0))];
+}
+
 /**
  * Minimal global settings store. The only genuinely cross-screen, persisted
  * global state in the app. Persisted to the SQLite kv table (no AsyncStorage).
@@ -92,6 +106,8 @@ export const useSettings = create<SettingsState>()(
       weeklyDigestHour: 18,
       weeklyDigestMinute: 0,
       enabledBodyMetrics: [...DEFAULT_ENABLED_BODY_METRICS],
+      weeklyWorkoutGoal: 4,
+      dismissedAnnouncementIds: [],
       setUnit: (unit) => set({ unit }),
       setThemeMode: (themeMode) => set({ themeMode }),
       setAccentTheme: (accentTheme) => set({ accentTheme }),
@@ -120,13 +136,19 @@ export const useSettings = create<SettingsState>()(
         set({ enabledBodyMetrics: sanitizeEnabledBodyMetrics(metrics) }),
       toggleBodyMetric: (metric) =>
         set((s) => {
-          if (metric === 'bodyweight') return s; // keep bodyweight always on
+          if (metric === 'bodyweight') return s;
           const has = s.enabledBodyMetrics.includes(metric);
           const next = has
             ? s.enabledBodyMetrics.filter((m) => m !== metric)
             : [...s.enabledBodyMetrics, metric];
           return { enabledBodyMetrics: sanitizeEnabledBodyMetrics(next) };
         }),
+      setWeeklyWorkoutGoal: (weeklyWorkoutGoal) =>
+        set({ weeklyWorkoutGoal: sanitizeWeeklyGoal(weeklyWorkoutGoal) }),
+      dismissAnnouncement: (id) =>
+        set((s) => ({
+          dismissedAnnouncementIds: sanitizeDismissedIds([...s.dismissedAnnouncementIds, id]),
+        })),
     }),
     {
       name: STORAGE_KEYS.settings,
@@ -151,6 +173,8 @@ export const useSettings = create<SettingsState>()(
         weeklyDigestHour: s.weeklyDigestHour,
         weeklyDigestMinute: s.weeklyDigestMinute,
         enabledBodyMetrics: s.enabledBodyMetrics,
+        weeklyWorkoutGoal: s.weeklyWorkoutGoal,
+        dismissedAnnouncementIds: s.dismissedAnnouncementIds,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<Settings>;
@@ -173,6 +197,8 @@ export const useSettings = create<SettingsState>()(
           weeklyDigestHour: sanitizeHour(p.weeklyDigestHour, 18),
           weeklyDigestMinute: sanitizeMinute(p.weeklyDigestMinute, 0),
           enabledBodyMetrics: sanitizeEnabledBodyMetrics(p.enabledBodyMetrics),
+          weeklyWorkoutGoal: sanitizeWeeklyGoal(p.weeklyWorkoutGoal),
+          dismissedAnnouncementIds: sanitizeDismissedIds(p.dismissedAnnouncementIds),
         };
       },
     },

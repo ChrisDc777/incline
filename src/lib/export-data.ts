@@ -70,6 +70,13 @@ export interface ExportPayload {
     unit: string;
     recordedAt: number;
   }[];
+  bodyMeasurements: {
+    id: number;
+    metric: string;
+    value: number;
+    unit: string;
+    recordedAt: number;
+  }[];
 }
 
 export function rangeStartMs(range: ExportRange, now = Date.now()): number | null {
