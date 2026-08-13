@@ -28,7 +28,7 @@ This document summarizes the P1 habit-loop closeout and P2 explainable coaching 
 
 **Surfaces:** workout preview, active session assist, post-workout summary “Next time”, Home coaching card.
 
-**Schema:** migration `011_set_type` — warm-up sets tagged `warmup`, excluded from overload history.
+**Schema:** migration `011_set_type` — warm-up vs working; `012_warmup_backfill` tags legacy light prefixes.
 
 ## P2 — Guardrails (Stage B)
 
@@ -42,6 +42,16 @@ This document summarizes the P1 habit-loop closeout and P2 explainable coaching 
 **Surfaces:** session banner + swap, Home deload card → `/(app)/deload`, muscle distribution coaching + least-trained, summary fatigue line.
 
 **Constraint:** suggestions only. `createDeloadTemplate` copies; it never mutates the source routine or program.
+
+## P2 — Hygiene (PR semantics + warm-up backfill)
+
+| Layer | Path |
+|-------|------|
+| PR rules | [`src/coaching/pr.ts`](../src/coaching/pr.ts) — `heaviest_weight`, `estimated_1rm`, `rep_record`, `volume_record` |
+| PR reads | [`src/db/queries/coaching/prs.ts`](../src/db/queries/coaching/prs.ts) |
+| Warm-up heuristic | [`src/coaching/warmup-backfill.ts`](../src/coaching/warmup-backfill.ts) + migration `012` |
+
+Celebration surfaces (toast, summary, recap, feed badge, achievements) use heaviest or e1RM and require a strict beat. Progress leaderboard still shows all-time bests per exercise.
 
 ## Architecture decisions
 
@@ -59,13 +69,12 @@ This document summarizes the P1 habit-loop closeout and P2 explainable coaching 
 
 ### Chosen: `set_type` column vs heuristic warm-up detection
 - **Why:** Explicit tagging is reliable; warm-up button already exists.
-- **Caveat:** Legacy warm-ups before migration remain `working` until re-logged; viable fix: one-time backfill heuristic (deferred).
+- **Follow-up:** Migration `012` applies a conservative prefix heuristic for pre-`set_type` logs (light/incomplete sets before near-peak work). Close ramps and back-off sets stay working.
 
 ## P2 deferred (backlog)
 
 - Stage C: RPE/RIR, readiness check-in, adaptive program diffs
 - AI-1: Edge Function narration (after P0 sync ops proven)
-- PR semantics unification across session/recap/achievements (partial — coaching uses working sets + e1RM where relevant)
 - Program + settings sync extension
 
 ## Verification
@@ -75,4 +84,4 @@ npm run typecheck
 npm run test
 ```
 
-Key tests: [`src/lib/__tests__/home-context.test.ts`](../src/lib/__tests__/home-context.test.ts)
+Key tests: [`src/lib/__tests__/home-context.test.ts`](../src/lib/__tests__/home-context.test.ts), [`src/coaching/__tests__/pr.test.ts`](../src/coaching/__tests__/pr.test.ts), [`src/coaching/__tests__/warmup-backfill.test.ts`](../src/coaching/__tests__/warmup-backfill.test.ts)

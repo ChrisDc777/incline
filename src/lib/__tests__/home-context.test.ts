@@ -55,6 +55,7 @@ describe('buildHomeContextCards', () => {
     ],
     muscleDistribution: [],
     prs: [],
+    prEventCount: 0,
     lastSessionAt: Date.now() - 5 * 86_400_000,
   };
 

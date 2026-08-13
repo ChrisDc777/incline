@@ -1,4 +1,5 @@
 import { openDatabase } from '../client';
+import { getPeriodPrs, getProgressPrStats } from './coaching/prs';
 import { estimated1RM, isoDate, startOfWeek } from '../calc';
 import { computeBestWeeklyStreak, computeWeeklyStreak } from '@/lib/consistency';
 import type {
@@ -6,7 +7,6 @@ import type {
   MuscleDistribution,
   MuscleGroup,
   PeriodStats,
-  PR,
   ProgressRange,
   ProgressStats,
   Trend,
@@ -114,36 +114,7 @@ export async function getProgressStats(weeks = 8): Promise<ProgressStats> {
   );
   const muscleDistribution: MuscleDistribution[] = muscleRows.map((r) => ({ muscle: r.primary_muscle as MuscleGroup, sets: r.sets, volume: r.volume }));
 
-  const prRows = await db.getAllAsync<{ id: number; name: string; weight: number; reps: number; created_at: number; best_volume: number }>(
-    `SELECT e.id, e.name, s.weight, s.reps, s.created_at, (s.weight * s.reps) as best_volume
-     FROM set_entries s JOIN exercises e ON e.id = s.exercise_id JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1 AND s.weight > 0`,
-  );
-  const bestMap = new Map<number, PR>();
-  for (const r of prRows) {
-    const oneRM = estimated1RM(r.weight, r.reps);
-    const cur = bestMap.get(r.id);
-    if (!cur || oneRM > cur.estimated1RM) {
-      bestMap.set(r.id, {
-        exerciseId: r.id,
-        exerciseName: r.name,
-        maxWeight: r.weight,
-        maxReps: r.reps,
-        estimated1RM: oneRM,
-        bestSetVolume: r.best_volume,
-        achievedAt: r.created_at,
-      });
-    } else if (oneRM === cur.estimated1RM && r.weight > cur.maxWeight) {
-      bestMap.set(r.id, {
-        ...cur,
-        maxWeight: r.weight,
-        maxReps: r.reps,
-        bestSetVolume: Math.max(cur.bestSetVolume, r.best_volume),
-        achievedAt: r.created_at,
-      });
-    }
-  }
-  const prs = [...bestMap.values()].sort((a, b) => b.estimated1RM - a.estimated1RM);
+  const { prs, prEventCount } = await getProgressPrStats();
 
   return {
     totalSessions: totals?.c ?? 0,
@@ -153,6 +124,7 @@ export async function getProgressStats(weeks = 8): Promise<ProgressStats> {
     weeklyVolume: buckets,
     muscleDistribution,
     prs,
+    prEventCount,
     lastSessionAt: totals?.last ?? null,
   };
 }
@@ -264,24 +236,8 @@ export async function getPeriodStats(range: ProgressRange): Promise<PeriodStats>
     }));
   }
 
-  // PRs achieved within the window (best estimate-1RM per exercise)
-  const prRows = await db.getAllAsync<{ exerciseId: number; name: string; weight: number; reps: number; created_at: number }>(
-    `SELECT e.id as exerciseId, e.name, s.weight, s.reps, s.created_at
-     FROM set_entries s JOIN exercises e ON e.id = s.exercise_id JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1 AND s.weight > 0 AND s.created_at >= ?`,
-    since,
-  );
-  const bestMap = new Map<number, { exerciseId: number; name: string; oneRM: number; at: number }>();
-  for (const r of prRows) {
-    const oneRM = estimated1RM(r.weight, r.reps);
-    const cur = bestMap.get(r.exerciseId);
-    if (!cur || oneRM > cur.oneRM) {
-      bestMap.set(r.exerciseId, { exerciseId: r.exerciseId, name: r.name, oneRM, at: r.created_at });
-    }
-  }
-  const prs: PR[] = [...bestMap.values()]
-    .map((b) => ({ exerciseId: b.exerciseId, exerciseName: b.name, maxWeight: 0, maxReps: 0, estimated1RM: b.oneRM, bestSetVolume: 0, achievedAt: b.at }))
-    .sort((a, b) => b.estimated1RM - a.estimated1RM);
+  // Celebration PRs in the window (all-time leaderboard when range is `all`)
+  const prs = await getPeriodPrs(since, range === 'all' ? null : now);
 
   // Trend: short ranges compare week-over-week; longer ranges compare month-over-month
   const bucketLen = range === '1w' || range === '30d' || range === '3m' ? 7 * DAY_MS : 30 * DAY_MS;

@@ -97,7 +97,7 @@ export default function MonthReportScreen() {
 
         {recap.prs.length > 0 ? (
           <>
-            <Caption className="mb-2 mt-6 font-semibold uppercase tracking-wide">Best lifts</Caption>
+            <Caption className="mb-2 mt-6 font-semibold uppercase tracking-wide">Records</Caption>
             <View className="gap-2">
               {recap.prs.slice(0, 6).map((pr) => (
                 <PRCard key={pr.exerciseId} pr={pr} unit={unit} />

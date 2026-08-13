@@ -34,6 +34,7 @@ import type { TrainingSuggestion } from '@/coaching/types';
 import { useSettings } from '@/store/settings-store';
 import { useProfile } from '@/hooks/use-data';
 import { formatDuration, formatVolume, formatWeight, formatFullDateTime } from '@/db/calc';
+import { formatCelebrationKinds } from '@/coaching/pr';
 import { MUSCLE_LABELS } from '@/lib/labels';
 import { SCREEN_CONTENT } from '@/lib/layout';
 import type { MuscleDistribution } from '@/db/types';
@@ -276,11 +277,18 @@ export default function SummaryScreen() {
             <Caption className="mb-2 font-semibold text-foreground">Records this session</Caption>
             <View className="gap-2">
               {prs.map((pr) => (
-                <View key={pr.exerciseId} className="flex-row items-center justify-between">
-                  <Body className="flex-1 text-sm text-foreground" numberOfLines={1}>
-                    {pr.exerciseName}
-                  </Body>
-                  <Caption className="font-medium text-primary">{formatWeight(pr.weight, unit)}</Caption>
+                <View key={pr.exerciseId} className="flex-row items-center justify-between gap-3">
+                  <View className="flex-1">
+                    <Body className="text-sm text-foreground" numberOfLines={1}>
+                      {pr.exerciseName}
+                    </Body>
+                    {pr.kinds?.length ? (
+                      <Caption>{formatCelebrationKinds(pr.kinds, pr.reps)}</Caption>
+                    ) : null}
+                  </View>
+                  <Caption className="font-medium text-primary">
+                    {formatWeight(pr.weight, unit)} × {pr.reps}
+                  </Caption>
                 </View>
               ))}
             </View>

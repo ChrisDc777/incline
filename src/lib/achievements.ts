@@ -50,7 +50,7 @@ function currentFor(metric: AchievementDef['metric'], stats: ProgressStats): num
     case 'streak':
       return stats.streak;
     case 'prs':
-      return stats.prs?.length ?? 0;
+      return stats.prEventCount ?? stats.prs?.length ?? 0;
   }
 }
 

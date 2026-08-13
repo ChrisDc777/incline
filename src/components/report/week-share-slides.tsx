@@ -106,11 +106,11 @@ export function WeekSharePrsSlide({ prs, unit }: { prs: PR[]; unit: Unit }) {
     <SlideShell>
       <Caption style={{ color: colors.mutedForeground }}>INCLINE · PRS</Caption>
       <Body className="mt-3 text-xl font-bold" style={{ color: colors.foreground }}>
-        Best lifts this week
+        Records this week
       </Body>
       {prs.length === 0 ? (
         <Body className="mt-8" style={{ color: colors.mutedForeground }}>
-          No heavy sets logged — next week is wide open.
+          No new records this week.
         </Body>
       ) : (
         <View className="mt-6 gap-3">

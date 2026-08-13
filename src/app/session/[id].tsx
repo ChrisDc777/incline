@@ -41,7 +41,14 @@ import {
   type ExercisePRSummary,
   type SessionWorkout,
 } from '@/db/queries';
-import { estimated1RM, formatClock, formatVolume, formatWeight } from '@/db/calc';
+import { formatClock, formatVolume, formatWeight } from '@/db/calc';
+import {
+  applySetToBests,
+  bestsFromPrSummary,
+  detectSetRecords,
+  formatCelebrationKinds,
+  isCelebrationPrKind,
+} from '@/coaching/pr';
 import { SCREEN_CONTENT_CTA } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
 import { MuscleBodyMap } from '@/components/progress/muscle-body-map';
@@ -293,26 +300,45 @@ export default function SessionScreen() {
       // history so first-time lifts don't spam.
       const pr = prMap[target.exerciseId];
       if (pr && (pr.heaviestWeight > 0 || pr.best1RM > 0)) {
-        const e1rm = estimated1RM(target.weight, target.reps);
-        if (target.weight > pr.heaviestWeight || e1rm > pr.best1RM) {
-          // Fold the new lift into the in-memory PR map so later sets this
-          // session can build on it without a DB reload.
+        const prior = bestsFromPrSummary(pr);
+        const kinds = detectSetRecords(
+          {
+            exerciseId: target.exerciseId,
+            weight: target.weight,
+            reps: target.reps,
+            completed: true,
+            setType: target.setType,
+            createdAt: Date.now(),
+          },
+          prior,
+          { requirePriorHistory: true },
+        ).filter(isCelebrationPrKind);
+        if (kinds.length > 0) {
           setPrMap((prev) => {
             const cur = prev[target.exerciseId];
             if (!cur) return prev;
+            const next = applySetToBests(prior, {
+              exerciseId: target.exerciseId,
+              weight: target.weight,
+              reps: target.reps,
+              completed: true,
+              setType: target.setType,
+              createdAt: Date.now(),
+            });
             return {
               ...prev,
               [target.exerciseId]: {
                 ...cur,
-                heaviestWeight: Math.max(cur.heaviestWeight, target.weight),
-                best1RM: Math.max(cur.best1RM, e1rm),
+                heaviestWeight: next.heaviestWeight,
+                best1RM: next.estimated1RM,
+                bestSetVolume: Math.max(cur.bestSetVolume, next.bestSetVolume),
               },
             };
           });
           notify();
           toast({
             title: 'New PR!',
-            description: `${target.exerciseName} · ${formatWeight(target.weight, unit)} × ${target.reps}`,
+            description: `${target.exerciseName} · ${formatWeight(target.weight, unit)} × ${target.reps} · ${formatCelebrationKinds(kinds, target.reps)}`,
             variant: 'success',
           });
         }

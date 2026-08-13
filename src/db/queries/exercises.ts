@@ -18,6 +18,7 @@ import {
   isSubsequence,
   type SetRow,
 } from './helpers';
+import { WORKING_PR_PREDICATE } from './coaching/prs';
 
 export async function listExercises(): Promise<Exercise[]> {
   const db = await openDatabase();
@@ -386,7 +387,7 @@ export async function getExercisePRSummary(exerciseId: number): Promise<Exercise
                      ELSE s.weight * (1.0 + s.reps / 30.0) END) as best_1rm,
             MAX(s.weight * s.reps) as best_set_vol
      FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1`,
+     WHERE s.exercise_id = ? AND ${WORKING_PR_PREDICATE}`,
     exerciseId,
   );
   const maxWeight = base?.max_weight ?? 0;
@@ -397,7 +398,7 @@ export async function getExercisePRSummary(exerciseId: number): Promise<Exercise
   const sessionVol = await db.getFirstAsync<{ vol: number }>(
     `SELECT SUM(s.weight * s.reps) as vol
      FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1
+     WHERE s.exercise_id = ? AND ${WORKING_PR_PREDICATE}
      GROUP BY w.id ORDER BY vol DESC LIMIT 1`,
     exerciseId,
   );
@@ -405,7 +406,7 @@ export async function getExercisePRSummary(exerciseId: number): Promise<Exercise
   // When was heaviest weight achieved
   const atMax = await db.getFirstAsync<{ created_at: number }>(
     `SELECT s.created_at FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE s.exercise_id = ? AND s.completed = 1 AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.weight = ?
+     WHERE s.exercise_id = ? AND ${WORKING_PR_PREDICATE} AND s.weight = ?
      ORDER BY s.created_at DESC LIMIT 1`,
     exerciseId, maxWeight,
   );
@@ -429,7 +430,7 @@ export async function getExerciseRepRecords(exerciseId: number): Promise<RepReco
   const rows = await db.getAllAsync<{ reps: number; weight: number }>(
     `SELECT s.reps, MAX(s.weight) as weight
      FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1 AND s.reps > 0
+     WHERE s.exercise_id = ? AND ${WORKING_PR_PREDICATE}
      GROUP BY s.reps ORDER BY s.reps`,
     exerciseId,
   );
@@ -468,8 +469,7 @@ export async function getExerciseSeries(exerciseId: number): Promise<ExerciseSer
                      ELSE s.weight * (1.0 + s.reps / 30.0) END) as e1rm,
             MAX(s.weight * s.reps) as set_vol
      FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL
-       AND s.deleted_at IS NULL AND s.completed = 1
+     WHERE s.exercise_id = ? AND ${WORKING_PR_PREDICATE}
      GROUP BY w ORDER BY w`,
     exerciseId,
   );

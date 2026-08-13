@@ -93,7 +93,7 @@ export default function WeekReportScreen() {
         {recap.prs.length > 0 ? (
           <>
             <Caption className="mb-2 mt-6 font-semibold uppercase tracking-wide">
-              Best lifts
+              Records
             </Caption>
             <View className="gap-2">
               {recap.prs.slice(0, 6).map((pr) => (

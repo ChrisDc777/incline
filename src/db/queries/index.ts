@@ -86,16 +86,19 @@ export {
   listExercisesUsedInHistory,
   listWorkoutFeedLogs,
   getWorkoutFeedForDay,
-  getWorkoutPrCount,
-  getWorkoutPrs,
   getPreviousTemplateVolume,
   deleteWorkout,
   clearWorkoutHistory,
   type MuscleSplit,
   type SetPatch,
   type WorkoutLogFilters,
-  type WorkoutPr,
 } from './sessions';
+
+export {
+  getWorkoutPrCount,
+  getWorkoutPrs,
+  type WorkoutPr,
+} from './coaching/prs';
 
 export {
   getStreak,
