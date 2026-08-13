@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, LayoutChangeEvent, Pressable, ScrollView, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronDown, ChevronLeft, ChevronRight, Moon } from 'lucide-react-native';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 
@@ -14,9 +14,16 @@ import { SegmentedControl } from '@/components/common/segmented-control';
 import { getWorkoutDays, getDailyCalendarMetrics, getWeeklyConsistency, type DailyCalendarMetrics } from '@/db/queries';
 import type { CalendarHeatMetric, WeekStartsOn } from '@/db/types';
 import { cn } from '@/lib/cn';
+import {
+  computeBestDayStreak,
+  computeDayStreak,
+  computeMonthFrequency,
+  computeYearFrequency,
+  formatFrequencyLabel,
+} from '@/lib/consistency';
+import type { IconColor } from '@/lib/icon-color';
 import { SCREEN_CONTENT, SCREEN_HEADER } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
-import { usePrimaryHex } from '@/lib/theme';
 import { useSettings } from '@/store/settings-store';
 
 const MONTH_NAMES = [
@@ -44,6 +51,30 @@ const HEAT_LEGEND_LABEL: Record<Exclude<CalendarHeatMetric, 'presence'>, string>
 
 /** Background classes for heat intensity (relative to global max). Month view only. */
 const HEAT_BG = ['', 'bg-primary/15', 'bg-primary/30', 'bg-primary/50', 'bg-primary/70'] as const;
+
+function CalendarStat({
+  icon,
+  iconColor,
+  label,
+  accessibilityLabel,
+}: {
+  icon: (typeof METRIC_ICONS)[keyof typeof METRIC_ICONS];
+  iconColor: IconColor;
+  label: string;
+  accessibilityLabel?: string;
+}) {
+  return (
+    <View
+      accessible
+      accessibilityLabel={accessibilityLabel ?? label}
+      className="min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-3">
+      <Icon icon={icon} size={16} color={iconColor} />
+      <Caption className="flex-1 text-sm font-medium text-foreground" numberOfLines={1}>
+        {label}
+      </Caption>
+    </View>
+  );
+}
 
 type CalendarMode = 'month' | 'year';
 
@@ -204,6 +235,7 @@ const MiniMonth = memo(function MiniMonth({
   year,
   month,
   workoutDays,
+  trainedDays,
   weekStartsOn,
   today,
   onPress,
@@ -211,6 +243,7 @@ const MiniMonth = memo(function MiniMonth({
   year: number;
   month: number;
   workoutDays: Set<string>;
+  trainedDays: number;
   weekStartsOn: WeekStartsOn;
   today: Date;
   onPress: () => void;
@@ -238,9 +271,16 @@ const MiniMonth = memo(function MiniMonth({
         isFutureMonth && 'opacity-40',
         isCurrentMonth && 'border-primary/40',
       )}>
-      <Caption className={cn('mb-1.5 font-semibold', isCurrentMonth ? 'text-primary' : 'text-foreground')}>
-        {MONTH_SHORT[month]}
-      </Caption>
+      <View className="mb-1.5 flex-row items-baseline justify-between">
+        <Caption className={cn('font-semibold', isCurrentMonth ? 'text-primary' : 'text-foreground')}>
+          {MONTH_SHORT[month]}
+        </Caption>
+        {trainedDays > 0 ? (
+          <Caption className={isCurrentMonth ? 'text-primary' : 'text-muted-foreground'}>
+            {trainedDays}d
+          </Caption>
+        ) : null}
+      </View>
       <View className="mb-0.5 flex-row">
         {miniLabels.map((label, i) => (
           <View key={`${label}-${i}`} className="flex-1 items-center">
@@ -282,7 +322,6 @@ const MiniMonth = memo(function MiniMonth({
 
 export default function CalendarScreen() {
   const router = useRouter();
-  const primary = usePrimaryHex();
   const calendarHeatMetric = useSettings((s) => s.calendarHeatMetric);
   const weekStartsOn = useSettings((s) => s.weekStartsOn);
   const weeklyWorkoutGoal = useSettings((s) => s.weeklyWorkoutGoal);
@@ -295,7 +334,6 @@ export default function CalendarScreen() {
   const [streak, setStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
   const [weekGoalProgress, setWeekGoalProgress] = useState<string | null>(null);
-  const [restDays, setRestDays] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(today.getFullYear());
   const [yearViewYear, setYearViewYear] = useState(today.getFullYear());
@@ -351,13 +389,6 @@ export default function CalendarScreen() {
             ? `${consistency.sessionsThisWeek}/${consistency.goal} this week`
             : null,
         );
-        if (days.length > 0) {
-          const firstDay = days[0];
-          const totalDays = Math.floor((now - firstDay) / 86400000) + 1;
-          setRestDays(totalDays - days.length);
-        } else {
-          setRestDays(0);
-        }
       } catch {
         // Leave the calendar usable even if stats fail to load.
       }
@@ -463,13 +494,20 @@ export default function CalendarScreen() {
     return map;
   }, [workoutDaySet]);
 
-  const yearWorkoutCount = useMemo(() => {
-    let n = 0;
-    for (const key of workoutDaySet) {
-      if (key.startsWith(`${yearViewYear}-`)) n += 1;
-    }
-    return n;
-  }, [workoutDaySet, yearViewYear]);
+  const dayStreak = useMemo(() => computeDayStreak(workoutDaySet, now), [workoutDaySet, now]);
+  const bestDayStreak = useMemo(() => computeBestDayStreak(workoutDaySet), [workoutDaySet]);
+  const yearFreq = useMemo(
+    () => computeYearFrequency(metricsByDate, yearViewYear),
+    [metricsByDate, yearViewYear],
+  );
+  const visibleMonthFreq = useMemo(
+    () => computeMonthFrequency(metricsByDate, visible.year, visible.month),
+    [metricsByDate, visible.year, visible.month],
+  );
+  const frequencyLabel =
+    mode === 'year'
+      ? `${yearViewYear} · ${formatFrequencyLabel(yearFreq)}`
+      : `${MONTH_SHORT[visible.month]} · ${formatFrequencyLabel(visibleMonthFreq)}`;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
@@ -527,19 +565,24 @@ export default function CalendarScreen() {
         />
       </View>
 
-      <View className="mx-4 mt-2 flex-row gap-3">
-        <View className="flex-1 flex-row items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-3">
-          <Icon icon={METRIC_ICONS.streak} size={16} color="warning" />
-          <Caption className="text-sm font-medium text-foreground">
-            {streak}w streak{bestStreak > streak ? ` · best ${bestStreak}w` : ''}
-          </Caption>
+      <View className="mx-4 mt-2 gap-2">
+        <View className="flex-row gap-3">
+          <CalendarStat
+            icon={METRIC_ICONS.streak}
+            iconColor="warning"
+            label={`${streak}w streak${bestStreak > streak ? ` · best ${bestStreak}w` : ''}`}
+          />
+          <CalendarStat
+            icon={METRIC_ICONS.streak}
+            iconColor="warning"
+            label={`${dayStreak}d streak${bestDayStreak > dayStreak ? ` · best ${bestDayStreak}d` : ''}`}
+          />
         </View>
-        <View className="flex-1 flex-row items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-3">
-          <Icon icon={weekGoalProgress ? METRIC_ICONS.sessions : Moon} size={16} color="info" />
-          <Caption className="text-sm font-medium text-foreground">
-            {weekGoalProgress ??
-              (mode === 'year' ? `${yearWorkoutCount} days` : `${restDays} rest days`)}
-          </Caption>
+        <View className="flex-row gap-3">
+          {weekGoalProgress ? (
+            <CalendarStat icon={METRIC_ICONS.sessions} iconColor="info" label={weekGoalProgress} />
+          ) : null}
+          <CalendarStat icon={METRIC_ICONS.sessions} iconColor="info" label={frequencyLabel} />
         </View>
       </View>
 
@@ -617,6 +660,7 @@ export default function CalendarScreen() {
                 year={yearViewYear}
                 month={month}
                 workoutDays={workoutDaySet}
+                trainedDays={yearFreq.trainedDaysByMonth[month] ?? 0}
                 weekStartsOn={weekStartsOn}
                 today={today}
                 onPress={() => openMonth(yearViewYear, month)}
@@ -650,9 +694,9 @@ export default function CalendarScreen() {
                 )}>
                 <Body className="text-sm font-medium text-foreground">{label}</Body>
                 {count > 0 ? (
-                  <View className="mt-1.5 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: primary }} />
+                  <Caption className="mt-1 text-[10px] font-medium text-primary">{count}d</Caption>
                 ) : (
-                  <View className="mt-1.5 h-1.5" />
+                  <View className="mt-1.5 h-3.5" />
                 )}
               </Pressable>
             );
