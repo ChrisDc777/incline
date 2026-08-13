@@ -1,5 +1,6 @@
 import { openDatabase } from '../client';
 import { estimated1RM, isoDate, startOfWeek } from '../calc';
+import { computeBestWeeklyStreak, computeWeeklyStreak } from '@/lib/consistency';
 import type {
   MonthlyVolume,
   MuscleDistribution,
@@ -18,21 +19,10 @@ import {
 } from './helpers';
 
 /** Consecutive weeks (ending this week) that contain at least one session. */
-export async function getStreak(): Promise<number> {
+export async function getStreak(now = Date.now()): Promise<number> {
   const db = await openDatabase();
   const rows = await db.getAllAsync<{ started_at: number }>('SELECT started_at FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL ORDER BY started_at DESC');
-  if (rows.length === 0) return 0;
-  const weeks = new Set(rows.map((r) => isoDate(startOfWeek(r.started_at))));
-  const thisWeek = isoDate(startOfWeek(Date.now()));
-  const lastWeek = isoDate(startOfWeek(Date.now()) - 7 * 86_400_000);
-  if (!weeks.has(thisWeek) && !weeks.has(lastWeek)) return 0;
-  let cursor = weeks.has(thisWeek) ? Date.now() : Date.now() - 7 * 86_400_000;
-  let streak = 0;
-  while (weeks.has(isoDate(startOfWeek(cursor)))) {
-    streak++;
-    cursor -= 7 * 86_400_000;
-  }
-  return streak;
+  return computeWeeklyStreak(rows.map((r) => r.started_at), now);
 }
 
 export interface WeeklyConsistency {
@@ -63,21 +53,7 @@ export async function getBestWeeklyStreak(): Promise<number> {
   const rows = await db.getAllAsync<{ started_at: number }>(
     'SELECT started_at FROM workout_logs WHERE ended_at IS NOT NULL AND deleted_at IS NULL ORDER BY started_at ASC',
   );
-  if (rows.length === 0) return 0;
-  const weeks = [...new Set(rows.map((r) => isoDate(startOfWeek(r.started_at))))].sort();
-  let best = 1;
-  let run = 1;
-  for (let i = 1; i < weeks.length; i++) {
-    const prev = new Date(`${weeks[i - 1]}T00:00:00`).getTime();
-    const cur = new Date(`${weeks[i]}T00:00:00`).getTime();
-    if (cur - prev === 7 * 86_400_000) {
-      run++;
-      best = Math.max(best, run);
-    } else {
-      run = 1;
-    }
-  }
-  return best;
+  return computeBestWeeklyStreak(rows.map((r) => r.started_at));
 }
 
 export async function getWeeklyConsistency(weeklyGoal: number, now = Date.now()): Promise<WeeklyConsistency> {
@@ -87,7 +63,7 @@ export async function getWeeklyConsistency(weeklyGoal: number, now = Date.now())
   const goalMet = goal > 0 && sessionsThisWeek >= goal;
   const sessionsToGoal = goal > 0 ? Math.max(0, goal - sessionsThisWeek) : 0;
   const [currentWeeklyStreak, bestWeeklyStreak] = await Promise.all([
-    getStreak(),
+    getStreak(now),
     getBestWeeklyStreak(),
   ]);
   return {

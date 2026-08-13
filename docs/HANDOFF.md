@@ -1,6 +1,6 @@
 # Agent handoff — read this after `git pull`
 
-Last updated: **2026-08-13** (P2 Stage B + Home card flicker fix; #12 calendar on a separate PR).
+Last updated: **2026-08-13** (P2 Stage B + Home card flicker fix; #12 calendar day streak + yearly/monthly frequency).
 
 ## Current product state
 
@@ -13,6 +13,8 @@ Last updated: **2026-08-13** (P2 Stage B + Home card flicker fix; #12 calendar o
 P2 Stage B ([#97](https://github.com/ChrisDc777/incline/issues/97)): in-session fatigue cues, deload-week suggestion with a user-confirmed template copy, exercise substitution by muscle/pattern/equipment, muscle-balance insights on the muscle screen. Home context cards no longer remount/stack on refresh.
 
 Rules live in [`src/coaching/`](../src/coaching/) (`fatigue.ts`, `deload.ts`, `substitution.ts`). Suggestions only — no silent program writes; logging never waits on these.
+
+Calendar remainder of [#12](https://github.com/ChrisDc777/incline/issues/12): day streak (calendar-only; Home/achievements stay weekly), monthly + yearly frequency, per-month trained-day counts on the year grid. Tap-a-day and weekly goal were already on main. Helpers: [`src/lib/consistency.ts`](../src/lib/consistency.ts)
 
 Full P1/P2 detail: [P1-P2-COACHING.md](./P1-P2-COACHING.md)
 
