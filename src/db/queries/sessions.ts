@@ -11,6 +11,7 @@ import type {
   WorkoutLog,
 } from '../types';
 import { getCelebrationPrCounts } from './coaching/prs';
+import { deletePhotosForWorkout } from './photos';
 import { getLastSetsForExercise, getLastSetsForExercises } from './exercises';
 import {
   getSessionSets,
@@ -399,6 +400,7 @@ export async function discardWorkout(logId: number): Promise<void> {
   );
   enqueueSetUpsertsBackground(sets.map((s) => s.id));
   enqueueLogUpsertBackground(logId);
+  await deletePhotosForWorkout(logId);
 }
 
 /** Optional filters for paginated workout history (Progress → History). */

@@ -11,10 +11,10 @@ This document summarizes the P1 habit-loop closeout and P2 explainable coaching 
 | Announcements v1 | Static pack in [`src/lib/announcements/`](../src/lib/announcements/); dismiss persisted locally |
 | Credible suggestions | [`getSuggestedTemplate`](../src/db/queries/templates.ts) uses recent/frequent templates |
 | Duration target | Editable `estimatedMinutes` on template editor |
-| Measurement export | `bodyMeasurements` in JSON export payload |
+| Measurement export | Dedicated [export screen](../src/app/(app)/export.tsx): pick workouts / custom exercises / bodyweight / circumference + CSV or JSON |
 | Motion | Subtle `FadeInDown` on Home context cards |
 
-**Deferred (backlog issues):** progress photos, measurement goals, full motion system.
+**Deferred (backlog issues):** week-vs-week photo comparison, measurement goals, full motion system.
 
 ## P2 — Explainable progressive overload (Stage A)
 

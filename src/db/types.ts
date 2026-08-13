@@ -152,6 +152,14 @@ export interface WorkoutLog {
   sets?: SetEntry[];
 }
 
+export interface WorkoutPhoto {
+  id: number;
+  workoutLogId: number;
+  uri: string;
+  sortOrder: number;
+  createdAt: number;
+}
+
 export interface UserProfile {
   id: number;
   name: string;

@@ -8,7 +8,7 @@
  * `runMigrations` in `client.ts`. Keep SCHEMA_VERSION in sync with the latest
  * migration version.
  */
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 
 export const SCHEMA_STATEMENTS: string[] = [
   // ---- exercises (catalog + custom) ----
@@ -140,6 +140,17 @@ export const SCHEMA_STATEMENTS: string[] = [
     updated_at INTEGER NOT NULL
   )`,
 
+  `CREATE TABLE IF NOT EXISTS workout_photos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workout_log_id INTEGER NOT NULL,
+    uri TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    uuid TEXT,
+    deleted_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL DEFAULT 0
+  )`,
+
   `CREATE TABLE IF NOT EXISTS set_entries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     workout_log_id INTEGER NOT NULL,
@@ -237,6 +248,7 @@ export const SCHEMA_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_program_workouts_program ON program_workouts(program_id, week, day, sort_order)`,
   `CREATE INDEX IF NOT EXISTS idx_workout_logs_started ON workout_logs(started_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_workout_logs_template ON workout_logs(template_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_workout_photos_log ON workout_photos(workout_log_id, sort_order)`,
   `CREATE INDEX IF NOT EXISTS idx_set_entries_log ON set_entries(workout_log_id, set_index)`,
   `CREATE INDEX IF NOT EXISTS idx_set_entries_exercise ON set_entries(exercise_id, created_at DESC)`,
   // Program uuid unique indexes: migration 008 / ensureProgramBuilderSchema (not here —

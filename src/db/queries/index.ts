@@ -161,4 +161,12 @@ export {
 export {
   shareWorkoutCsv,
   shareWorkoutJson,
+  shareSelectedExport,
 } from './export';
+
+export {
+  listWorkoutPhotos,
+  addWorkoutPhotos,
+  deleteWorkoutPhoto,
+  MAX_SESSION_PHOTOS,
+} from './photos';
