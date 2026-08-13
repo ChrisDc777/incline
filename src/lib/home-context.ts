@@ -220,6 +220,24 @@ export function buildHomeContextCards(input: HomeContextInput, maxCards = 2): Ho
   return filtered.sort((a, b) => a.priority - b.priority).slice(0, maxCards);
 }
 
+/** True when ranked cards are the same content (avoids Home remount flicker). */
+export function sameHomeContextCards(a: HomeContextCard[], b: HomeContextCard[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const left = a[i];
+    const right = b[i];
+    if (
+      left.id !== right.id ||
+      left.title !== right.title ||
+      left.subtitle !== right.subtitle ||
+      left.href !== right.href
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /** Caption line under the greeting — reuses week insight when relevant. */
 export function homeWeekCaption(
   stats: ProgressStats | null | undefined,

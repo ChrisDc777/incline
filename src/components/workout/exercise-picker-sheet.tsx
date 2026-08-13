@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
 import { FlashList } from '@shopify/flash-list';
@@ -67,10 +67,14 @@ export function ExercisePickerSheet({
   open,
   onOpenChange,
   onPick,
+  pinned,
+  title,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPick: (exercise: Exercise) => void;
+  pinned?: Exercise[];
+  title?: string;
 }) {
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
@@ -198,8 +202,15 @@ export function ExercisePickerSheet({
     loadInitial();
   };
 
+  const displayItems = useMemo(() => {
+    if (!pinned?.length || query.trim()) return items;
+    const pinnedItems = pinned.map(toSupabaseItem);
+    const seen = new Set(pinnedItems.map((p) => p.external_id));
+    return [...pinnedItems, ...items.filter((i) => !seen.has(i.external_id))];
+  }, [items, pinned, query]);
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title={creating ? 'Create exercise' : 'Add exercise'} mode="expandable" scroll>
+    <Sheet open={open} onOpenChange={onOpenChange} title={creating ? 'Create exercise' : (title ?? 'Add exercise')} mode="expandable" scroll>
       {creating ? (
         <CreateExerciseForm onCreated={handleCreated} onCancel={() => setCreating(false)} />
       ) : (
@@ -215,11 +226,11 @@ export function ExercisePickerSheet({
           <View style={{ minHeight: 300, maxHeight: 500 }}>
             {error ? (
               <EmptyState title="Error" description={error} />
-            ) : items.length === 0 && !loading ? (
+            ) : displayItems.length === 0 && !loading ? (
               <EmptyState title="No exercises found" description="Try a different search or create a custom exercise." />
             ) : (
               <FlashList
-                data={items}
+                data={displayItems}
                 renderItem={({ item }) => (
                   <Pressable onPress={() => handlePick(item)}>
                     <View className="mb-2">

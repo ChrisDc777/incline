@@ -1,9 +1,10 @@
 import { openDatabase } from '../../client';
-import { getLastSetsForExercises } from '../exercises';
+import { getLastSetsForExercises, listExercises, getExercise } from '../exercises';
 import { getTemplate } from '../templates';
 import { suggestNextLoad } from '@/coaching/overload';
+import { rankSubstitutes } from '@/coaching/substitution';
 import type { TrainingSuggestion } from '@/coaching/types';
-import type { SetEntry, Unit } from '../../types';
+import type { Exercise, SetEntry, Unit } from '../../types';
 
 function workingSets(sets: SetEntry[]): { weight: number; reps: number }[] {
   return sets
@@ -78,4 +79,14 @@ export async function getMuscleExposureDays(now = Date.now()): Promise<Record<st
     out[r.primary_muscle] = Math.floor((now - r.last_at) / 86_400_000);
   }
   return out;
+}
+
+/** Ranked local substitutes by muscle, pattern, and equipment. */
+export async function getExerciseSubstitutes(exerciseId: number, limit = 6): Promise<Exercise[]> {
+  const source = await getExercise(exerciseId);
+  if (!source) return [];
+  const all = await listExercises();
+  return rankSubstitutes(source, all)
+    .slice(0, limit)
+    .map((s) => s.exercise);
 }

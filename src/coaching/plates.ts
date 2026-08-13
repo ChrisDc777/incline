@@ -19,3 +19,8 @@ export function increaseLoad(weight: number, unit: Unit): number {
   const inc = smallestIncrement(unit);
   return roundToIncrement(weight + inc, unit, 'nearest');
 }
+
+export function decreaseLoad(weight: number, unit: Unit): number {
+  const inc = smallestIncrement(unit);
+  return Math.max(0, roundToIncrement(weight - inc, unit, 'nearest'));
+}

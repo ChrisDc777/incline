@@ -33,6 +33,7 @@ import {
   getRestDefaultsForSession,
   getTemplateSuggestions,
   getWorkoutLog,
+  getExerciseSubstitutes,
   removeSet,
   restoreSet,
   updateSet,
@@ -96,6 +97,7 @@ export default function SessionScreen() {
   const prevActiveGroupRef = useRef<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [swapPinned, setSwapPinned] = useState<Exercise[]>([]);
   const [finishOpen, setFinishOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [restSecondsMap, setRestSecondsMap] = useState<Record<number, number>>({});
@@ -355,8 +357,23 @@ export default function SessionScreen() {
     impact();
     await addExerciseToWorkout(logId, ex.id);
     setRestSecondsMap((prev) => ({ ...prev, [ex.id]: prev[ex.id] ?? ex.defaultRestSeconds ?? defaultRestSeconds }));
+    const wasSwap = swapPinned.length > 0;
     setPickerOpen(false);
+    setSwapPinned([]);
     reload();
+    if (wasSwap) {
+      toast({
+        title: 'Substitute added',
+        description: 'Completed sets on the original stay in the log.',
+        variant: 'info',
+      });
+    }
+  };
+
+  const onSwapExercise = async (exerciseId: number) => {
+    const subs = await getExerciseSubstitutes(exerciseId);
+    setSwapPinned(subs);
+    setPickerOpen(true);
   };
 
   const finish = async () => {
@@ -513,6 +530,7 @@ export default function SessionScreen() {
                   onAddWarmUp={() => onAddWarmUp(g.exerciseId)}
                   onApplyLoad={(weight, reps) => onApplyLoad(g.exerciseId, weight, reps)}
                   onOpenExercise={() => router.push(`/exercise/${g.exerciseId}` as Href)}
+                  onSwap={() => { void onSwapExercise(g.exerciseId); }}
                   showWarmUpSets={showWarmUpSets}
                   loadSuggestion={suggestionMap[g.exerciseId] ?? null}
                 />
@@ -587,7 +605,16 @@ export default function SessionScreen() {
         />
       ) : null}
 
-      <ExercisePickerSheet open={pickerOpen} onOpenChange={setPickerOpen} onPick={onPickExercise} />
+      <ExercisePickerSheet
+        open={pickerOpen}
+        onOpenChange={(open) => {
+          setPickerOpen(open);
+          if (!open) setSwapPinned([]);
+        }}
+        onPick={onPickExercise}
+        pinned={swapPinned}
+        title={swapPinned.length > 0 ? 'Swap exercise' : undefined}
+      />
 
       <Dialog
         open={finishOpen}

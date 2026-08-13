@@ -30,6 +30,19 @@ This document summarizes the P1 habit-loop closeout and P2 explainable coaching 
 
 **Schema:** migration `011_set_type` — warm-up sets tagged `warmup`, excluded from overload history.
 
+## P2 — Guardrails (Stage B)
+
+| Layer | Path |
+|-------|------|
+| Fatigue | [`src/coaching/fatigue.ts`](../src/coaching/fatigue.ts) — in-session reps/load drop cues |
+| Deload | [`src/coaching/deload.ts`](../src/coaching/deload.ts) — 4-week streak → confirm copy at ~60% sets |
+| Substitution | [`src/coaching/substitution.ts`](../src/coaching/substitution.ts) — muscle + pattern + equipment rank |
+| Insights | [`src/coaching/insights.ts`](../src/coaching/insights.ts) — ranked list; Home still shows one card |
+
+**Surfaces:** session banner + swap, Home deload card → `/(app)/deload`, muscle distribution coaching + least-trained, summary fatigue line.
+
+**Constraint:** suggestions only. `createDeloadTemplate` copies; it never mutates the source routine or program.
+
 ## Architecture decisions
 
 ### Chosen: ranked Home context slot (not a feed)
@@ -50,7 +63,6 @@ This document summarizes the P1 habit-loop closeout and P2 explainable coaching 
 
 ## P2 deferred (backlog)
 
-- Stage B: fatigue cues, deload, substitution, muscle balance rules expansion
 - Stage C: RPE/RIR, readiness check-in, adaptive program diffs
 - AI-1: Edge Function narration (after P0 sync ops proven)
 - PR semantics unification across session/recap/achievements (partial — coaching uses working sets + e1RM where relevant)

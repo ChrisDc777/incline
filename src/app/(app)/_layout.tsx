@@ -18,6 +18,7 @@ export default function AppLayout() {
         <Stack.Screen name="calculator" options={{ headerShown: false }} />
         <Stack.Screen name="plate-calculator" options={{ headerShown: false }} />
         <Stack.Screen name="muscle-distribution" options={{ headerShown: false }} />
+        <Stack.Screen name="deload" options={{ headerShown: false }} />
         <Stack.Screen name="milestones" options={{ headerShown: false }} />
         <Stack.Screen name="report/week" options={{ headerShown: false }} />
         <Stack.Screen name="report/month" options={{ headerShown: false }} />
