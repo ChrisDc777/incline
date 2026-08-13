@@ -13,6 +13,7 @@ function stats(partial: Partial<ProgressStats>): ProgressStats {
     weeklyVolume: [],
     muscleDistribution: [],
     prs: [],
+    prEventCount: 0,
     lastSessionAt: null,
     ...partial,
   };
@@ -24,6 +25,17 @@ describe('evaluateAchievements', () => {
     expect(list.find((a) => a.id === 'first_session')?.unlocked).toBe(true);
     expect(list.find((a) => a.id === 'sessions_10')?.unlocked).toBe(false);
     expect(list.find((a) => a.id === 'sessions_10')?.progress).toBe(0.1);
+  });
+
+  it('uses PR event count rather than unique exercises', () => {
+    const list = evaluateAchievements(
+      stats({
+        prs: [{ exerciseId: 1, exerciseName: 'Squat', maxWeight: 100, maxReps: 5, estimated1RM: 116, bestSetVolume: 500, achievedAt: 1 }],
+        prEventCount: 5,
+      }),
+    );
+    expect(list.find((a) => a.id === 'prs_5')?.unlocked).toBe(true);
+    expect(list.find((a) => a.id === 'prs_5')?.current).toBe(5);
   });
 });
 

@@ -124,6 +124,7 @@ describe('collectCoachingInsights', () => {
       { muscle: 'back', sets: 8, volume: 800 },
     ],
     prs: [],
+    prEventCount: 0,
     lastSessionAt: Date.now(),
   };
 

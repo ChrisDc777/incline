@@ -277,6 +277,9 @@ export interface ExerciseHistoryRow {
   completed: boolean;
 }
 
+/** How a set beat a previous best. Session toasts and recaps use the celebration kinds. */
+export type PrKind = 'heaviest_weight' | 'estimated_1rm' | 'rep_record' | 'volume_record';
+
 export interface PR {
   exerciseId: number;
   exerciseName: string;
@@ -285,6 +288,8 @@ export interface PR {
   estimated1RM: number;
   bestSetVolume: number;
   achievedAt: number;
+  /** Present when this row is a detected record (session/recap), not a leaderboard snapshot. */
+  kinds?: PrKind[];
 }
 
 export interface WeeklyVolume {
@@ -321,6 +326,8 @@ export interface ProgressStats {
   weeklyVolume: WeeklyVolume[];
   muscleDistribution: MuscleDistribution[];
   prs: PR[];
+  /** Celebration PRs (heaviest or e1RM) across sessions — one per exercise per session. */
+  prEventCount: number;
   lastSessionAt: number | null;
 }
 

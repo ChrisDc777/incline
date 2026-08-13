@@ -10,6 +10,7 @@ import type {
   Paginated,
   WorkoutLog,
 } from '../types';
+import { getCelebrationPrCounts } from './coaching/prs';
 import { getLastSetsForExercise, getLastSetsForExercises } from './exercises';
 import {
   getSessionSets,
@@ -527,29 +528,7 @@ async function enrichWorkoutFeed(db: SQLiteDatabase, rows: LogRow[]): Promise<Fe
     }
   }
 
-  const prCounts = new Map<number, number>();
-  for (const logId of logIds) prCounts.set(logId, 0);
-
-  const bestWeights = await db.getAllAsync<{ exercise_id: number; max_weight: number }>(
-    `SELECT exercise_id, MAX(weight) as max_weight FROM set_entries
-     WHERE completed = 1 AND deleted_at IS NULL GROUP BY exercise_id`,
-  );
-  const bestWeightMap = new Map<number, number>();
-  for (const bw of bestWeights) bestWeightMap.set(bw.exercise_id, bw.max_weight);
-
-  for (const logId of logIds) {
-    const logSets = allSets.filter((s) => s.workout_log_id === logId && s.completed);
-    const exerciseMaxWeights = new Map<number, number>();
-    for (const s of logSets) {
-      const prev = exerciseMaxWeights.get(s.exercise_id) ?? 0;
-      if (s.weight > prev) exerciseMaxWeights.set(s.exercise_id, s.weight);
-    }
-    let prCount = 0;
-    for (const [exId, maxW] of exerciseMaxWeights) {
-      if (bestWeightMap.get(exId) === maxW && maxW > 0) prCount++;
-    }
-    prCounts.set(logId, prCount);
-  }
+  const prCounts = await getCelebrationPrCounts(logIds);
 
   return rows.map((r) => {
     const log = mapLog(r);
@@ -560,55 +539,6 @@ async function enrichWorkoutFeed(db: SQLiteDatabase, rows: LogRow[]): Promise<Fe
       prCount: prCounts.get(r.id) ?? 0,
     };
   });
-}
-
-/** Count exercises in this finished session that match the all-time heaviest weight. */
-export async function getWorkoutPrCount(logId: number): Promise<number> {
-  const prs = await getWorkoutPrs(logId);
-  return prs.length;
-}
-
-export type WorkoutPr = {
-  exerciseId: number;
-  exerciseName: string;
-  weight: number;
-};
-
-/** Named weight PRs achieved in this finished session (all-time heaviest). */
-export async function getWorkoutPrs(logId: number): Promise<WorkoutPr[]> {
-  const db = await openDatabase();
-  const logSets = await db.getAllAsync<{ exercise_id: number; exercise_name: string; weight: number }>(
-    `SELECT s.exercise_id, e.name as exercise_name, s.weight
-     FROM set_entries s
-     JOIN exercises e ON e.id = s.exercise_id
-     WHERE s.workout_log_id = ? AND s.completed = 1 AND s.deleted_at IS NULL`,
-    logId,
-  );
-  if (logSets.length === 0) return [];
-
-  const exerciseMax = new Map<number, { name: string; weight: number }>();
-  for (const s of logSets) {
-    const prev = exerciseMax.get(s.exercise_id);
-    if (!prev || s.weight > prev.weight) {
-      exerciseMax.set(s.exercise_id, { name: s.exercise_name, weight: s.weight });
-    }
-  }
-
-  const out: WorkoutPr[] = [];
-  for (const [exId, { name, weight }] of exerciseMax) {
-    if (weight <= 0) continue;
-    const best = await db.getFirstAsync<{ max_weight: number }>(
-      `SELECT MAX(s.weight) as max_weight FROM set_entries s
-       JOIN workout_logs w ON w.id = s.workout_log_id
-       WHERE s.exercise_id = ? AND s.completed = 1 AND s.deleted_at IS NULL
-         AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL`,
-      exId,
-    );
-    if ((best?.max_weight ?? 0) === weight) {
-      out.push({ exerciseId: exId, exerciseName: name, weight });
-    }
-  }
-  return out.sort((a, b) => b.weight - a.weight);
 }
 
 /** Volume of the previous completed log with the same template (null if none / no template). */

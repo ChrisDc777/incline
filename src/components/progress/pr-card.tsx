@@ -7,6 +7,7 @@ import { Icon } from '@/components/common/icon';
 import { Text } from '@/components/ui/text';
 import { Card } from '@/components/ui/card';
 import { formatWeight, relativeTime } from '@/db/calc';
+import { formatCelebrationKinds } from '@/coaching/pr';
 import type { PR, Unit } from '@/db/types';
 
 /** A personal-record row: exercise, max weight, estimated 1RM, when achieved. */
@@ -21,7 +22,9 @@ export function PRCard({ pr, unit, className }: { pr: PR; unit: Unit; className?
         <View className="flex-1">
           <Text className="text-sm font-semibold text-foreground">{pr.exerciseName}</Text>
           <Text className="mt-0.5 text-xs text-muted-foreground">
-            Best {formatWeight(pr.maxWeight, unit)} · e1RM {formatWeight(pr.estimated1RM, unit)}
+            {pr.kinds?.length
+              ? `${formatWeight(pr.maxWeight, unit)} × ${pr.maxReps} · ${formatCelebrationKinds(pr.kinds, pr.maxReps)}`
+              : `Best ${formatWeight(pr.maxWeight, unit)} · e1RM ${formatWeight(pr.estimated1RM, unit)}`}
           </Text>
         </View>
         <Text className="text-xs text-muted-foreground">

@@ -10,6 +10,7 @@ import { migration008 } from './008_program_builder';
 import { migration009 } from './009_superset_group';
 import { migration010 } from './010_body_measurements';
 import { migration011 } from './011_set_type';
+import { migration012 } from './012_warmup_backfill';
 import type { Migration } from './types';
 
 export type { Migration } from './types';
@@ -27,6 +28,7 @@ export const MIGRATIONS: Migration[] = [
   migration009,
   migration010,
   migration011,
+  migration012,
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 1;

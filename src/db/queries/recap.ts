@@ -1,6 +1,5 @@
 import { openDatabase } from '../client';
 import {
-  estimated1RM,
   formatVolume,
   isoDate,
   monthBounds,
@@ -8,11 +7,11 @@ import {
   startOfDay,
   weekBounds,
 } from '../calc';
+import { getCelebrationPrsInWindow } from './coaching/prs';
 import type {
   MuscleDistribution,
   MuscleGroup,
   MonthlyRecap,
-  PR,
   TopExerciseStat,
   Unit,
   WeeklyRecap,
@@ -105,50 +104,6 @@ async function windowMuscles(
   }));
 }
 
-async function windowPrs(
-  db: Awaited<ReturnType<typeof openDatabase>>,
-  startMs: number,
-  endMs: number,
-  limit = 8,
-): Promise<PR[]> {
-  const prRows = await db.getAllAsync<{
-    exerciseId: number;
-    name: string;
-    weight: number;
-    reps: number;
-    created_at: number;
-    best_volume: number;
-  }>(
-    `SELECT e.id as exerciseId, e.name, s.weight, s.reps, s.created_at,
-            (s.weight * s.reps) as best_volume
-     FROM set_entries s
-     JOIN exercises e ON e.id = s.exercise_id
-     JOIN workout_logs w ON w.id = s.workout_log_id
-     WHERE w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL
-       AND s.completed = 1 AND s.weight > 0
-       AND s.created_at >= ? AND s.created_at < ?`,
-    startMs,
-    endMs,
-  );
-  const bestMap = new Map<number, PR>();
-  for (const r of prRows) {
-    const oneRM = estimated1RM(r.weight, r.reps);
-    const cur = bestMap.get(r.exerciseId);
-    if (!cur || oneRM > cur.estimated1RM) {
-      bestMap.set(r.exerciseId, {
-        exerciseId: r.exerciseId,
-        exerciseName: r.name,
-        maxWeight: r.weight,
-        maxReps: r.reps,
-        estimated1RM: oneRM,
-        bestSetVolume: r.best_volume,
-        achievedAt: r.created_at,
-      });
-    }
-  }
-  return [...bestMap.values()].sort((a, b) => b.estimated1RM - a.estimated1RM).slice(0, limit);
-}
-
 /**
  * Calendar-week recap (Monday–Sunday). Pass any timestamp in the desired week;
  * defaults to the week containing `now`.
@@ -195,7 +150,7 @@ export async function getWeeklyRecap(
   );
 
   const muscles = await windowMuscles(db, startMs, endMs);
-  const prs = await windowPrs(db, startMs, endMs);
+  const prs = await getCelebrationPrsInWindow(startMs, endMs, 8);
   const volumeLabel = formatVolume(totalVolume, unit);
   const line = weekInsightLine({
     sessions,
@@ -280,7 +235,7 @@ export async function getMonthlyRecap(
 
   const muscles = await windowMuscles(db, startMs, endMs);
   const previousMuscles = await windowMuscles(db, prev.startMs, prev.endMs);
-  const prs = await windowPrs(db, startMs, endMs, 10);
+  const prs = await getCelebrationPrsInWindow(startMs, endMs, 10);
 
   const topRows = await db.getAllAsync<{
     exerciseId: number;
