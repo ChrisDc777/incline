@@ -4,11 +4,16 @@ import * as Sharing from 'expo-sharing';
 import { openDatabase } from '../client';
 import {
   buildExportJson,
-  buildSetsCsv,
+  csvForSingleSection,
+  applyExportSelection,
+  isExportPayloadEmpty,
+  selectedExportSections,
   rangeStartMs,
   stampFilename,
+  DEFAULT_EXPORT_SELECTION,
   type ExportPayload,
   type ExportRange,
+  type ExportSelection,
   type ExportSetRow,
   type ExportWorkoutJson,
 } from '@/lib/export-data';
@@ -30,6 +35,7 @@ interface SetJoinRow {
   reps: number;
   completed: number;
   rest_seconds: number | null;
+  set_type: string | null;
 }
 
 async function loadExportSetRows(range: ExportRange): Promise<ExportSetRow[]> {
@@ -41,7 +47,7 @@ async function loadExportSetRows(range: ExportRange): Promise<ExportSetRow[]> {
            w.id as workout_id, w.uuid as workout_uuid, w.name as workout_name,
            w.started_at, w.ended_at, w.duration_seconds, w.total_volume, w.notes,
            s.exercise_id, e.name as exercise_name, e.external_id as exercise_external_id,
-           s.set_index, s.weight, s.reps, s.completed, s.rest_seconds
+           s.set_index, s.weight, s.reps, s.completed, s.rest_seconds, s.set_type
          FROM set_entries s
          JOIN workout_logs w ON w.id = s.workout_log_id
          JOIN exercises e ON e.id = s.exercise_id
@@ -53,7 +59,7 @@ async function loadExportSetRows(range: ExportRange): Promise<ExportSetRow[]> {
            w.id as workout_id, w.uuid as workout_uuid, w.name as workout_name,
            w.started_at, w.ended_at, w.duration_seconds, w.total_volume, w.notes,
            s.exercise_id, e.name as exercise_name, e.external_id as exercise_external_id,
-           s.set_index, s.weight, s.reps, s.completed, s.rest_seconds
+           s.set_index, s.weight, s.reps, s.completed, s.rest_seconds, s.set_type
          FROM set_entries s
          JOIN workout_logs w ON w.id = s.workout_log_id
          JOIN exercises e ON e.id = s.exercise_id
@@ -80,6 +86,7 @@ async function loadExportSetRows(range: ExportRange): Promise<ExportSetRow[]> {
     reps: r.reps,
     completed: r.completed === 1,
     restSeconds: r.rest_seconds,
+    setType: r.set_type === 'warmup' ? 'warmup' : 'working',
   }));
 }
 
@@ -110,9 +117,21 @@ function groupWorkouts(rows: ExportSetRow[]): ExportWorkoutJson[] {
       reps: r.reps,
       completed: r.completed,
       restSeconds: r.restSeconds,
+      setType: r.setType,
     });
   }
   return [...map.values()];
+}
+
+async function loadTimedRows<T extends { recorded_at: number }>(
+  sqlAll: string,
+  sqlSince: string,
+  range: ExportRange,
+): Promise<T[]> {
+  const db = await openDatabase();
+  const since = rangeStartMs(range);
+  if (since == null) return db.getAllAsync<T>(sqlAll);
+  return db.getAllAsync<T>(sqlSince, since);
 }
 
 async function buildJsonPayload(range: ExportRange, rows: ExportSetRow[]): Promise<ExportPayload> {
@@ -131,13 +150,17 @@ async function buildJsonPayload(range: ExportRange, rows: ExportSetRow[]): Promi
     `SELECT id, uuid, name, primary_muscle, equipment, external_id
      FROM exercises WHERE is_custom = 1 AND deleted_at IS NULL ORDER BY name`,
   );
-  const bodyweight = await db.getAllAsync<{
+  const bodyweight = await loadTimedRows<{
     id: number;
     weight: number;
     unit: string;
     recorded_at: number;
-  }>('SELECT id, weight, unit, recorded_at FROM bodyweight_entries WHERE deleted_at IS NULL ORDER BY recorded_at ASC');
-  const bodyMeasurements = await db.getAllAsync<{
+  }>(
+    'SELECT id, weight, unit, recorded_at FROM bodyweight_entries WHERE deleted_at IS NULL ORDER BY recorded_at ASC',
+    'SELECT id, weight, unit, recorded_at FROM bodyweight_entries WHERE deleted_at IS NULL AND recorded_at >= ? ORDER BY recorded_at ASC',
+    range,
+  );
+  const bodyMeasurements = await loadTimedRows<{
     id: number;
     metric: string;
     value: number;
@@ -145,6 +168,8 @@ async function buildJsonPayload(range: ExportRange, rows: ExportSetRow[]): Promi
     recorded_at: number;
   }>(
     'SELECT id, metric, value, unit, recorded_at FROM body_measurements WHERE deleted_at IS NULL ORDER BY recorded_at ASC',
+    'SELECT id, metric, value, unit, recorded_at FROM body_measurements WHERE deleted_at IS NULL AND recorded_at >= ? ORDER BY recorded_at ASC',
+    range,
   );
 
   return {
@@ -194,25 +219,73 @@ async function writeAndShare(contents: string, filename: string, mimeType: strin
   });
 }
 
+export interface ExportShareResult {
+  shared: boolean;
+  format: 'csv' | 'json';
+  itemCount: number;
+  usedJsonFallback?: boolean;
+}
+
+async function loadSelectedPayload(
+  range: ExportRange,
+  selection: ExportSelection,
+): Promise<{ payload: ExportPayload; setRows: ExportSetRow[] }> {
+  const setRows = selection.workouts ? await loadExportSetRows(range) : [];
+  const raw = await buildJsonPayload(range, setRows);
+  return { payload: applyExportSelection(raw, selection), setRows };
+}
+
+/** CSV for a single selected table, or JSON when several types are on. */
+export async function shareSelectedExport(
+  format: 'csv' | 'json',
+  range: ExportRange = 'all',
+  selection: ExportSelection = DEFAULT_EXPORT_SELECTION,
+): Promise<ExportShareResult> {
+  const sections = selectedExportSections(selection);
+  if (sections.length === 0) return { shared: false, format, itemCount: 0 };
+
+  const { payload, setRows } = await loadSelectedPayload(range, selection);
+  if (isExportPayloadEmpty(payload)) return { shared: false, format, itemCount: 0 };
+
+  const itemCount =
+    payload.workouts.length
+    + payload.customExercises.length
+    + payload.bodyweight.length
+    + payload.bodyMeasurements.length;
+
+  if (format === 'csv' && sections.length === 1) {
+    const csv = csvForSingleSection(sections[0], payload, setRows);
+    if (!csv) return { shared: false, format, itemCount: 0 };
+    await writeAndShare(csv.contents, stampFilename(csv.filenamePrefix, 'csv'), 'text/csv');
+    return { shared: true, format: 'csv', itemCount };
+  }
+
+  const json = buildExportJson(payload);
+  await writeAndShare(json, stampFilename('incline-backup', 'json'), 'application/json');
+  return {
+    shared: true,
+    format: 'json',
+    itemCount,
+    usedJsonFallback: format === 'csv',
+  };
+}
+
 /** Build set-level CSV and open the system share sheet. */
 export async function shareWorkoutCsv(range: ExportRange = 'all'): Promise<{ rowCount: number; shared: boolean }> {
-  const rows = await loadExportSetRows(range);
-  if (rows.length === 0) return { rowCount: 0, shared: false };
-  const csv = buildSetsCsv(rows);
-  await writeAndShare(csv, stampFilename('incline-workouts', 'csv'), 'text/csv');
-  return { rowCount: rows.length, shared: true };
+  const result = await shareSelectedExport('csv', range, {
+    ...DEFAULT_EXPORT_SELECTION,
+    customExercises: false,
+    bodyweight: false,
+    bodyMeasurements: false,
+  });
+  return { rowCount: result.itemCount, shared: result.shared };
 }
 
 /** Build full JSON backup and open the system share sheet. */
 export async function shareWorkoutJson(
   range: ExportRange = 'all',
+  selection: ExportSelection = DEFAULT_EXPORT_SELECTION,
 ): Promise<{ workoutCount: number; shared: boolean }> {
-  const rows = await loadExportSetRows(range);
-  const payload = await buildJsonPayload(range, rows);
-  if (payload.workouts.length === 0 && payload.customExercises.length === 0 && payload.bodyweight.length === 0 && payload.bodyMeasurements.length === 0) {
-    return { workoutCount: 0, shared: false };
-  }
-  const json = buildExportJson(payload);
-  await writeAndShare(json, stampFilename('incline-backup', 'json'), 'application/json');
-  return { workoutCount: payload.workouts.length, shared: true };
+  const result = await shareSelectedExport('json', range, selection);
+  return { workoutCount: result.itemCount, shared: result.shared };
 }

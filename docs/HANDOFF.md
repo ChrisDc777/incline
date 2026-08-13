@@ -1,20 +1,20 @@
 # Agent handoff — read this after `git pull`
 
-Last updated: **2026-08-13** (PR semantics unification + warm-up backfill).
+Last updated: **2026-08-13** (export picker + session photos).
 
 ## Current product state
 
 - **Branch:** `main`
-- **Schema version:** 12 (`012_warmup_backfill` — heuristic tag of legacy warm-up prefixes)
+- **Schema version:** 13 (`013_workout_photos` — local gym pics on a finished session)
 - **Status:** Pre-alpha; offline-first logger with habit loops + explainable overload coaching (Stage A + Stage B)
 
 ## What was just shipped
 
-Unified PR semantics ([#100](https://github.com/ChrisDc777/incline/issues/100)): session toasts, summary badges, recaps, achievements, and exercise assist share [`src/coaching/pr.ts`](../src/coaching/pr.ts). Record kinds are `heaviest_weight`, `estimated_1rm`, `rep_record`, `volume_record`. Celebration copy uses heaviest or e1RM, strictly beating prior history (ties are not a second PR).
+Dedicated export screen ([#95](https://github.com/ChrisDc777/incline/issues/95)): Settings → Export. Choose workouts, custom exercises, bodyweight, and circumference, plus range and CSV/JSON. Mixed CSV types fall back to JSON.
 
-Warm-up backfill ([#101](https://github.com/ChrisDc777/incline/issues/101)): migration `012` tags light/incomplete prefixes before near-peak working sets. Conservative — back-off sets and close ramps stay working.
+Session photos (slice of [#23](https://github.com/ChrisDc777/incline/issues/23)): after finish, add camera/library pics below the workout title on the summary. Local files only (not synced); comparison gallery still later.
 
-P2 Stage B ([#97](https://github.com/ChrisDc777/incline/issues/97)): in-session fatigue cues, deload-week suggestion with a user-confirmed template copy, exercise substitution by muscle/pattern/equipment, muscle-balance insights on the muscle screen. Home context cards no longer remount/stack on refresh.
+Unified PR semantics ([#100](https://github.com/ChrisDc777/incline/issues/100)) and warm-up backfill ([#101](https://github.com/ChrisDc777/incline/issues/101)) are on main.
 
 Rules live in [`src/coaching/`](../src/coaching/) (`fatigue.ts`, `deload.ts`, `substitution.ts`, `pr.ts`). Suggestions only — no silent program writes; logging never waits on these.
 
@@ -28,8 +28,9 @@ Full P1/P2 detail: [P1-P2-COACHING.md](./P1-P2-COACHING.md)
 | P2 Stage A | Double-progression load suggestions with reason codes |
 | P2 Stage B | Fatigue, deload confirm, substitution, expanded muscle insights |
 | P2 hygiene | Shared PR kinds; legacy warm-up backfill |
+| P1 export / photos | Type-picker export screen; session gym pics on summary |
 
-**Closed issues:** [#41](https://github.com/ChrisDc777/incline/issues/41), [#90](https://github.com/ChrisDc777/incline/issues/90), [#12](https://github.com/ChrisDc777/incline/issues/12), [#97](https://github.com/ChrisDc777/incline/issues/97), [#100](https://github.com/ChrisDc777/incline/issues/100), [#101](https://github.com/ChrisDc777/incline/issues/101)
+**Closed issues:** [#41](https://github.com/ChrisDc777/incline/issues/41), [#90](https://github.com/ChrisDc777/incline/issues/90), [#12](https://github.com/ChrisDc777/incline/issues/12), [#97](https://github.com/ChrisDc777/incline/issues/97), [#100](https://github.com/ChrisDc777/incline/issues/100), [#101](https://github.com/ChrisDc777/incline/issues/101), [#95](https://github.com/ChrisDc777/incline/issues/95)
 
 ## Recommended next work (priority order)
 
@@ -37,14 +38,16 @@ Full P1/P2 detail: [P1-P2-COACHING.md](./P1-P2-COACHING.md)
 2. **P2 Stage C** — [#98](https://github.com/ChrisDc777/incline/issues/98) RPE, readiness, adaptive program diffs
 3. **AI layer** — [#99](https://github.com/ChrisDc777/incline/issues/99) Edge Function `coach-narrate` (only after #57 proven)
 
-Optional P1: [#94](https://github.com/ChrisDc777/incline/issues/94) measurement goals, [#95](https://github.com/ChrisDc777/incline/issues/95) export polish, [#23](https://github.com/ChrisDc777/incline/issues/23) progress photos.
+Optional later: [#94](https://github.com/ChrisDc777/incline/issues/94) measurement goals, [#23](https://github.com/ChrisDc777/incline/issues/23) side-by-side progress comparison (session pics already ship).
 
 ## Key code paths
 
 ```
 src/coaching/                    # Rules: overload, fatigue, deload, substitution, insights, PR
 src/coaching/pr.ts               # Shared PR kinds + fold
-src/app/(app)/deload.tsx         # User-confirmed deload template copy
+src/app/(app)/export.tsx         # Choose types + range + CSV/JSON
+src/components/workout/session-photo-strip.tsx
+src/db/queries/photos.ts         # Local session photos (not synced)
 src/lib/consistency.ts           # Day/week streaks + month/year frequency
 src/app/(app)/calendar.tsx       # Heatmap, streaks, tap-a-day
 src/lib/home-context.ts          # Home card ranking

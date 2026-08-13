@@ -11,11 +11,15 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { InitialsAvatar } from '@/components/common/initials-avatar';
 import { FinishCelebration } from '@/components/workout/finish-celebration';
+import { SessionPhotoStrip } from '@/components/workout/session-photo-strip';
 import { WorkoutLogActionsSheet } from '@/components/workout/workout-log-actions-sheet';
 import { ExerciseThumb } from '@/components/exercise/exercise-media';
 import { MuscleBodyMap } from '@/components/progress/muscle-body-map';
 import { useToast } from '@/components/ui/toast';
 import {
+  addWorkoutPhotos,
+  deleteWorkoutPhoto,
+  listWorkoutPhotos,
   createTemplateFromWorkoutLog,
   deleteWorkout,
   getPreviousTemplateVolume,
@@ -37,7 +41,7 @@ import { formatDuration, formatVolume, formatWeight, formatFullDateTime } from '
 import { formatCelebrationKinds } from '@/coaching/pr';
 import { MUSCLE_LABELS } from '@/lib/labels';
 import { SCREEN_CONTENT } from '@/lib/layout';
-import type { MuscleDistribution } from '@/db/types';
+import type { MuscleDistribution, WorkoutPhoto } from '@/db/types';
 
 export default function SummaryScreen() {
   const { id, celebrate } = useLocalSearchParams<{ id: string; celebrate?: string }>();
@@ -50,6 +54,7 @@ export default function SummaryScreen() {
   const [log, setLog] = useState<SessionWorkout | null>(null);
   const [muscleSplit, setMuscleSplit] = useState<MuscleSplit[]>([]);
   const [prs, setPrs] = useState<WorkoutPr[]>([]);
+  const [photos, setPhotos] = useState<WorkoutPhoto[]>([]);
   const [volumeDelta, setVolumeDelta] = useState<{ previousVolume: number; deltaPct: number | null } | null>(null);
   const [nextSuggestions, setNextSuggestions] = useState<TrainingSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,16 +64,18 @@ export default function SummaryScreen() {
   const [deleting, setDeleting] = useState(false);
 
   const reload = useCallback(async () => {
-    const [s, split, prList, prevVol] = await Promise.all([
+    const [s, split, prList, prevVol, photoList] = await Promise.all([
       getWorkoutLog(logId),
       getWorkoutMuscleSplit(logId),
       getWorkoutPrs(logId),
       getPreviousTemplateVolume(logId),
+      listWorkoutPhotos(logId),
     ]);
     setLog(s);
     setMuscleSplit(split);
     setPrs(prList);
     setVolumeDelta(prevVol);
+    setPhotos(photoList);
     if (s?.templateId) {
       const sug = await getTemplateSuggestions(s.templateId, unit);
       setNextSuggestions(sug.filter((x) => x.weight > 0).slice(0, 3));
@@ -77,6 +84,24 @@ export default function SummaryScreen() {
     }
     setLoading(false);
   }, [logId, unit]);
+
+  const onAddPhotos = async (uris: string[]) => {
+    try {
+      const next = await addWorkoutPhotos(logId, uris);
+      setPhotos(next);
+    } catch {
+      toast({ title: 'Could not save photo', variant: 'destructive' });
+    }
+  };
+
+  const onRemovePhoto = async (photoId: number) => {
+    try {
+      await deleteWorkoutPhoto(photoId);
+      setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+    } catch {
+      toast({ title: 'Could not remove photo', variant: 'destructive' });
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -209,6 +234,10 @@ export default function SummaryScreen() {
           accessibilityLabel="Workout options">
           <Icon icon={MoreHorizontal} size={22} color="foreground" />
         </Pressable>
+      </View>
+
+      <View className="px-4 pb-1">
+        <SessionPhotoStrip photos={photos} onAdd={(uris) => void onAddPhotos(uris)} onRemove={(id) => void onRemovePhoto(id)} />
       </View>
 
       {/* Session-style stats strip */}

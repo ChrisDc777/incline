@@ -5,6 +5,29 @@
 
 export type ExportRange = 'all' | '30d' | '90d' | '365d';
 
+export type ExportSectionId = 'workouts' | 'customExercises' | 'bodyweight' | 'bodyMeasurements';
+
+export interface ExportSelection {
+  workouts: boolean;
+  customExercises: boolean;
+  bodyweight: boolean;
+  bodyMeasurements: boolean;
+}
+
+export const DEFAULT_EXPORT_SELECTION: ExportSelection = {
+  workouts: true,
+  customExercises: true,
+  bodyweight: true,
+  bodyMeasurements: true,
+};
+
+export const EXPORT_SECTION_OPTIONS: { id: ExportSectionId; label: string; hint: string }[] = [
+  { id: 'workouts', label: 'Workouts & sets', hint: 'Finished sessions, one row per set' },
+  { id: 'customExercises', label: 'Custom exercises', hint: 'Your catalog, not the built-in library' },
+  { id: 'bodyweight', label: 'Bodyweight', hint: 'Logged scale entries' },
+  { id: 'bodyMeasurements', label: 'Circumference', hint: 'Arms, chest, waist, hips, thighs, calves' },
+];
+
 export interface ExportSetRow {
   workoutId: number;
   workoutUuid: string | null;
@@ -22,6 +45,7 @@ export interface ExportSetRow {
   reps: number;
   completed: boolean;
   restSeconds: number | null;
+  setType: 'working' | 'warmup';
 }
 
 export interface ExportWorkoutJson {
@@ -42,6 +66,7 @@ export interface ExportWorkoutJson {
     reps: number;
     completed: boolean;
     restSeconds: number | null;
+    setType: 'working' | 'warmup';
   }[];
 }
 
@@ -50,6 +75,7 @@ export interface ExportPayload {
   version: 1;
   app: 'incline';
   range: ExportRange;
+  selection?: ExportSelection;
   profile: {
     name: string;
     unit: string;
@@ -109,6 +135,7 @@ const CSV_HEADERS = [
   'reps',
   'completed',
   'rest_seconds',
+  'set_type',
 ] as const;
 
 export function buildSetsCsv(rows: ExportSetRow[]): string {
@@ -132,10 +159,93 @@ export function buildSetsCsv(rows: ExportSetRow[]): string {
         csvEscape(r.reps),
         csvEscape(r.completed),
         csvEscape(r.restSeconds),
+        csvEscape(r.setType),
       ].join(','),
     );
   }
   return lines.join('\n');
+}
+
+export function buildBodyweightCsv(rows: ExportPayload['bodyweight']): string {
+  const lines = ['id,weight,unit,recorded_at_iso'];
+  for (const r of rows) {
+    lines.push([csvEscape(r.id), csvEscape(r.weight), csvEscape(r.unit), csvEscape(new Date(r.recordedAt).toISOString())].join(','));
+  }
+  return lines.join('\n');
+}
+
+export function buildMeasurementsCsv(rows: ExportPayload['bodyMeasurements']): string {
+  const lines = ['id,metric,value,unit,recorded_at_iso'];
+  for (const r of rows) {
+    lines.push([
+      csvEscape(r.id),
+      csvEscape(r.metric),
+      csvEscape(r.value),
+      csvEscape(r.unit),
+      csvEscape(new Date(r.recordedAt).toISOString()),
+    ].join(','));
+  }
+  return lines.join('\n');
+}
+
+export function buildCustomExercisesCsv(rows: ExportPayload['customExercises']): string {
+  const lines = ['id,uuid,name,primary_muscle,equipment,external_id'];
+  for (const r of rows) {
+    lines.push([
+      csvEscape(r.id),
+      csvEscape(r.uuid),
+      csvEscape(r.name),
+      csvEscape(r.primaryMuscle),
+      csvEscape(r.equipment),
+      csvEscape(r.externalId),
+    ].join(','));
+  }
+  return lines.join('\n');
+}
+
+export function selectedExportSections(sel: ExportSelection): ExportSectionId[] {
+  return EXPORT_SECTION_OPTIONS.map((o) => o.id).filter((id) => sel[id]);
+}
+
+export function applyExportSelection(payload: ExportPayload, sel: ExportSelection): ExportPayload {
+  return {
+    ...payload,
+    selection: sel,
+    workouts: sel.workouts ? payload.workouts : [],
+    customExercises: sel.customExercises ? payload.customExercises : [],
+    bodyweight: sel.bodyweight ? payload.bodyweight : [],
+    bodyMeasurements: sel.bodyMeasurements ? payload.bodyMeasurements : [],
+  };
+}
+
+export function isExportPayloadEmpty(payload: ExportPayload): boolean {
+  return (
+    payload.workouts.length === 0
+    && payload.customExercises.length === 0
+    && payload.bodyweight.length === 0
+    && payload.bodyMeasurements.length === 0
+  );
+}
+
+export function csvForSingleSection(
+  section: ExportSectionId,
+  payload: ExportPayload,
+  setRows: ExportSetRow[],
+): { contents: string; filenamePrefix: string } | null {
+  if (section === 'workouts') {
+    if (setRows.length === 0) return null;
+    return { contents: buildSetsCsv(setRows), filenamePrefix: 'incline-workouts' };
+  }
+  if (section === 'bodyweight') {
+    if (payload.bodyweight.length === 0) return null;
+    return { contents: buildBodyweightCsv(payload.bodyweight), filenamePrefix: 'incline-bodyweight' };
+  }
+  if (section === 'bodyMeasurements') {
+    if (payload.bodyMeasurements.length === 0) return null;
+    return { contents: buildMeasurementsCsv(payload.bodyMeasurements), filenamePrefix: 'incline-measurements' };
+  }
+  if (payload.customExercises.length === 0) return null;
+  return { contents: buildCustomExercisesCsv(payload.customExercises), filenamePrefix: 'incline-exercises' };
 }
 
 export function buildExportJson(payload: ExportPayload): string {

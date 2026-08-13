@@ -37,6 +37,13 @@
       ],
       "expo-audio",
       "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Incline uses your photos so you can attach gym pics to a finished workout.",
+          "cameraPermission": "Incline uses the camera so you can snap a gym pic after you finish."
+        }
+      ],
       "expo-sharing",
       [
         "expo-notifications",
