@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { suggestNextLoad } from '../../coaching/overload';
-import { buildHomeContextCards } from '../../lib/home-context';
+import { buildHomeContextCards, sameHomeContextCards } from '../../lib/home-context';
 import type { ProgressStats } from '../types';
 
 describe('suggestNextLoad', () => {
@@ -71,5 +71,23 @@ describe('buildHomeContextCards', () => {
     });
     expect(cards.length).toBeLessThanOrEqual(2);
     expect(cards.some((c) => c.kind === 'inactivity' || c.kind === 'weekly_goal')).toBe(true);
+  });
+
+  it('sameHomeContextCards ignores object identity', () => {
+    const input = {
+      stats: baseStats,
+      unit: 'metric' as const,
+      weeklyGoal: 4,
+      sessionsThisWeek: 2,
+      goalMet: false,
+      sessionsToGoal: 2,
+      dismissedAnnouncementIds: [] as string[],
+      announcements: [] as { id: string; kind: 'promo'; title: string; subtitle: string }[],
+    };
+    const a = buildHomeContextCards(input);
+    const b = buildHomeContextCards(input);
+    expect(a).not.toBe(b);
+    expect(sameHomeContextCards(a, b)).toBe(true);
+    expect(sameHomeContextCards(a, [])).toBe(false);
   });
 });

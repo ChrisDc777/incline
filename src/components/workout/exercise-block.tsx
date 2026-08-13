@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { cn } from '@/lib/cn';
@@ -14,7 +14,8 @@ import { estimated1RM, formatWeight, repsToBeat1RM } from '@/db/calc';
 import type { SetEntry, Unit } from '@/db/types';
 import type { ExercisePRSummary } from '@/db/queries';
 import type { TrainingSuggestion } from '@/coaching/types';
-import { Plus, Clock, Flame, CircleHelp, ChevronRight } from 'lucide-react-native';
+import { detectSetFatigue } from '@/coaching/fatigue';
+import { Plus, Clock, Flame, CircleHelp, ChevronRight, ArrowLeftRight } from 'lucide-react-native';
 import { SET_COL } from './set-layout';
 
 /**
@@ -41,6 +42,7 @@ export function ExerciseBlock({
   onAddWarmUp,
   onApplyLoad,
   onOpenExercise,
+  onSwap,
   showWarmUpSets = true,
   loadSuggestion,
   className,
@@ -63,6 +65,8 @@ export function ExerciseBlock({
   onApplyLoad?: (weight: number, reps?: number) => void;
   /** Open exercise detail (history / charts). */
   onOpenExercise?: () => void;
+  /** Open substitute picker — does not remove completed sets. */
+  onSwap?: () => void;
   showWarmUpSets?: boolean;
   loadSuggestion?: TrainingSuggestion | null;
   className?: string;
@@ -103,6 +107,8 @@ export function ExerciseBlock({
   const hasAssist =
     lastSets.length > 0 || prWeight != null || best1RM != null;
 
+  const fatigue = useMemo(() => detectSetFatigue(sets, unit), [sets, unit]);
+
   const applyAndClose = (weight: number, reps?: number) => {
     onApplyLoad?.(weight, reps);
     setAssistOpen(false);
@@ -131,6 +137,15 @@ export function ExerciseBlock({
                 Suggested {formatWeight(loadSuggestion.weight, unit)} × {loadSuggestion.reps}
               </Text>
             ) : null}
+            {onSwap ? (
+              <Pressable
+                onPress={onSwap}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={`Swap ${name}`}>
+                <Icon icon={ArrowLeftRight} size={14} color="muted-foreground" />
+              </Pressable>
+            ) : null}
             {hasAssist ? (
               <Pressable
                 onPress={() => setAssistOpen(true)}
@@ -158,6 +173,24 @@ export function ExerciseBlock({
           </Pressable>
         </View>
       </View>
+
+      {fatigue ? (
+        <View className="mx-1 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2">
+          <Caption className="font-medium text-warning">{fatigue.title}</Caption>
+          <Caption className="mt-0.5">{fatigue.body}</Caption>
+          {onApplyLoad ? (
+            <Pressable
+              onPress={() => onApplyLoad(fatigue.suggestedWeight, fatigue.suggestedReps)}
+              accessibilityRole="button"
+              accessibilityLabel="Drop load on next set"
+              className="mt-2 self-start">
+              <Text className="text-xs font-semibold text-warning">
+                Drop next set to {formatWeight(fatigue.suggestedWeight, unit)} × {fatigue.suggestedReps}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
 
       <View className="flex-row items-center gap-2 px-1 pb-0.5">
         <View style={{ width: SET_COL.index }} className="items-center">
@@ -305,6 +338,16 @@ export function ExerciseBlock({
                 onOpenExercise();
               }}>
               Open exercise details
+            </Button>
+          ) : null}
+          {onSwap ? (
+            <Button
+              variant="outline"
+              onPress={() => {
+                setAssistOpen(false);
+                onSwap();
+              }}>
+              Swap exercise
             </Button>
           ) : null}
         </View>

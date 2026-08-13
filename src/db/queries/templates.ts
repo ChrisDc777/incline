@@ -2,6 +2,7 @@ import { openDatabase } from '../client';
 import { newUuid } from '@/lib/uuid';
 import { enqueueSync } from '@/sync/outbox';
 import { exerciseRefForId } from '@/sync/exercise-ref';
+import { scaleDeloadSets } from '@/coaching/deload';
 import type { Difficulty, MuscleGroup, TemplateExercise, WorkoutTemplate } from '../types';
 import { getExercise } from './exercises';
 import {
@@ -350,6 +351,32 @@ export async function duplicateTemplate(sourceId: number): Promise<number> {
       newId,
       te.exerciseId,
       te.targetSets,
+      te.targetRepsMin,
+      te.targetRepsMax,
+      te.restSeconds,
+    );
+    if (te.notes?.trim()) {
+      await updateTemplateExercise(teId, { notes: te.notes });
+    }
+  }
+  return newId;
+}
+
+/** User-confirmed deload copy: fewer sets, original routine unchanged. */
+export async function createDeloadTemplate(sourceId: number): Promise<number> {
+  const source = await getTemplate(sourceId);
+  if (!source) throw new Error('Template not found');
+  const copyName = source.name.startsWith('Deload') ? source.name : `Deload — ${source.name}`;
+  const newId = await createTemplate(
+    copyName,
+    'Reduced-volume week. Your original routine was not changed.',
+    source.difficulty,
+  );
+  for (const te of source.exercises ?? []) {
+    const teId = await addExerciseToTemplate(
+      newId,
+      te.exerciseId,
+      scaleDeloadSets(te.targetSets),
       te.targetRepsMin,
       te.targetRepsMax,
       te.restSeconds,

@@ -26,9 +26,11 @@ import { useHaptics } from '@/hooks/use-haptics';
 import { startWorkout, discardWorkout, deleteWorkout, createTemplateFromWorkoutLog, getWeeklyConsistency, getMuscleExposureDays, type WeeklyConsistency } from '@/db/queries';
 import { formatVolume, formatFullDate } from '@/db/calc';
 import { METRIC_ICONS } from '@/lib/metric-icons';
-import { buildHomeContextCards, homeWeekCaption, type HomeContextCard as HomeContextCardModel } from '@/lib/home-context';
+import { buildHomeContextCards, homeWeekCaption, sameHomeContextCards, type HomeContextCard as HomeContextCardModel } from '@/lib/home-context';
 import { ANNOUNCEMENT_PACK } from '@/lib/announcements';
 import { pickHomeCoachingInsight } from '@/coaching/insights';
+import { DELOAD_APPLIED_KEY, DELOAD_SNOOZE_KEY } from '@/coaching/deload';
+import { kvStorage } from '@/db/kv';
 import type { FeedWorkoutLog, MuscleGroup } from '@/db/types';
 
 function greeting() {
@@ -36,6 +38,10 @@ function greeting() {
   if (h < 12) return 'Good morning';
   if (h < 18) return 'Good afternoon';
   return 'Good evening';
+}
+
+function FeedSeparator() {
+  return <View className="h-3" />;
 }
 
 export default function HomeScreen() {
@@ -62,14 +68,23 @@ export default function HomeScreen() {
   const [consistency, setConsistency] = useState<WeeklyConsistency | null>(null);
   const [contextCards, setContextCards] = useState<HomeContextCardModel[]>([]);
   const didFocus = useRef(false);
+  const contextGen = useRef(0);
 
   const refreshContext = useCallback(async () => {
-    const [cons, muscleDays] = await Promise.all([
+    const gen = ++contextGen.current;
+    const [cons, muscleDays, appliedRaw, snoozeRaw] = await Promise.all([
       getWeeklyConsistency(weeklyWorkoutGoal),
       getMuscleExposureDays(),
+      kvStorage.getItem(DELOAD_APPLIED_KEY),
+      kvStorage.getItem(DELOAD_SNOOZE_KEY),
     ]);
+    if (gen !== contextGen.current) return;
     setConsistency(cons);
-    const coaching = pickHomeCoachingInsight(stats, unit, muscleDays);
+    const coaching = pickHomeCoachingInsight(stats, unit, muscleDays, {
+      weeklyStreak: cons.currentWeeklyStreak,
+      lastDeloadAppliedAt: appliedRaw ? Number(appliedRaw) : null,
+      deloadSnoozeUntil: snoozeRaw ? Number(snoozeRaw) : null,
+    });
     const recentPr = stats?.prs?.find((p) => p.achievedAt >= Date.now() - 14 * 86_400_000);
     const cards = buildHomeContextCards({
       stats,
@@ -87,7 +102,7 @@ export default function HomeScreen() {
         ? { exerciseName: recentPr.exerciseName, weight: recentPr.maxWeight, reps: recentPr.maxReps }
         : null,
     });
-    setContextCards(cards);
+    setContextCards((prev) => (sameHomeContextCards(prev, cards) ? prev : cards));
   }, [stats, unit, weeklyWorkoutGoal, dismissedAnnouncementIds]);
 
   useFocusEffect(
@@ -203,7 +218,7 @@ export default function HomeScreen() {
               key={card.id}
               card={card}
               index={i}
-              onDismiss={card.dismissKey ? () => dismissAnnouncement(card.dismissKey!) : undefined}
+              onDismiss={card.dismissKey ? dismissAnnouncement : undefined}
             />
           ))}
         </View>
@@ -401,13 +416,13 @@ export default function HomeScreen() {
         data={feed.items}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={renderHeader()}
         ListEmptyComponent={feed.loading ? <View className="mt-8 px-4"><CardSkeleton /></View> : null}
         ListFooterComponent={feed.loading && feed.items.length > 0 ? <View className="px-4 py-4"><CardSkeleton /></View> : null}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
         contentContainerStyle={{ paddingTop: 24, paddingBottom: 32 }}
-        ItemSeparatorComponent={() => <View className="h-3" />}
+        ItemSeparatorComponent={FeedSeparator}
         showsVerticalScrollIndicator={false}
       />
 

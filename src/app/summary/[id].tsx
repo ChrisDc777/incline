@@ -29,6 +29,7 @@ import {
   type WorkoutPr,
 } from '@/db/queries';
 import { postSessionInsights } from '@/coaching/insights';
+import { detectSetFatigue } from '@/coaching/fatigue';
 import type { TrainingSuggestion } from '@/coaching/types';
 import { useSettings } from '@/store/settings-store';
 import { useProfile } from '@/hooks/use-data';
@@ -104,6 +105,34 @@ export default function SummaryScreen() {
     () => muscleSplit.map((s) => ({ muscle: s.muscle, sets: s.sets, volume: 0 })),
     [muscleSplit],
   );
+
+  const coachingLines = useMemo(() => {
+    let fatigueLine: string | null = null;
+    if (log) {
+      const byEx = new Map<number, SessionSet[]>();
+      for (const s of log.sets) {
+        const list = byEx.get(s.exerciseId) ?? [];
+        list.push(s);
+        byEx.set(s.exerciseId, list);
+      }
+      for (const sets of byEx.values()) {
+        const cue = detectSetFatigue(sets, unit);
+        if (cue) {
+          fatigueLine = `${sets[0]?.exerciseName ?? 'An exercise'}: ${cue.title.toLowerCase()}.`;
+          break;
+        }
+      }
+    }
+    return postSessionInsights({
+      prCount: prs.length,
+      volumeDeltaPct: volumeDelta?.deltaPct ?? null,
+      suggestions: nextSuggestions.map((s) => ({
+        exerciseName: s.exerciseName,
+        reasonText: s.reasonText,
+      })),
+      fatigueLine,
+    });
+  }, [log, unit, prs.length, volumeDelta, nextSuggestions]);
 
   const athleteName = profile?.name?.trim() || 'Athlete';
   const volumeLabel = log ? formatVolume(log.totalVolume, unit) : '';
@@ -223,24 +252,10 @@ export default function SummaryScreen() {
 
         <FinishCelebration active={showCelebration} prCount={prs.length} />
 
-        {postSessionInsights({
-          prCount: prs.length,
-          volumeDeltaPct: volumeDelta?.deltaPct ?? null,
-          suggestions: nextSuggestions.map((s) => ({
-            exerciseName: s.exerciseName,
-            reasonText: s.reasonText,
-          })),
-        }).length > 0 ? (
+        {coachingLines.length > 0 ? (
           <View className="mb-4 rounded-2xl bg-card p-3">
             <Caption className="mb-2 font-semibold text-foreground">Next time</Caption>
-            {postSessionInsights({
-              prCount: prs.length,
-              volumeDeltaPct: volumeDelta?.deltaPct ?? null,
-              suggestions: nextSuggestions.map((s) => ({
-                exerciseName: s.exerciseName,
-                reasonText: s.reasonText,
-              })),
-            }).map((line) => (
+            {coachingLines.map((line) => (
               <Body key={line} className="mt-1 text-sm text-foreground">
                 {line}
               </Body>

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -27,7 +28,7 @@ const ICONS: Record<HomeContextIcon, typeof Sparkles> = {
   trend: TrendingUp,
 };
 
-export function HomeContextCard({
+export const HomeContextCard = memo(function HomeContextCard({
   card,
   onDismiss,
   index = 0,
@@ -76,8 +77,10 @@ export function HomeContextCard({
   );
 
   return (
-    <Animated.View entering={FadeInDown.duration(220).delay(index * 40)}>
+    <Animated.View
+      key={card.id}
+      entering={FadeInDown.duration(220).delay(index * 40)}>
       {wrapped}
     </Animated.View>
   );
-}
+});

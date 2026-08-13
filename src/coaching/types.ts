@@ -1,6 +1,6 @@
 import type { Unit } from '@/db/types';
 
-export const COACHING_RULE_VERSION = '1.0.0';
+export const COACHING_RULE_VERSION = '1.1.0';
 
 export type ReasonCode =
   | 'no_history'
@@ -14,9 +14,12 @@ export type InsightSeverity = 'info' | 'success' | 'warning';
 export type CoachingInsightKind =
   | 'overload_ready'
   | 'recovery_gap'
+  | 'muscle_balance'
   | 'volume_trend'
   | 'weekly_goal'
-  | 'post_session';
+  | 'post_session'
+  | 'deload'
+  | 'fatigue';
 
 export interface TrainingSuggestion {
   exerciseId: number;

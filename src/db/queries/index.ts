@@ -43,6 +43,7 @@ export {
   unlinkTemplateExercise,
   duplicateTemplate,
   createTemplateFromWorkoutLog,
+  createDeloadTemplate,
   type TemplateSummary,
 } from './templates';
 
@@ -117,6 +118,7 @@ export {
   getTemplateSuggestions,
   getExerciseSuggestion,
   getMuscleExposureDays,
+  getExerciseSubstitutes,
 } from './coaching/suggestions';
 
 export {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +16,8 @@ import { StatCard } from '@/components/common/stat-card';
 import { usePeriodStats } from '@/hooks/use-data';
 import { useSettings } from '@/store/settings-store';
 import { formatVolume } from '@/db/calc';
+import { getMuscleExposureDays } from '@/db/queries';
+import { muscleBalanceInsights, recoveryGapInsights } from '@/coaching/insights';
 import { MUSCLE_LABELS } from '@/lib/labels';
 import { SCREEN_CONTENT } from '@/lib/layout';
 import { METRIC_ICONS } from '@/lib/metric-icons';
@@ -34,11 +36,26 @@ export default function MuscleDistributionScreen() {
   const { unit } = useSettings();
   const [range, setRange] = useState<ProgressRange>('30d');
   const { data: stats, loading, error, refetch } = usePeriodStats(range);
+  const [exposure, setExposure] = useState<Record<string, number> | null>(null);
+
+  useEffect(() => {
+    void getMuscleExposureDays().then(setExposure);
+  }, []);
 
   const topMuscles = useMemo(() => {
     const list = [...(stats?.muscleDistribution ?? [])].sort((a, b) => b.sets - a.sets);
     return list.slice(0, 3);
   }, [stats]);
+
+  const leastMuscles = useMemo(() => {
+    const list = [...(stats?.muscleDistribution ?? [])].sort((a, b) => a.sets - b.sets);
+    return list.slice(0, 3);
+  }, [stats]);
+
+  const coachingNotes = useMemo(() => {
+    if (!stats) return [];
+    return [...recoveryGapInsights(exposure), ...muscleBalanceInsights(stats.muscleDistribution)];
+  }, [stats, exposure]);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
@@ -97,6 +114,20 @@ export default function MuscleDistributionScreen() {
               />
             </Card>
 
+            {coachingNotes.length > 0 ? (
+              <View>
+                <Body className="mb-3 text-lg font-semibold text-foreground">Coaching</Body>
+                <View className="gap-2">
+                  {coachingNotes.map((note) => (
+                    <View key={note.id} className="rounded-2xl bg-card px-4 py-3">
+                      <Body className="font-medium text-foreground">{note.title}</Body>
+                      <Caption className="mt-1">{note.body}</Caption>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
             {topMuscles.length > 0 ? (
               <View>
                 <Body className="mb-3 text-lg font-semibold text-foreground">Most trained</Body>
@@ -106,6 +137,20 @@ export default function MuscleDistributionScreen() {
                       <Body className="font-medium text-foreground">
                         {i + 1}. {MUSCLE_LABELS[m.muscle]}
                       </Body>
+                      <Caption>{m.sets} sets</Caption>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {leastMuscles.length > 0 && leastMuscles[0].muscle !== topMuscles[0]?.muscle ? (
+              <View>
+                <Body className="mb-3 text-lg font-semibold text-foreground">Least trained</Body>
+                <View className="gap-2">
+                  {leastMuscles.map((m) => (
+                    <View key={`least-${m.muscle}`} className="flex-row items-center justify-between rounded-2xl bg-card px-4 py-3">
+                      <Body className="font-medium text-foreground">{MUSCLE_LABELS[m.muscle]}</Body>
                       <Caption>{m.sets} sets</Caption>
                     </View>
                   ))}
