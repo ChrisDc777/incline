@@ -71,7 +71,7 @@ export default function SessionScreen() {
   const { toast } = useToast();
   const { impact, notify } = useHaptics();
   const clear = useActiveWorkout((s) => s.clear);
-  const { unit, setUnit, restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets, keepScreenAwake } = useSettings();
+  const { unit, setUnit, restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets, showRpe, keepScreenAwake } = useSettings();
   const rest = useRestTimer({ notify: restSoundEnabled });
   const restSound = useRestTimerSound();
 
@@ -358,6 +358,20 @@ export default function SessionScreen() {
       }
     }
   };
+  const onChangeRpe = (setId: number, rpe: number | null) => {
+    setSession((prev) =>
+      prev
+        ? {
+            ...prev,
+            sets: prev.sets.map((s) => (s.id === setId ? { ...s, rpe } : s)),
+          }
+        : prev,
+    );
+    updateSet(setId, { rpe }).catch(() => {
+      toast({ title: 'Could not save RPE', variant: 'destructive' });
+      reload();
+    });
+  };
   const onRemoveSet = async (setId: number) => {
     const target = session?.sets.find((s) => s.id === setId);
     if (!target) return;
@@ -555,9 +569,11 @@ export default function SessionScreen() {
                   onAddSet={() => onAddSet(g.exerciseId)}
                   onAddWarmUp={() => onAddWarmUp(g.exerciseId)}
                   onApplyLoad={(weight, reps) => onApplyLoad(g.exerciseId, weight, reps)}
+                  onChangeRpe={onChangeRpe}
                   onOpenExercise={() => router.push(`/exercise/${g.exerciseId}` as Href)}
                   onSwap={() => { void onSwapExercise(g.exerciseId); }}
                   showWarmUpSets={showWarmUpSets}
+                  showRpe={showRpe}
                   loadSuggestion={suggestionMap[g.exerciseId] ?? null}
                 />
               </View>

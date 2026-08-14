@@ -74,6 +74,7 @@ async function enqueueSetUpsert(setId: number): Promise<void> {
     rest_seconds: row.rest_seconds,
     superset_group: row.superset_group,
     set_type: row.set_type ?? 'working',
+    rpe: row.rpe ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
     deleted_at: row.deleted_at,
@@ -270,6 +271,7 @@ export interface SetPatch {
   reps?: number;
   completed?: boolean;
   restSeconds?: number | null;
+  rpe?: number | null;
 }
 
 export async function updateSet(setId: number, patch: SetPatch): Promise<void> {
@@ -280,6 +282,13 @@ export async function updateSet(setId: number, patch: SetPatch): Promise<void> {
   if (patch.reps !== undefined) { sets.push('reps = ?'); args.push(patch.reps); }
   if (patch.completed !== undefined) { sets.push('completed = ?'); args.push(patch.completed ? 1 : 0); }
   if (patch.restSeconds !== undefined) { sets.push('rest_seconds = ?'); args.push(patch.restSeconds); }
+  if (patch.rpe !== undefined) {
+    sets.push('rpe = ?');
+    const n = patch.rpe;
+    args.push(
+      typeof n === 'number' && Number.isFinite(n) && n >= 1 && n <= 10 ? Math.round(n) : null,
+    );
+  }
   if (sets.length === 0) return;
   const now = Date.now();
   sets.push('updated_at = ?');

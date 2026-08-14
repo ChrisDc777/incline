@@ -115,6 +115,7 @@ export interface SetRow {
   rest_seconds: number | null;
   superset_group: number | null;
   set_type?: string | null;
+  rpe?: number | null;
   uuid: string | null;
   deleted_at: number | null;
   created_at: number;
@@ -187,6 +188,7 @@ export function mapSet(r: SetRow): SetEntry {
     restSeconds: r.rest_seconds,
     supersetGroup: r.superset_group ?? null,
     setType,
+    rpe: typeof r.rpe === 'number' && r.rpe >= 1 && r.rpe <= 10 ? Math.round(r.rpe) : null,
     createdAt: r.created_at,
   };
 }

@@ -1,5 +1,6 @@
-import { COACHING_RULE_VERSION, type OverloadInput, type ReasonCode, type TrainingSuggestion } from './types';
+import { COACHING_RULE_VERSION, type LastWorkingSet, type OverloadInput, type ReasonCode, type TrainingSuggestion } from './types';
 import { increaseLoad } from './plates';
+import { lastSetRpe, HIGH_RPE_HOLD_THRESHOLD } from './rpe';
 
 function reasonText(code: ReasonCode, ctx: { repsMax: number; repsMin: number; nextWeight?: number; unitLabel: string }): string {
   switch (code) {
@@ -13,6 +14,8 @@ function reasonText(code: ReasonCode, ctx: { repsMax: number; repsMin: number; n
       return `Some sets missed ${ctx.repsMin} reps — hold weight and aim for the bottom of your range.`;
     case 'all_sets_maxed':
       return `All sets at top of range — time to add weight.`;
+    case 'high_rpe_hold':
+      return 'Last session was already very hard — hold weight this time.';
     default:
       return 'Suggested from your last session.';
   }
@@ -62,7 +65,7 @@ export function suggestNextLoad(input: OverloadInput): TrainingSuggestion | null
 
   if (allHitMax) {
     const nextWeight = increaseLoad(workingWeight, input.unit);
-    return {
+    return applyHighRpeHold({
       exerciseId: input.exerciseId,
       exerciseName: input.exerciseName,
       weight: nextWeight,
@@ -71,7 +74,7 @@ export function suggestNextLoad(input: OverloadInput): TrainingSuggestion | null
       reasonCode: 'hit_rep_range_increase_load',
       reasonText: reasonText('hit_rep_range_increase_load', { ...ctx, nextWeight }),
       ruleVersion: COACHING_RULE_VERSION,
-    };
+    }, sets);
   }
 
   if (anyBelowMin) {
@@ -92,7 +95,7 @@ export function suggestNextLoad(input: OverloadInput): TrainingSuggestion | null
     const nextReps = Math.min(input.targetRepsMax, minReps + 1);
     if (nextReps >= input.targetRepsMax) {
       const nextWeight = increaseLoad(workingWeight, input.unit);
-      return {
+      return applyHighRpeHold({
         exerciseId: input.exerciseId,
         exerciseName: input.exerciseName,
         weight: nextWeight,
@@ -101,7 +104,7 @@ export function suggestNextLoad(input: OverloadInput): TrainingSuggestion | null
         reasonCode: 'all_sets_maxed',
         reasonText: reasonText('all_sets_maxed', ctx),
         ruleVersion: COACHING_RULE_VERSION,
-      };
+      }, sets);
     }
     return {
       exerciseId: input.exerciseId,
@@ -124,5 +127,23 @@ export function suggestNextLoad(input: OverloadInput): TrainingSuggestion | null
     reasonCode: 'partial_miss_hold',
     reasonText: reasonText('partial_miss_hold', ctx),
     ruleVersion: COACHING_RULE_VERSION,
+  };
+}
+
+/** If the last working set was already very hard, do not add load. Unrated last set is ignored. */
+function applyHighRpeHold(suggestion: TrainingSuggestion, sets: LastWorkingSet[]): TrainingSuggestion {
+  if (
+    suggestion.reasonCode !== 'hit_rep_range_increase_load' &&
+    suggestion.reasonCode !== 'all_sets_maxed'
+  ) {
+    return suggestion;
+  }
+  const rpe = lastSetRpe(sets);
+  if (rpe == null || rpe < HIGH_RPE_HOLD_THRESHOLD) return suggestion;
+  return {
+    ...suggestion,
+    weight: sets[0].weight,
+    reasonCode: 'high_rpe_hold',
+    reasonText: `Last set was RPE ${rpe} — hold weight this time.`,
   };
 }

@@ -335,6 +335,7 @@ function HistoryTab({
                 <Body style={{ width: 40 }} className="text-sm text-foreground">{set.setIndex + 1}</Body>
                 <Body className="text-sm text-foreground">
                   {formatWeight(set.weight, unit)} × {set.reps}
+                  {set.rpe != null ? ` · RPE ${set.rpe}` : ''}
                 </Body>
                 {isWeightPR ? (
                   <Badge variant="default" className="ml-2 bg-yellow-500">

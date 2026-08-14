@@ -8,6 +8,7 @@ import { Body, Caption } from '@/components/common/text';
 import { Button } from '@/components/ui/button';
 import { Sheet } from '@/components/ui/sheet';
 import { SetRow, type SetRowHandle } from './set-row';
+import { RpeChips } from './rpe-chips';
 import { PreviousBestBadge } from './previous-best-badge';
 import { RestTimerPickerSheet } from './rest-timer-picker-sheet';
 import { estimated1RM, formatWeight, repsToBeat1RM } from '@/db/calc';
@@ -41,9 +42,11 @@ export function ExerciseBlock({
   onAddSet,
   onAddWarmUp,
   onApplyLoad,
+  onChangeRpe,
   onOpenExercise,
   onSwap,
   showWarmUpSets = true,
+  showRpe = true,
   loadSuggestion,
   className,
 }: {
@@ -63,11 +66,13 @@ export function ExerciseBlock({
   onAddWarmUp: () => void;
   /** Prefill the next incomplete set with a weight/reps suggestion. */
   onApplyLoad?: (weight: number, reps?: number) => void;
+  onChangeRpe?: (setId: number, rpe: number | null) => void;
   /** Open exercise detail (history / charts). */
   onOpenExercise?: () => void;
   /** Open substitute picker — does not remove completed sets. */
   onSwap?: () => void;
   showWarmUpSets?: boolean;
+  showRpe?: boolean;
   loadSuggestion?: TrainingSuggestion | null;
   className?: string;
 }) {
@@ -213,30 +218,34 @@ export function ExerciseBlock({
 
       <View className="gap-1">
         {sets.map((s, i) => (
-          <SetRow
-            key={s.id}
-            ref={(el) => { rowRefs.current[i] = el; }}
-            index={i}
-            weight={s.weight}
-            reps={s.reps}
-            previousWeight={lastSets[i]?.weight}
-            previousReps={lastSets[i]?.reps}
-            completed={s.completed}
-            unit={unit}
-            onChangeWeight={(v) => onChangeWeight(s.id, v)}
-            onChangeReps={(v) => onChangeReps(s.id, v)}
-            onApplyPrevious={
-              lastSets[i] && lastSets[i].weight > 0
-                ? () => {
-                    onChangeWeight(s.id, lastSets[i].weight);
-                    onChangeReps(s.id, lastSets[i].reps);
-                  }
-                : undefined
-            }
-            onToggleComplete={() => onToggleComplete(s.id)}
-            onRemove={sets.length > 1 ? () => onRemoveSet(s.id) : undefined}
-            onSubmitReps={i + 1 < sets.length ? () => rowRefs.current[i + 1]?.focusWeight() : undefined}
-          />
+          <View key={s.id}>
+            <SetRow
+              ref={(el) => { rowRefs.current[i] = el; }}
+              index={i}
+              weight={s.weight}
+              reps={s.reps}
+              previousWeight={lastSets[i]?.weight}
+              previousReps={lastSets[i]?.reps}
+              completed={s.completed}
+              unit={unit}
+              onChangeWeight={(v) => onChangeWeight(s.id, v)}
+              onChangeReps={(v) => onChangeReps(s.id, v)}
+              onApplyPrevious={
+                lastSets[i] && lastSets[i].weight > 0
+                  ? () => {
+                      onChangeWeight(s.id, lastSets[i].weight);
+                      onChangeReps(s.id, lastSets[i].reps);
+                    }
+                  : undefined
+              }
+              onToggleComplete={() => onToggleComplete(s.id)}
+              onRemove={sets.length > 1 ? () => onRemoveSet(s.id) : undefined}
+              onSubmitReps={i + 1 < sets.length ? () => rowRefs.current[i + 1]?.focusWeight() : undefined}
+            />
+            {showRpe && s.completed && (s.setType ?? 'working') !== 'warmup' && onChangeRpe ? (
+              <RpeChips value={s.rpe ?? null} onChange={(v) => onChangeRpe(s.id, v)} />
+            ) : null}
+          </View>
         ))}
       </View>
 

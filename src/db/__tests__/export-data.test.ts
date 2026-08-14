@@ -50,12 +50,13 @@ describe('export-data', () => {
         completed: true,
         restSeconds: 90,
         setType: 'working',
+        rpe: 8,
       },
     ];
     const csv = buildSetsCsv(rows);
     expect(csv.startsWith('workout_id,')).toBe(true);
     expect(csv).toContain('"Push, A"');
-    expect(csv).toContain(',60,8,1,90,working');
+    expect(csv).toContain(',60,8,1,90,working,8');
   });
 
   it('stamps filenames and pretty-prints JSON', () => {

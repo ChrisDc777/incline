@@ -12,6 +12,7 @@ import { migration010 } from './010_body_measurements';
 import { migration011 } from './011_set_type';
 import { migration012 } from './012_warmup_backfill';
 import { migration013 } from './013_workout_photos';
+import { migration014 } from './014_set_rpe';
 import type { Migration } from './types';
 
 export type { Migration } from './types';
@@ -31,6 +32,7 @@ export const MIGRATIONS: Migration[] = [
   migration011,
   migration012,
   migration013,
+  migration014,
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 1;

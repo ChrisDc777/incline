@@ -46,6 +46,7 @@ export interface ExportSetRow {
   completed: boolean;
   restSeconds: number | null;
   setType: 'working' | 'warmup';
+  rpe: number | null;
 }
 
 export interface ExportWorkoutJson {
@@ -67,6 +68,7 @@ export interface ExportWorkoutJson {
     completed: boolean;
     restSeconds: number | null;
     setType: 'working' | 'warmup';
+    rpe: number | null;
   }[];
 }
 
@@ -136,6 +138,7 @@ const CSV_HEADERS = [
   'completed',
   'rest_seconds',
   'set_type',
+  'rpe',
 ] as const;
 
 export function buildSetsCsv(rows: ExportSetRow[]): string {
@@ -160,6 +163,7 @@ export function buildSetsCsv(rows: ExportSetRow[]): string {
         csvEscape(r.completed),
         csvEscape(r.restSeconds),
         csvEscape(r.setType),
+        csvEscape(r.rpe),
       ].join(','),
     );
   }
