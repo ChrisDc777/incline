@@ -36,6 +36,7 @@ interface SetJoinRow {
   completed: number;
   rest_seconds: number | null;
   set_type: string | null;
+  rpe: number | null;
 }
 
 async function loadExportSetRows(range: ExportRange): Promise<ExportSetRow[]> {
@@ -47,7 +48,7 @@ async function loadExportSetRows(range: ExportRange): Promise<ExportSetRow[]> {
            w.id as workout_id, w.uuid as workout_uuid, w.name as workout_name,
            w.started_at, w.ended_at, w.duration_seconds, w.total_volume, w.notes,
            s.exercise_id, e.name as exercise_name, e.external_id as exercise_external_id,
-           s.set_index, s.weight, s.reps, s.completed, s.rest_seconds, s.set_type
+           s.set_index, s.weight, s.reps, s.completed, s.rest_seconds, s.set_type, s.rpe
          FROM set_entries s
          JOIN workout_logs w ON w.id = s.workout_log_id
          JOIN exercises e ON e.id = s.exercise_id
@@ -59,7 +60,7 @@ async function loadExportSetRows(range: ExportRange): Promise<ExportSetRow[]> {
            w.id as workout_id, w.uuid as workout_uuid, w.name as workout_name,
            w.started_at, w.ended_at, w.duration_seconds, w.total_volume, w.notes,
            s.exercise_id, e.name as exercise_name, e.external_id as exercise_external_id,
-           s.set_index, s.weight, s.reps, s.completed, s.rest_seconds, s.set_type
+           s.set_index, s.weight, s.reps, s.completed, s.rest_seconds, s.set_type, s.rpe
          FROM set_entries s
          JOIN workout_logs w ON w.id = s.workout_log_id
          JOIN exercises e ON e.id = s.exercise_id
@@ -87,6 +88,7 @@ async function loadExportSetRows(range: ExportRange): Promise<ExportSetRow[]> {
     completed: r.completed === 1,
     restSeconds: r.rest_seconds,
     setType: r.set_type === 'warmup' ? 'warmup' : 'working',
+    rpe: typeof r.rpe === 'number' && r.rpe >= 1 && r.rpe <= 10 ? Math.round(r.rpe) : null,
   }));
 }
 
@@ -118,6 +120,7 @@ function groupWorkouts(rows: ExportSetRow[]): ExportWorkoutJson[] {
       completed: r.completed,
       restSeconds: r.restSeconds,
       setType: r.setType,
+      rpe: r.rpe,
     });
   }
   return [...map.values()];

@@ -5,6 +5,7 @@
 import {
   CalendarCheck,
   Flame,
+  Gauge,
   Layers,
   ListChecks,
   Weight,
@@ -19,6 +20,7 @@ export const METRIC_ICONS = {
   streak: Flame,
   equipment: Weight,
   warmUp: Zap,
+  rpe: Gauge,
 } as const satisfies Record<string, LucideIcon>;
 
 export type MetricIconKey = keyof typeof METRIC_ICONS;

@@ -363,7 +363,7 @@ export async function getLastSetsForExercises(exerciseIds: number[]): Promise<Re
 export async function getExerciseHistory(exerciseId: number, limit = 10): Promise<ExerciseHistoryRow[]> {
   const db = await openDatabase();
   return db.getAllAsync<ExerciseHistoryRow>(
-    `SELECT w.id as workoutLogId, w.name as workoutName, w.started_at as startedAt, s.set_index as setIndex, s.weight, s.reps, s.completed as completed
+    `SELECT w.id as workoutLogId, w.name as workoutName, w.started_at as startedAt, s.set_index as setIndex, s.weight, s.reps, s.completed as completed, s.rpe as rpe
      FROM set_entries s JOIN workout_logs w ON w.id = s.workout_log_id
      WHERE s.exercise_id = ? AND w.ended_at IS NOT NULL AND w.deleted_at IS NULL AND s.deleted_at IS NULL AND s.completed = 1
      ORDER BY w.started_at DESC, s.set_index LIMIT ?`,

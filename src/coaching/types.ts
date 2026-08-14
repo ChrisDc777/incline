@@ -1,13 +1,14 @@
 import type { Unit } from '@/db/types';
 
-export const COACHING_RULE_VERSION = '1.1.0';
+export const COACHING_RULE_VERSION = '1.2.0';
 
 export type ReasonCode =
   | 'no_history'
   | 'hold_weight_add_reps'
   | 'hit_rep_range_increase_load'
   | 'partial_miss_hold'
-  | 'all_sets_maxed';
+  | 'all_sets_maxed'
+  | 'high_rpe_hold';
 
 export type InsightSeverity = 'info' | 'success' | 'warning';
 
@@ -45,6 +46,8 @@ export interface CoachingInsight {
 export interface LastWorkingSet {
   weight: number;
   reps: number;
+  /** Optional 1–10. Missing means coaching ignores RPE for this session. */
+  rpe?: number | null;
 }
 
 export interface OverloadInput {

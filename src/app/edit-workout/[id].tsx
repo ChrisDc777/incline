@@ -12,6 +12,7 @@ import { Body, Caption } from '@/components/common/text';
 import { Button } from '@/components/ui/button';
 import { NumberStepper } from '@/components/workout/number-stepper';
 import { SetRow } from '@/components/workout/set-row';
+import { RpeChips } from '@/components/workout/rpe-chips';
 import { SummaryStat } from '@/components/workout/summary-stat';
 import { ExercisePickerSheet } from '@/components/workout/exercise-picker-sheet';
 import { useToast } from '@/components/ui/toast';
@@ -49,7 +50,7 @@ export default function EditWorkoutScreen() {
   const router = useRouter();
   const { toast } = useToast();
   const { impact } = useHaptics();
-  const { unit } = useSettings();
+  const { unit, showRpe } = useSettings();
   const accentColor = usePrimaryHex();
   const [log, setLog] = useState<SessionWorkout | null>(null);
   const [loading, setLoading] = useState(true);
@@ -135,6 +136,11 @@ export default function EditWorkoutScreen() {
     const next = !target?.completed;
     await updateSet(setId, { completed: next });
     impact();
+    load();
+  };
+
+  const onChangeRpe = async (setId: number, rpe: number | null) => {
+    await updateSet(setId, { rpe });
     load();
   };
 
@@ -402,20 +408,24 @@ export default function EditWorkoutScreen() {
 
               {/* Sets */}
               {g.sets.map((s, i) => (
-                <SetRow
-                  key={s.id}
-                  index={s.setIndex}
-                  weight={s.weight}
-                  reps={s.reps}
-                  previousWeight={i > 0 ? g.sets[i - 1].weight : undefined}
-                  previousReps={i > 0 ? g.sets[i - 1].reps : undefined}
-                  completed={s.completed}
-                  unit={unit}
-                  onChangeWeight={(v) => onChangeWeight(s.id, v)}
-                  onChangeReps={(v) => onChangeReps(s.id, v)}
-                  onToggleComplete={() => onToggleComplete(s.id)}
-                  onRemove={g.sets.length > 1 ? () => onRemoveSet(s.id) : undefined}
-                />
+                <View key={s.id}>
+                  <SetRow
+                    index={s.setIndex}
+                    weight={s.weight}
+                    reps={s.reps}
+                    previousWeight={i > 0 ? g.sets[i - 1].weight : undefined}
+                    previousReps={i > 0 ? g.sets[i - 1].reps : undefined}
+                    completed={s.completed}
+                    unit={unit}
+                    onChangeWeight={(v) => onChangeWeight(s.id, v)}
+                    onChangeReps={(v) => onChangeReps(s.id, v)}
+                    onToggleComplete={() => onToggleComplete(s.id)}
+                    onRemove={g.sets.length > 1 ? () => onRemoveSet(s.id) : undefined}
+                  />
+                  {showRpe && s.completed && (s.setType ?? 'working') !== 'warmup' ? (
+                    <RpeChips value={s.rpe ?? null} onChange={(v) => onChangeRpe(s.id, v)} />
+                  ) : null}
+                </View>
               ))}
 
               {/* Add set */}

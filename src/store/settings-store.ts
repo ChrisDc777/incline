@@ -17,6 +17,7 @@ interface SettingsState extends Settings {
   setAutoStartRest: (enabled: boolean) => void;
   setDefaultRestSeconds: (seconds: number) => void;
   setShowWarmUpSets: (enabled: boolean) => void;
+  setShowRpe: (enabled: boolean) => void;
   setCalendarHeatMetric: (metric: CalendarHeatMetric) => void;
   setWeekStartsOn: (day: WeekStartsOn) => void;
   setKeepScreenAwake: (enabled: boolean) => void;
@@ -95,6 +96,7 @@ export const useSettings = create<SettingsState>()(
       autoStartRest: true,
       defaultRestSeconds: 90,
       showWarmUpSets: true,
+      showRpe: true,
       calendarHeatMetric: 'volume',
       weekStartsOn: 'monday',
       keepScreenAwake: true,
@@ -116,6 +118,7 @@ export const useSettings = create<SettingsState>()(
       setAutoStartRest: (enabled) => set({ autoStartRest: enabled }),
       setDefaultRestSeconds: (seconds) => set({ defaultRestSeconds: seconds }),
       setShowWarmUpSets: (enabled) => set({ showWarmUpSets: enabled }),
+      setShowRpe: (enabled) => set({ showRpe: enabled }),
       setCalendarHeatMetric: (calendarHeatMetric) => set({ calendarHeatMetric }),
       setWeekStartsOn: (weekStartsOn) => set({ weekStartsOn }),
       setKeepScreenAwake: (keepScreenAwake) => set({ keepScreenAwake }),
@@ -162,6 +165,7 @@ export const useSettings = create<SettingsState>()(
         autoStartRest: s.autoStartRest,
         defaultRestSeconds: s.defaultRestSeconds,
         showWarmUpSets: s.showWarmUpSets,
+        showRpe: s.showRpe,
         calendarHeatMetric: s.calendarHeatMetric,
         weekStartsOn: s.weekStartsOn,
         keepScreenAwake: s.keepScreenAwake,
@@ -187,6 +191,7 @@ export const useSettings = create<SettingsState>()(
             : 'volume',
           weekStartsOn: isWeekStartsOn(p.weekStartsOn) ? p.weekStartsOn : 'monday',
           keepScreenAwake: typeof p.keepScreenAwake === 'boolean' ? p.keepScreenAwake : true,
+          showRpe: typeof p.showRpe === 'boolean' ? p.showRpe : true,
           workoutRemindersEnabled:
             typeof p.workoutRemindersEnabled === 'boolean' ? p.workoutRemindersEnabled : false,
           workoutReminderDays: sanitizeReminderDays(p.workoutReminderDays),

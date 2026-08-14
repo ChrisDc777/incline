@@ -131,6 +131,8 @@ export interface SetEntry {
   supersetGroup: number | null;
   /** Warm-up sets are excluded from coaching overload calculations. */
   setType?: SetType;
+  /** Optional 1–10. Null means skipped; never required to complete a set. */
+  rpe?: number | null;
   createdAt: number;
 }
 
@@ -186,6 +188,8 @@ export interface Settings {
   defaultRestSeconds: number;
   /** Show the warm-up set button in the session screen. */
   showWarmUpSets: boolean;
+  /** Show optional RPE chips after a completed working set. */
+  showRpe: boolean;
   /** What the calendar month grid encodes in day cell color. */
   calendarHeatMetric: CalendarHeatMetric;
   /** First day of the week for calendar grids. */
@@ -283,6 +287,7 @@ export interface ExerciseHistoryRow {
   weight: number;
   reps: number;
   completed: boolean;
+  rpe: number | null;
 }
 
 /** How a set beat a previous best. Session toasts and recaps use the celebration kinds. */

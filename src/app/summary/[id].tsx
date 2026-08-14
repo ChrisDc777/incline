@@ -378,6 +378,7 @@ export default function SummaryScreen() {
                     <Caption className="w-10 font-medium">{s.setIndex + 1}</Caption>
                     <Body className="flex-1 text-sm text-foreground">
                       {s.weight > 0 ? `${formatWeight(s.weight, unit)} × ${s.reps}` : `${s.reps} reps`}
+                      {s.rpe != null ? ` · RPE ${s.rpe}` : ''}
                     </Body>
                   </View>
                 ))}

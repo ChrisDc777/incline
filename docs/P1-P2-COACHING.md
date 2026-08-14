@@ -73,9 +73,25 @@ Celebration surfaces (toast, summary, recap, feed badge, achievements) use heavi
 
 ## P2 deferred (backlog)
 
-- Stage C: RPE/RIR, readiness check-in, adaptive program diffs
+- Stage C remainder: readiness check-in, adaptive program-week diffs ([#98](https://github.com/ChrisDc777/incline/issues/98))
 - AI-1: Edge Function narration (after P0 sync ops proven)
 - Program + settings sync extension
+- Measurement goals ([#94](https://github.com/ChrisDc777/incline/issues/94)) — keep open; do not build until Measures has regular use
+- Photo comparison gallery ([#23](https://github.com/ChrisDc777/incline/issues/23)); photo cloud sync ([#109](https://github.com/ChrisDc777/incline/issues/109))
+
+## P2 — Stage C (RPE slice)
+
+| Layer | Path |
+|-------|------|
+| Schema | migration `014_set_rpe` — nullable integer on `set_entries` |
+| Normalize | [`src/coaching/rpe.ts`](../src/coaching/rpe.ts) |
+| Overload | `high_rpe_hold` when the last working set is rated ≥ 9 |
+| Session UI | [`src/components/workout/rpe-chips.tsx`](../src/components/workout/rpe-chips.tsx) under completed working sets |
+| Settings | `showRpe` (default on; never required) |
+
+**Constraint:** completing a set never waits on RPE. Intensity uses the last working set only (earlier sets may be easier on purpose). An unrated last set is ignored — no invented intensity. RIR is not stored; derive later as `10 - RPE` if needed.
+
+Week-to-week **training** planning (insert deload, catch-up after a miss) is the remaining #98 slice — not photo week-vs-week (#23).
 
 ## Verification
 

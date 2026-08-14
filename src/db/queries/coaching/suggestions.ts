@@ -6,10 +6,10 @@ import { rankSubstitutes } from '@/coaching/substitution';
 import type { TrainingSuggestion } from '@/coaching/types';
 import type { Exercise, SetEntry, Unit } from '../../types';
 
-function workingSets(sets: SetEntry[]): { weight: number; reps: number }[] {
+function workingSets(sets: SetEntry[]): { weight: number; reps: number; rpe: number | null }[] {
   return sets
     .filter((s) => s.completed && s.weight > 0 && (s.setType ?? 'working') !== 'warmup')
-    .map((s) => ({ weight: s.weight, reps: s.reps }));
+    .map((s) => ({ weight: s.weight, reps: s.reps, rpe: s.rpe ?? null }));
 }
 
 /** Overload suggestions for every exercise in a template. */

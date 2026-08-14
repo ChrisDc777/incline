@@ -105,11 +105,11 @@ function formatSyncTime(ms: number | null | undefined): string {
 export default function SettingsScreen() {
   const {
     unit, themeMode, accentTheme, hapticsEnabled,
-    restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets,
+    restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets, showRpe,
     calendarHeatMetric, weekStartsOn, keepScreenAwake, weeklyWorkoutGoal,
     workoutRemindersEnabled, workoutReminderDays, workoutReminderHour, workoutReminderMinute,
     weeklyDigestEnabled, weeklyDigestHour, weeklyDigestMinute,
-    setUnit, setThemeMode, setAccentTheme, setHaptics, setRestSound, setAutoStartRest, setDefaultRestSeconds, setShowWarmUpSets,
+    setUnit, setThemeMode, setAccentTheme, setHaptics, setRestSound, setAutoStartRest, setDefaultRestSeconds, setShowWarmUpSets, setShowRpe,
     setCalendarHeatMetric, setWeekStartsOn, setKeepScreenAwake, setWeeklyWorkoutGoal,
     setWorkoutRemindersEnabled, setWorkoutReminderDays, setWorkoutReminderTime,
     setWeeklyDigestEnabled, setWeeklyDigestTime,
@@ -264,6 +264,10 @@ export default function SettingsScreen() {
           <View className="h-px bg-border/60" />
           <Row icon={<Icon icon={METRIC_ICONS.warmUp} size={18} color="muted-foreground" />} title="Warm-up set button" subtitle="Quick 50% set in the session">
             <Switch value={showWarmUpSets} onValueChange={setShowWarmUpSets} accessibilityLabel="Warm-up set button" />
+          </Row>
+          <View className="h-px bg-border/60" />
+          <Row icon={<Icon icon={METRIC_ICONS.rpe} size={18} color="muted-foreground" />} title="RPE after working sets" subtitle="Optional 1–10. Never required to complete a set">
+            <Switch value={showRpe} onValueChange={setShowRpe} accessibilityLabel="RPE after working sets" />
           </Row>
           <View className="h-px bg-border/60" />
           <Row
