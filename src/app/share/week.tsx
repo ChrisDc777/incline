@@ -34,7 +34,8 @@ const SLIDES: { id: SlideId; label: string }[] = [
 
 export default function ShareWeekScreen() {
   const { weekStartMs: weekStartParam } = useLocalSearchParams<{ weekStartMs?: string }>();
-  const weekStartMs = weekStartParam ? Number(weekStartParam) : startOfWeek(Date.now());
+  const [defaultWeekStart] = useState(() => startOfWeek(Date.now()));
+  const weekStartMs = weekStartParam ? Number(weekStartParam) : defaultWeekStart;
   const router = useRouter();
   const { toast } = useToast();
   const { unit } = useSettings();

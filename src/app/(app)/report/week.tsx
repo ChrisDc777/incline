@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,11 +21,12 @@ import type { MuscleGroup } from '@/db/types';
 
 export default function WeekReportScreen() {
   const { weekStartMs: weekStartParam } = useLocalSearchParams<{ weekStartMs?: string }>();
-  const weekStartMs = weekStartParam ? Number(weekStartParam) : startOfWeek(Date.now());
+  const [defaultWeekStart] = useState(() => startOfWeek(Date.now()));
+  const weekStartMs = weekStartParam ? Number(weekStartParam) : defaultWeekStart;
   const router = useRouter();
   const { unit } = useSettings();
   const { data: recap, loading } = useWeeklyRecap(
-    Number.isFinite(weekStartMs) ? weekStartMs : startOfWeek(Date.now()),
+    Number.isFinite(weekStartMs) ? weekStartMs : defaultWeekStart,
   );
 
   if (loading || !recap) {

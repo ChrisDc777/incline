@@ -21,7 +21,10 @@ export default function Gate() {
   const segments = useSegments();
   const [bound, setBound] = useState(false);
   const getTokenRef = useRef(getToken);
-  getTokenRef.current = getToken;
+
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  }, [getToken]);
 
   // Bind Clerk identity to local SQLite owner before routing into the app.
   // Different Clerk user → wipe local workouts/profile so accounts never share history.

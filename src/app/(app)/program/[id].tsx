@@ -47,6 +47,7 @@ export default function ProgramDetailScreen() {
   const [starting, setStarting] = useState(false);
   const [conflictOpen, setConflictOpen] = useState(false);
   const [pendingStart, setPendingStart] = useState<{ templateId: number; name: string } | null>(null);
+  const [todayDay] = useState(() => weekdayMon1(Date.now()));
 
   const load = useCallback(async () => {
     try {
@@ -138,7 +139,6 @@ export default function ProgramDetailScreen() {
 
   const workouts = program.workouts ?? [];
   const weeks = program.weeks ?? 1;
-  const todayDay = weekdayMon1(Date.now());
   const grouped: Record<number, ProgramWorkout[]> = {};
   for (const w of workouts) {
     if (!grouped[w.week]) grouped[w.week] = [];

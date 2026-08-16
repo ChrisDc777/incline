@@ -95,7 +95,10 @@ export function useWorkoutLogs(filters: WorkoutLogFilters = {}) {
   const offsetRef = useRef(0);
   const filtersKey = `${filters.sinceMs ?? ''}:${filters.templateId ?? ''}:${filters.exerciseId ?? ''}`;
   const filtersRef = useRef(filters);
-  filtersRef.current = filters;
+
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
 
   const load = useCallback(async (reset: boolean) => {
     setLoading(true);

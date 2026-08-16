@@ -1,6 +1,6 @@
 # Agent handoff — read this after `git pull`
 
-Last updated: **2026-08-16** (Stage C readiness + program-week diffs).
+Last updated: **2026-08-17** (Stage C quality gate + CI).
 
 ## Current product state
 
@@ -48,8 +48,11 @@ src/sync/engine.ts                 # Profile hydrate on empty local
 
 ```bash
 npm run typecheck
+npm run lint
 npm run test
 ```
+
+CI runs the same checks on push/PR to `main` (`.github/workflows/ci.yml`).
 
 ## USP (product north star)
 

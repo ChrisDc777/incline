@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { applyReadinessToSuggestion } from '../readiness';
 import { suggestNextLoad } from '../overload';
-import { detectProgramPlanDiff } from '../program-plan';
+import { pickHomeCoachingInsight } from '../insights';
+import { detectProgramPlanDiff, programPlanInsight } from '../program-plan';
 import type { LastWorkingSet, OverloadInput, TrainingSuggestion } from '../types';
 
 function input(sets: LastWorkingSet[], readiness?: OverloadInput['readiness']): OverloadInput {
@@ -110,5 +111,62 @@ describe('detectProgramPlanDiff', () => {
         now: wed,
       }),
     ).toBeNull();
+  });
+});
+
+describe('programPlanInsight', () => {
+  it('builds a coaching insight with kind in href', () => {
+    const diff = detectProgramPlanDiff({
+      programId: 1,
+      programName: 'PPL',
+      isCustom: true,
+      weeks: 4,
+      startedAt: Date.parse('2026-08-10T12:00:00'),
+      slots: [{ week: 1, day: 2, templateId: 10, templateName: 'Push' }],
+      trainedDayStarts: [],
+      now: Date.parse('2026-08-12T12:00:00'),
+    });
+    expect(diff).not.toBeNull();
+    const insight = programPlanInsight(diff!);
+    expect(insight.kind).toBe('program_plan');
+    expect(insight.id).toBe(`program-plan-${diff!.kind}`);
+    expect(insight.href).toBe(`/(app)/program-adjust?kind=${diff!.kind}`);
+  });
+});
+
+describe('pickHomeCoachingInsight program plan priority', () => {
+  const stats = {
+    totalSessions: 10,
+    totalVolume: 5000,
+    totalSets: 100,
+    streak: 4,
+    weeklyVolume: [
+      { weekStart: '2026-07-28', volume: 1000, sessions: 3 },
+      { weekStart: '2026-08-04', volume: 1200, sessions: 3 },
+    ],
+    muscleDistribution: [],
+    prs: [],
+    prEventCount: 0,
+    lastSessionAt: Date.now(),
+  };
+
+  it('prefers program plan insight over generic deload', () => {
+    const plan = programPlanInsight({
+      kind: 'catch_up',
+      title: 'Catch up',
+      body: 'Missed day',
+      programId: 1,
+      programName: 'PPL',
+      targetWeek: 1,
+      targetDay: 3,
+      templateId: 10,
+      templateName: 'Push',
+    });
+    const picked = pickHomeCoachingInsight(stats, 'metric', null, {
+      weeklyStreak: 4,
+      programPlanInsight: plan,
+    });
+    expect(picked?.kind).toBe('program_plan');
+    expect(picked?.id).toBe('program-plan-catch_up');
   });
 });

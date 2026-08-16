@@ -1,5 +1,5 @@
 import { openDatabase } from '../../client';
-import { startOfDay, weekdayMon1 } from '../../calc';
+import { startOfDay } from '../../calc';
 import { getSuggestedTemplate } from '../templates';
 import {
   getActiveProgramState,
@@ -10,6 +10,7 @@ import {
   detectProgramPlanDiff,
   PLAN_APPLIED_KEY,
   PLAN_SNOOZE_KEY,
+  programWeekDay,
   type ProgramPlanDiff,
 } from '@/coaching/program-plan';
 import { detectDeload } from '@/coaching/deload';
@@ -52,10 +53,7 @@ export async function getActiveProgramPlanDiff(now = Date.now()): Promise<Progra
   });
 
   const today = startOfDay(now);
-  const anchor = startOfDay(active.startedAt);
-  const elapsedDays = Math.max(0, Math.floor((today - anchor) / 86_400_000));
-  const week = (Math.floor(elapsedDays / 7) % Math.max(1, program.weeks)) + 1;
-  const day = weekdayMon1(today);
+  const { week, day } = programWeekDay(active.startedAt, today, program.weeks);
   const todaySlot = (program.workouts ?? []).find((w) => w.week === week && w.day === day);
 
   return detectProgramPlanDiff({

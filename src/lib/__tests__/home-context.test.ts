@@ -91,4 +91,28 @@ describe('buildHomeContextCards', () => {
     expect(sameHomeContextCards(a, b)).toBe(true);
     expect(sameHomeContextCards(a, [])).toBe(false);
   });
+
+  it('prioritizes coaching card when coaching lines are set', () => {
+    const recentStats: ProgressStats = {
+      ...baseStats,
+      lastSessionAt: Date.now() - 86_400_000,
+      weeklyVolume: [{ weekStart: '2026-08-04', volume: 1200, sessions: 2 }],
+    };
+    const cards = buildHomeContextCards({
+      stats: recentStats,
+      unit: 'metric',
+      weeklyGoal: 0,
+      sessionsThisWeek: 2,
+      goalMet: true,
+      sessionsToGoal: 0,
+      dismissedAnnouncementIds: [],
+      announcements: [],
+      coachingTitle: 'Catch up a missed day?',
+      coachingSubtitle: 'You missed Push.',
+      coachingHref: '/(app)/program-adjust?kind=catch_up',
+      now: Date.parse('2026-08-13T12:00:00'), // Wed — no Monday week report promo
+    });
+    expect(cards.some((c) => c.kind === 'coaching')).toBe(true);
+    expect(cards[0]?.kind).toBe('coaching');
+  });
 });
