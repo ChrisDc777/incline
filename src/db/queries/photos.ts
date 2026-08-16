@@ -1,7 +1,8 @@
 import { copyAsync, deleteAsync, documentDirectory, makeDirectoryAsync } from 'expo-file-system/legacy';
 
+import { PAGINATION } from '@/constants/config';
 import { newUuid } from '@/lib/uuid';
-import type { WorkoutPhoto } from '../types';
+import type { ProgressPhoto, WorkoutPhoto } from '../types';
 import { openDatabase } from '../client';
 
 export const MAX_SESSION_PHOTOS = 6;
@@ -119,4 +120,90 @@ export async function deletePhotosForWorkout(logId: number): Promise<void> {
       /* ignore */
     }
   }
+}
+
+interface ProgressPhotoRow {
+  id: number;
+  workout_log_id: number;
+  uri: string;
+  sort_order: number;
+  created_at: number;
+  workout_name: string;
+  started_at: number;
+  ended_at: number | null;
+  template_id: number | null;
+}
+
+function mapProgressPhoto(r: ProgressPhotoRow): ProgressPhoto {
+  return {
+    id: r.id,
+    workoutLogId: r.workout_log_id,
+    uri: r.uri,
+    sortOrder: r.sort_order,
+    createdAt: r.created_at,
+    workoutName: r.workout_name,
+    startedAt: r.started_at,
+    endedAt: r.ended_at,
+    templateId: r.template_id,
+  };
+}
+
+const PROGRESS_PHOTO_FROM = `
+FROM workout_photos p
+INNER JOIN workout_logs w ON w.id = p.workout_log_id
+WHERE p.deleted_at IS NULL
+  AND w.deleted_at IS NULL
+  AND w.ended_at IS NOT NULL`;
+
+const PROGRESS_PHOTO_SELECT = `
+SELECT
+  p.id,
+  p.workout_log_id,
+  p.uri,
+  p.sort_order,
+  p.created_at,
+  w.name AS workout_name,
+  w.started_at,
+  w.ended_at,
+  w.template_id
+${PROGRESS_PHOTO_FROM}`;
+
+const PROGRESS_PHOTO_ORDER = 'ORDER BY w.started_at ASC, p.sort_order, p.id';
+
+export async function listProgressPhotos({
+  offset = 0,
+  limit = PAGINATION.pageSize,
+  sinceMs,
+}: {
+  offset?: number;
+  limit?: number;
+  sinceMs?: number;
+} = {}): Promise<ProgressPhoto[]> {
+  const db = await openDatabase();
+  const sinceClause = sinceMs != null && sinceMs > 0 ? ' AND w.started_at >= ?' : '';
+  const params: number[] = [];
+  if (sinceClause) params.push(sinceMs as number);
+  params.push(limit, offset);
+  const rows = await db.getAllAsync<ProgressPhotoRow>(
+    `${PROGRESS_PHOTO_SELECT}${sinceClause}
+     ${PROGRESS_PHOTO_ORDER}
+     LIMIT ? OFFSET ?`,
+    ...params,
+  );
+  return rows.map(mapProgressPhoto);
+}
+
+export async function countProgressPhotos(): Promise<number> {
+  const db = await openDatabase();
+  const row = await db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n ${PROGRESS_PHOTO_FROM}`);
+  return row?.n ?? 0;
+}
+
+export async function getProgressPhotoById(id: number): Promise<ProgressPhoto | null> {
+  const db = await openDatabase();
+  const row = await db.getFirstAsync<ProgressPhotoRow>(
+    `${PROGRESS_PHOTO_SELECT} AND p.id = ?`,
+    id,
+  );
+  return row ? mapProgressPhoto(row) : null;
 }

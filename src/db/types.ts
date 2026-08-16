@@ -162,6 +162,20 @@ export interface WorkoutPhoto {
   createdAt: number;
 }
 
+/** Session photo joined to its finished workout — Progress week-vs-week compare. */
+export interface ProgressPhoto {
+  id: number;
+  workoutLogId: number;
+  /** Local file URI until cloud Storage (#109). */
+  uri: string;
+  sortOrder: number;
+  createdAt: number;
+  workoutName: string;
+  startedAt: number;
+  endedAt: number | null;
+  templateId: number | null;
+}
+
 export interface UserProfile {
   id: number;
   name: string;

@@ -238,6 +238,19 @@ export default function SummaryScreen() {
 
       <View className="px-4 pb-1">
         <SessionPhotoStrip photos={photos} onAdd={(uris) => void onAddPhotos(uris)} onRemove={(id) => void onRemovePhoto(id)} />
+        {photos.length >= 2 ? (
+          <Pressable
+            onPress={() =>
+              router.push(
+                `/(app)/progress-photos?leftId=${photos[0].id}&rightId=${photos[photos.length - 1].id}` as Href,
+              )
+            }
+            accessibilityRole="button"
+            accessibilityLabel="Compare session photos"
+            className="mb-1 self-end py-1">
+            <Caption className="font-medium text-primary">Compare</Caption>
+          </Pressable>
+        ) : null}
       </View>
 
       {/* Session-style stats strip */}
