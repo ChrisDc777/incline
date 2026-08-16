@@ -74,7 +74,7 @@ Celebration surfaces (toast, summary, recap, feed badge, achievements) use heavi
 ## P2 deferred (backlog)
 
 - Body-measure ↔ training observational stories (sparse data; from #98)
-- AI-1: Edge Function narration ([#99](https://github.com/ChrisDc777/incline/issues/99))
+- AI-1: Edge Function narration ([#99](https://github.com/ChrisDc777/incline/issues/99)) — **scaffolded**; deploy SQL + function + secrets in the dashboard. Stub mode: `COACH_NARRATE_STUB=1` or missing `OPENAI_API_KEY` returns pack-derived copy.
 - Program + settings sync extension (milestone follow-up on #57)
 - Measurement goals ([#94](https://github.com/ChrisDc777/incline/issues/94)) — keep open; do not build until Measures has regular use
 - Photo comparison gallery ([#23](https://github.com/ChrisDc777/incline/issues/23)); photo cloud sync ([#109](https://github.com/ChrisDc777/incline/issues/109))

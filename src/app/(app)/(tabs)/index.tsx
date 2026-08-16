@@ -55,7 +55,7 @@ export default function HomeScreen() {
   const clear = useActiveWorkout((s) => s.clear);
   const feed = useWorkoutFeedLogs();
   const refreshFeed = feed.refresh;
-  const { consistency, contextCards, readiness, onReadiness } = useHomeCoachingContext({
+  const { consistency, contextCards, narrationHeadline, readiness, onReadiness } = useHomeCoachingContext({
     stats,
     unit,
     weeklyWorkoutGoal,
@@ -187,6 +187,9 @@ export default function HomeScreen() {
               onDismiss={card.dismissKey ? dismissAnnouncement : undefined}
             />
           ))}
+          {narrationHeadline ? (
+            <Caption className="text-muted-foreground">{narrationHeadline}</Caption>
+          ) : null}
         </View>
       ) : null}
 

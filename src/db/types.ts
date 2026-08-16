@@ -204,6 +204,8 @@ export interface Settings {
   showWarmUpSets: boolean;
   /** Show optional RPE chips after a completed working set. */
   showRpe: boolean;
+  /** Opt-in AI wording for coaching. Numbers still come from local rules. Default off. */
+  aiExplanationsEnabled: boolean;
   /** What the calendar month grid encodes in day cell color. */
   calendarHeatMetric: CalendarHeatMetric;
   /** First day of the week for calendar grids. */

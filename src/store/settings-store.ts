@@ -18,6 +18,7 @@ interface SettingsState extends Settings {
   setDefaultRestSeconds: (seconds: number) => void;
   setShowWarmUpSets: (enabled: boolean) => void;
   setShowRpe: (enabled: boolean) => void;
+  setAiExplanationsEnabled: (enabled: boolean) => void;
   setCalendarHeatMetric: (metric: CalendarHeatMetric) => void;
   setWeekStartsOn: (day: WeekStartsOn) => void;
   setKeepScreenAwake: (enabled: boolean) => void;
@@ -97,6 +98,7 @@ export const useSettings = create<SettingsState>()(
       defaultRestSeconds: 90,
       showWarmUpSets: true,
       showRpe: true,
+      aiExplanationsEnabled: false,
       calendarHeatMetric: 'volume',
       weekStartsOn: 'monday',
       keepScreenAwake: true,
@@ -119,6 +121,7 @@ export const useSettings = create<SettingsState>()(
       setDefaultRestSeconds: (seconds) => set({ defaultRestSeconds: seconds }),
       setShowWarmUpSets: (enabled) => set({ showWarmUpSets: enabled }),
       setShowRpe: (enabled) => set({ showRpe: enabled }),
+      setAiExplanationsEnabled: (enabled) => set({ aiExplanationsEnabled: enabled }),
       setCalendarHeatMetric: (calendarHeatMetric) => set({ calendarHeatMetric }),
       setWeekStartsOn: (weekStartsOn) => set({ weekStartsOn }),
       setKeepScreenAwake: (keepScreenAwake) => set({ keepScreenAwake }),
@@ -166,6 +169,7 @@ export const useSettings = create<SettingsState>()(
         defaultRestSeconds: s.defaultRestSeconds,
         showWarmUpSets: s.showWarmUpSets,
         showRpe: s.showRpe,
+        aiExplanationsEnabled: s.aiExplanationsEnabled,
         calendarHeatMetric: s.calendarHeatMetric,
         weekStartsOn: s.weekStartsOn,
         keepScreenAwake: s.keepScreenAwake,
@@ -192,6 +196,8 @@ export const useSettings = create<SettingsState>()(
           weekStartsOn: isWeekStartsOn(p.weekStartsOn) ? p.weekStartsOn : 'monday',
           keepScreenAwake: typeof p.keepScreenAwake === 'boolean' ? p.keepScreenAwake : true,
           showRpe: typeof p.showRpe === 'boolean' ? p.showRpe : true,
+          aiExplanationsEnabled:
+            typeof p.aiExplanationsEnabled === 'boolean' ? p.aiExplanationsEnabled : false,
           workoutRemindersEnabled:
             typeof p.workoutRemindersEnabled === 'boolean' ? p.workoutRemindersEnabled : false,
           workoutReminderDays: sanitizeReminderDays(p.workoutReminderDays),

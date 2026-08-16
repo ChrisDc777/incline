@@ -12,3 +12,12 @@ export * from './readiness';
 export * from './readiness-store';
 export * from './program-plan';
 export * from './feature-pack';
+export * from './narrate-validate';
+export {
+  requestCoachNarration,
+  clearCoachNarrationCache,
+  SAFE_HOME_NARRATE_KINDS,
+  coachNarrateKvKey,
+  COACH_NARRATE_KV_PREFIX,
+  COACH_NARRATE_TIMEOUT_MS,
+} from './narrate-client';

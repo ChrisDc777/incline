@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@clerk/clerk-expo';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { PrimaryActivityIndicator } from '@/components/common/primary-activity-indicator';
@@ -32,7 +33,9 @@ import {
   type MuscleSplit,
   type WorkoutPr,
 } from '@/db/queries';
-import { postSessionInsights } from '@/coaching/insights';
+import { buildPostSessionInsights, postSessionInsights } from '@/coaching/insights';
+import { buildFeaturePackV1 } from '@/coaching/feature-pack';
+import { requestCoachNarration, type CoachNarration } from '@/coaching/narrate-client';
 import { detectSetFatigue } from '@/coaching/fatigue';
 import type { TrainingSuggestion } from '@/coaching/types';
 import { useSettings } from '@/store/settings-store';
@@ -50,6 +53,8 @@ export default function SummaryScreen() {
   const router = useRouter();
   const { toast } = useToast();
   const { unit } = useSettings();
+  const { userId, getToken } = useAuth();
+  const getTokenRef = useRef(getToken);
   const { data: profile } = useProfile();
   const [log, setLog] = useState<SessionWorkout | null>(null);
   const [muscleSplit, setMuscleSplit] = useState<MuscleSplit[]>([]);
@@ -62,6 +67,11 @@ export default function SummaryScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [narration, setNarration] = useState<CoachNarration | null>(null);
+
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  }, [getToken]);
 
   const reload = useCallback(async () => {
     const [s, split, prList, prevVol, photoList] = await Promise.all([
@@ -159,6 +169,67 @@ export default function SummaryScreen() {
       fatigueLine,
     });
   }, [log, unit, prs.length, volumeDelta, nextSuggestions]);
+
+  useEffect(() => {
+    if (coachingLines.length === 0) {
+      setNarration(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      let sessionFatigue: string | null = null;
+      if (log) {
+        const byEx = new Map<number, SessionSet[]>();
+        for (const s of log.sets) {
+          const list = byEx.get(s.exerciseId) ?? [];
+          list.push(s);
+          byEx.set(s.exerciseId, list);
+        }
+        for (const sets of byEx.values()) {
+          const cue = detectSetFatigue(sets, unit);
+          if (cue) {
+            sessionFatigue = `${sets[0]?.exerciseName ?? 'An exercise'}: ${cue.title.toLowerCase()}.`;
+            break;
+          }
+        }
+      }
+      const structured = buildPostSessionInsights({
+        prCount: prs.length,
+        volumeDeltaPct: volumeDelta?.deltaPct ?? null,
+        suggestions: nextSuggestions.map((s) => ({
+          exerciseName: s.exerciseName,
+          reasonText: s.reasonText,
+        })),
+        fatigueLine: sessionFatigue,
+      });
+      const pack = buildFeaturePackV1({
+        unit,
+        surface: 'post_session',
+        insights: structured.map((line) => ({
+          id: line.id,
+          kind: line.kind,
+          severity: 'info',
+          title: line.text.slice(0, 80),
+          body: line.text,
+        })),
+        suggestions: nextSuggestions,
+        aggregates: {
+          prCount: prs.length,
+          volumeDeltaPct: volumeDelta?.deltaPct ?? null,
+        },
+      });
+      const result = await requestCoachNarration({
+        surface: 'post_session',
+        pack,
+        getToken: (opts) => getTokenRef.current(opts),
+        userId,
+      });
+      if (!cancelled) setNarration(result);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [coachingLines, log, unit, prs.length, volumeDelta, nextSuggestions, userId]);
 
   const athleteName = profile?.name?.trim() || 'Athlete';
   const volumeLabel = log ? formatVolume(log.totalVolume, unit) : '';
@@ -303,6 +374,16 @@ export default function SummaryScreen() {
                 {line}
               </Body>
             ))}
+            {narration ? (
+              <View className="mt-3 border-t border-border/60 pt-3">
+                <Caption className="font-medium text-muted-foreground">{narration.headline}</Caption>
+                {narration.paragraphs.map((paragraph) => (
+                  <Caption key={paragraph} className="mt-1 text-muted-foreground">
+                    {paragraph}
+                  </Caption>
+                ))}
+              </View>
+            ) : null}
           </View>
         ) : null}
 
