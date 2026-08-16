@@ -11,3 +11,4 @@ export * from './rpe';
 export * from './readiness';
 export * from './readiness-store';
 export * from './program-plan';
+export * from './feature-pack';
