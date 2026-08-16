@@ -62,6 +62,8 @@ export interface CoachingInsightInput {
   weeklyStreak?: number;
   lastDeloadAppliedAt?: number | null;
   deloadSnoozeUntil?: number | null;
+  /** When set, surfaces ahead of generic deload (program write path). */
+  programPlanInsight?: CoachingInsight | null;
   now?: number;
 }
 
@@ -91,6 +93,8 @@ export function collectCoachingInsights(input: CoachingInsightInput): CoachingIn
   const out: CoachingInsight[] = [];
   const weeks = stats.weeklyVolume ?? [];
 
+  if (input.programPlanInsight) out.push(input.programPlanInsight);
+
   const deload = detectDeload({
     weeklyStreak: input.weeklyStreak ?? stats.streak,
     weeklyVolumes: weeks,
@@ -98,7 +102,8 @@ export function collectCoachingInsights(input: CoachingInsightInput): CoachingIn
     snoozeUntil: input.deloadSnoozeUntil,
     now,
   });
-  if (deload) out.push(deloadInsight(deload));
+  // Active program plan card owns week changes; keep template deload only when no plan diff.
+  if (deload && !input.programPlanInsight) out.push(deloadInsight(deload));
 
   const trend = volumeTrendInsight(weeks, unit);
   if (trend) out.push(trend);

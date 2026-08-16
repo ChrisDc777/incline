@@ -23,13 +23,17 @@ import { useSettings } from '@/store/settings-store';
 import { useActiveWorkout } from '@/store/active-workout-store';
 import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
-import { startWorkout, discardWorkout, deleteWorkout, createTemplateFromWorkoutLog, getWeeklyConsistency, getMuscleExposureDays, type WeeklyConsistency } from '@/db/queries';
+import { startWorkout, discardWorkout, deleteWorkout, createTemplateFromWorkoutLog, getWeeklyConsistency, getMuscleExposureDays, getActiveProgramPlanDiff, type WeeklyConsistency } from '@/db/queries';
 import { formatVolume, formatFullDate } from '@/db/calc';
 import { METRIC_ICONS } from '@/lib/metric-icons';
 import { buildHomeContextCards, homeWeekCaption, sameHomeContextCards, type HomeContextCard as HomeContextCardModel } from '@/lib/home-context';
 import { ANNOUNCEMENT_PACK } from '@/lib/announcements';
 import { pickHomeCoachingInsight } from '@/coaching/insights';
 import { DELOAD_APPLIED_KEY, DELOAD_SNOOZE_KEY } from '@/coaching/deload';
+import { programPlanInsight } from '@/coaching/program-plan';
+import { getTodayReadiness, setTodayReadiness } from '@/coaching/readiness-store';
+import type { ReadinessLevel } from '@/coaching/types';
+import { ReadinessCheckIn } from '@/components/home/readiness-checkin';
 import { kvStorage } from '@/db/kv';
 import type { FeedWorkoutLog, MuscleGroup } from '@/db/types';
 
@@ -67,23 +71,28 @@ export default function HomeScreen() {
   const [today] = useState(() => formatFullDate(Date.now()));
   const [consistency, setConsistency] = useState<WeeklyConsistency | null>(null);
   const [contextCards, setContextCards] = useState<HomeContextCardModel[]>([]);
+  const [readiness, setReadiness] = useState<ReadinessLevel | null>(null);
   const didFocus = useRef(false);
   const contextGen = useRef(0);
 
   const refreshContext = useCallback(async () => {
     const gen = ++contextGen.current;
-    const [cons, muscleDays, appliedRaw, snoozeRaw] = await Promise.all([
+    const [cons, muscleDays, appliedRaw, snoozeRaw, planDiff, todayReady] = await Promise.all([
       getWeeklyConsistency(weeklyWorkoutGoal),
       getMuscleExposureDays(),
       kvStorage.getItem(DELOAD_APPLIED_KEY),
       kvStorage.getItem(DELOAD_SNOOZE_KEY),
+      getActiveProgramPlanDiff(),
+      getTodayReadiness(),
     ]);
     if (gen !== contextGen.current) return;
     setConsistency(cons);
+    setReadiness(todayReady);
     const coaching = pickHomeCoachingInsight(stats, unit, muscleDays, {
       weeklyStreak: cons.currentWeeklyStreak,
       lastDeloadAppliedAt: appliedRaw ? Number(appliedRaw) : null,
       deloadSnoozeUntil: snoozeRaw ? Number(snoozeRaw) : null,
+      programPlanInsight: planDiff ? programPlanInsight(planDiff) : null,
     });
     const recentPr = stats?.prs?.find((p) => p.achievedAt >= Date.now() - 14 * 86_400_000);
     const cards = buildHomeContextCards({
@@ -104,6 +113,12 @@ export default function HomeScreen() {
     });
     setContextCards((prev) => (sameHomeContextCards(prev, cards) ? prev : cards));
   }, [stats, unit, weeklyWorkoutGoal, dismissedAnnouncementIds]);
+
+  const onReadiness = async (level: ReadinessLevel) => {
+    setReadiness(level);
+    await setTodayReadiness(level);
+    impact();
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -210,6 +225,10 @@ export default function HomeScreen() {
       {hasData && weekInsightLine ? (
         <Caption className="mt-2 text-foreground/80">{weekInsightLine}</Caption>
       ) : null}
+
+      <View className="mt-4">
+        <ReadinessCheckIn value={readiness} onChange={(level) => { void onReadiness(level); }} />
+      </View>
 
       {contextCards.length > 0 ? (
         <View className="mt-4 gap-3">

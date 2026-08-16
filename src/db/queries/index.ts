@@ -124,6 +124,8 @@ export {
   getExerciseSubstitutes,
 } from './coaching/suggestions';
 
+export { getActiveProgramPlanDiff } from './coaching/program-plan';
+
 export {
   getWeeklyRecap,
   getMonthlyRecap,

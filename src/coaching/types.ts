@@ -1,6 +1,6 @@
 import type { Unit } from '@/db/types';
 
-export const COACHING_RULE_VERSION = '1.2.0';
+export const COACHING_RULE_VERSION = '1.3.0';
 
 export type ReasonCode =
   | 'no_history'
@@ -8,7 +8,8 @@ export type ReasonCode =
   | 'hit_rep_range_increase_load'
   | 'partial_miss_hold'
   | 'all_sets_maxed'
-  | 'high_rpe_hold';
+  | 'high_rpe_hold'
+  | 'readiness_hold';
 
 export type InsightSeverity = 'info' | 'success' | 'warning';
 
@@ -20,7 +21,8 @@ export type CoachingInsightKind =
   | 'weekly_goal'
   | 'post_session'
   | 'deload'
-  | 'fatigue';
+  | 'fatigue'
+  | 'program_plan';
 
 export interface TrainingSuggestion {
   exerciseId: number;
@@ -50,6 +52,8 @@ export interface LastWorkingSet {
   rpe?: number | null;
 }
 
+export type ReadinessLevel = 'fresh' | 'ok' | 'tired';
+
 export interface OverloadInput {
   exerciseId: number;
   exerciseName: string;
@@ -58,4 +62,6 @@ export interface OverloadInput {
   targetRepsMax: number;
   targetSets: number;
   unit: Unit;
+  /** Optional daily check-in. Only `tired` softens load suggestions. */
+  readiness?: ReadinessLevel | null;
 }
