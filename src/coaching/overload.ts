@@ -1,6 +1,7 @@
 import { COACHING_RULE_VERSION, type LastWorkingSet, type OverloadInput, type ReasonCode, type TrainingSuggestion } from './types';
 import { increaseLoad } from './plates';
 import { lastSetRpe, HIGH_RPE_HOLD_THRESHOLD } from './rpe';
+import { applyReadinessToSuggestion } from './readiness';
 
 function reasonText(code: ReasonCode, ctx: { repsMax: number; repsMin: number; nextWeight?: number; unitLabel: string }): string {
   switch (code) {
@@ -16,6 +17,8 @@ function reasonText(code: ReasonCode, ctx: { repsMax: number; repsMin: number; n
       return `All sets at top of range — time to add weight.`;
     case 'high_rpe_hold':
       return 'Last session was already very hard — hold weight this time.';
+    case 'readiness_hold':
+      return 'Checked in tired — keep today lighter and recover.';
     default:
       return 'Suggested from your last session.';
   }
@@ -45,9 +48,11 @@ export function suggestNextLoad(input: OverloadInput): TrainingSuggestion | null
   const unitLabel = input.unit === 'metric' ? 'kg' : 'lb';
   const ctx = { repsMin: input.targetRepsMin, repsMax: input.targetRepsMax, unitLabel };
 
+  let suggestion: TrainingSuggestion;
+
   if (!allSameWeight) {
     const top = sets.reduce((best, s) => (s.weight > best.weight ? s : best), sets[0]);
-    return {
+    suggestion = {
       exerciseId: input.exerciseId,
       exerciseName: input.exerciseName,
       weight: top.weight,
@@ -57,77 +62,76 @@ export function suggestNextLoad(input: OverloadInput): TrainingSuggestion | null
       reasonText: 'Mixed loads last session — match your heaviest working set.',
       ruleVersion: COACHING_RULE_VERSION,
     };
-  }
+  } else {
+    const allHitMax = sets.length >= 1 && sets.every((s) => s.reps >= input.targetRepsMax);
+    const allHitMin = sets.every((s) => s.reps >= input.targetRepsMin);
+    const anyBelowMin = sets.some((s) => s.reps < input.targetRepsMin);
 
-  const allHitMax = sets.length >= 1 && sets.every((s) => s.reps >= input.targetRepsMax);
-  const allHitMin = sets.every((s) => s.reps >= input.targetRepsMin);
-  const anyBelowMin = sets.some((s) => s.reps < input.targetRepsMin);
-
-  if (allHitMax) {
-    const nextWeight = increaseLoad(workingWeight, input.unit);
-    return applyHighRpeHold({
-      exerciseId: input.exerciseId,
-      exerciseName: input.exerciseName,
-      weight: nextWeight,
-      reps: input.targetRepsMin,
-      targetSets: input.targetSets,
-      reasonCode: 'hit_rep_range_increase_load',
-      reasonText: reasonText('hit_rep_range_increase_load', { ...ctx, nextWeight }),
-      ruleVersion: COACHING_RULE_VERSION,
-    }, sets);
-  }
-
-  if (anyBelowMin) {
-    return {
-      exerciseId: input.exerciseId,
-      exerciseName: input.exerciseName,
-      weight: workingWeight,
-      reps: input.targetRepsMin,
-      targetSets: input.targetSets,
-      reasonCode: 'partial_miss_hold',
-      reasonText: reasonText('partial_miss_hold', ctx),
-      ruleVersion: COACHING_RULE_VERSION,
-    };
-  }
-
-  if (allHitMin) {
-    const minReps = Math.min(...sets.map((s) => s.reps));
-    const nextReps = Math.min(input.targetRepsMax, minReps + 1);
-    if (nextReps >= input.targetRepsMax) {
+    if (allHitMax) {
       const nextWeight = increaseLoad(workingWeight, input.unit);
-      return applyHighRpeHold({
+      suggestion = applyHighRpeHold({
         exerciseId: input.exerciseId,
         exerciseName: input.exerciseName,
         weight: nextWeight,
         reps: input.targetRepsMin,
         targetSets: input.targetSets,
-        reasonCode: 'all_sets_maxed',
-        reasonText: reasonText('all_sets_maxed', ctx),
+        reasonCode: 'hit_rep_range_increase_load',
+        reasonText: reasonText('hit_rep_range_increase_load', { ...ctx, nextWeight }),
         ruleVersion: COACHING_RULE_VERSION,
       }, sets);
+    } else if (anyBelowMin) {
+      suggestion = {
+        exerciseId: input.exerciseId,
+        exerciseName: input.exerciseName,
+        weight: workingWeight,
+        reps: input.targetRepsMin,
+        targetSets: input.targetSets,
+        reasonCode: 'partial_miss_hold',
+        reasonText: reasonText('partial_miss_hold', ctx),
+        ruleVersion: COACHING_RULE_VERSION,
+      };
+    } else if (allHitMin) {
+      const minReps = Math.min(...sets.map((s) => s.reps));
+      const nextReps = Math.min(input.targetRepsMax, minReps + 1);
+      if (nextReps >= input.targetRepsMax) {
+        const nextWeight = increaseLoad(workingWeight, input.unit);
+        suggestion = applyHighRpeHold({
+          exerciseId: input.exerciseId,
+          exerciseName: input.exerciseName,
+          weight: nextWeight,
+          reps: input.targetRepsMin,
+          targetSets: input.targetSets,
+          reasonCode: 'all_sets_maxed',
+          reasonText: reasonText('all_sets_maxed', ctx),
+          ruleVersion: COACHING_RULE_VERSION,
+        }, sets);
+      } else {
+        suggestion = {
+          exerciseId: input.exerciseId,
+          exerciseName: input.exerciseName,
+          weight: workingWeight,
+          reps: nextReps,
+          targetSets: input.targetSets,
+          reasonCode: 'hold_weight_add_reps',
+          reasonText: reasonText('hold_weight_add_reps', ctx),
+          ruleVersion: COACHING_RULE_VERSION,
+        };
+      }
+    } else {
+      suggestion = {
+        exerciseId: input.exerciseId,
+        exerciseName: input.exerciseName,
+        weight: workingWeight,
+        reps: input.targetRepsMin,
+        targetSets: input.targetSets,
+        reasonCode: 'partial_miss_hold',
+        reasonText: reasonText('partial_miss_hold', ctx),
+        ruleVersion: COACHING_RULE_VERSION,
+      };
     }
-    return {
-      exerciseId: input.exerciseId,
-      exerciseName: input.exerciseName,
-      weight: workingWeight,
-      reps: nextReps,
-      targetSets: input.targetSets,
-      reasonCode: 'hold_weight_add_reps',
-      reasonText: reasonText('hold_weight_add_reps', ctx),
-      ruleVersion: COACHING_RULE_VERSION,
-    };
   }
 
-  return {
-    exerciseId: input.exerciseId,
-    exerciseName: input.exerciseName,
-    weight: workingWeight,
-    reps: input.targetRepsMin,
-    targetSets: input.targetSets,
-    reasonCode: 'partial_miss_hold',
-    reasonText: reasonText('partial_miss_hold', ctx),
-    ruleVersion: COACHING_RULE_VERSION,
-  };
+  return applyReadinessToSuggestion(suggestion, input.readiness, input.unit, workingWeight);
 }
 
 /** If the last working set was already very hard, do not add load. Unrated last set is ignored. */

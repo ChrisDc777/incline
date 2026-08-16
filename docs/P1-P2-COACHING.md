@@ -73,25 +73,25 @@ Celebration surfaces (toast, summary, recap, feed badge, achievements) use heavi
 
 ## P2 deferred (backlog)
 
-- Stage C remainder: readiness check-in, adaptive program-week diffs ([#98](https://github.com/ChrisDc777/incline/issues/98))
-- AI-1: Edge Function narration (after P0 sync ops proven)
-- Program + settings sync extension
+- Body-measure ↔ training observational stories (sparse data; from #98)
+- AI-1: Edge Function narration ([#99](https://github.com/ChrisDc777/incline/issues/99))
+- Program + settings sync extension (milestone follow-up on #57)
 - Measurement goals ([#94](https://github.com/ChrisDc777/incline/issues/94)) — keep open; do not build until Measures has regular use
 - Photo comparison gallery ([#23](https://github.com/ChrisDc777/incline/issues/23)); photo cloud sync ([#109](https://github.com/ChrisDc777/incline/issues/109))
+- Native Google account picker ([#112](https://github.com/ChrisDc777/incline/issues/112)) — much later
 
-## P2 — Stage C (RPE slice)
+## P2 — Stage C (complete)
 
 | Layer | Path |
 |-------|------|
 | Schema | migration `014_set_rpe` — nullable integer on `set_entries` |
-| Normalize | [`src/coaching/rpe.ts`](../src/coaching/rpe.ts) |
-| Overload | `high_rpe_hold` when the last working set is rated ≥ 9 |
-| Session UI | [`src/components/workout/rpe-chips.tsx`](../src/components/workout/rpe-chips.tsx) under completed working sets |
+| RPE | [`src/coaching/rpe.ts`](../src/coaching/rpe.ts); last-set ≥ 9 holds load |
+| Readiness | [`src/coaching/readiness.ts`](../src/coaching/readiness.ts) + kv store; Home check-in; `tired` softens suggestions |
+| Program diffs | [`src/coaching/program-plan.ts`](../src/coaching/program-plan.ts); confirm UI [`program-adjust`](../src/app/(app)/program-adjust.tsx) |
+| Session UI | RPE chips under completed working sets |
 | Settings | `showRpe` (default on; never required) |
 
-**Constraint:** completing a set never waits on RPE. Intensity uses the last working set only (earlier sets may be easier on purpose). An unrated last set is ignored — no invented intensity. RIR is not stored; derive later as `10 - RPE` if needed.
-
-Week-to-week **training** planning (insert deload, catch-up after a miss) is the remaining #98 slice — not photo week-vs-week (#23).
+**Constraint:** completing a set never waits on RPE/readiness. Intensity uses last-set RPE; tired check-in only softens. Program changes never write until Confirm.
 
 ## Verification
 

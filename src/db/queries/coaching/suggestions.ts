@@ -2,6 +2,7 @@ import { openDatabase } from '../../client';
 import { getLastSetsForExercises, listExercises, getExercise } from '../exercises';
 import { getTemplate } from '../templates';
 import { suggestNextLoad } from '@/coaching/overload';
+import { getTodayReadiness } from '@/coaching/readiness-store';
 import { rankSubstitutes } from '@/coaching/substitution';
 import type { TrainingSuggestion } from '@/coaching/types';
 import type { Exercise, SetEntry, Unit } from '../../types';
@@ -21,7 +22,10 @@ export async function getTemplateSuggestions(
   if (!template?.exercises?.length) return [];
 
   const exerciseIds = template.exercises.map((te) => te.exerciseId);
-  const lastMap = await getLastSetsForExercises(exerciseIds);
+  const [lastMap, readiness] = await Promise.all([
+    getLastSetsForExercises(exerciseIds),
+    getTodayReadiness(),
+  ]);
   const out: TrainingSuggestion[] = [];
 
   for (const te of template.exercises) {
@@ -34,6 +38,7 @@ export async function getTemplateSuggestions(
       targetRepsMax: te.targetRepsMax,
       targetSets: te.targetSets,
       unit,
+      readiness,
     });
     if (suggestion) out.push(suggestion);
   }
@@ -49,7 +54,10 @@ export async function getExerciseSuggestion(
   targetSets: number,
   unit: Unit,
 ): Promise<TrainingSuggestion | null> {
-  const lastMap = await getLastSetsForExercises([exerciseId]);
+  const [lastMap, readiness] = await Promise.all([
+    getLastSetsForExercises([exerciseId]),
+    getTodayReadiness(),
+  ]);
   return suggestNextLoad({
     exerciseId,
     exerciseName,
@@ -58,6 +66,7 @@ export async function getExerciseSuggestion(
     targetRepsMax,
     targetSets,
     unit,
+    readiness,
   });
 }
 
