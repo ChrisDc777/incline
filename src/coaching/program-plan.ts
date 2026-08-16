@@ -51,7 +51,8 @@ export interface ProgramPlanInput {
   now?: number;
 }
 
-function programWeekDay(startedAt: number, dayStart: number, weeks: number): { week: number; day: number } {
+/** Calendar day → program week (1-based) and weekday (Mon=1 … Sun=7). */
+export function programWeekDay(startedAt: number, dayStart: number, weeks: number): { week: number; day: number } {
   const anchor = startOfDay(startedAt);
   const elapsedDays = Math.max(0, Math.floor((dayStart - anchor) / 86_400_000));
   const week = (Math.floor(elapsedDays / 7) % Math.max(1, weeks)) + 1;

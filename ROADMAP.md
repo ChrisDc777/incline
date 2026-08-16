@@ -23,7 +23,12 @@ Tracking lives in **GitHub milestones** (architecture notes are on each mileston
 - Cloud **sync foundation** (UUIDs, outbox, `src/sync/`, `supabase/sync-schema.sql`) — **ops still P0 (#57)**
 - Program builder (local); share card; milestones; calendar heat/year; rest OS alerts; PR assist; template duplicate/notes
 - **P1 habit loops:** dynamic Home context, weekly goal, announcements pack, measurement export, template duration — see [docs/P1-P2-COACHING.md](docs/P1-P2-COACHING.md)
-- **P2 Stage A:** explainable progressive overload (offline rules) — same doc
+- **P2 Stage A–C:** explainable progressive overload, guardrails, RPE/readiness, program diffs — see [docs/P1-P2-COACHING.md](docs/P1-P2-COACHING.md)
+
+## Next (P2 → P3)
+
+- **AI narrations** — Edge Function `coach-narrate` ([#99](https://github.com/ChrisDc777/incline/issues/99))
+- **Progress photos** — side-by-side comparison gallery ([#23](https://github.com/ChrisDc777/incline/issues/23)); cloud sync ([#109](https://github.com/ChrisDc777/incline/issues/109))
 
 ## Sync model (keep)
 
@@ -41,4 +46,5 @@ Tracking lives in **GitHub milestones** (architecture notes are on each mileston
 
 ## Engineering hygiene
 
+- GitHub Actions CI on push/PR to `main`: `npm ci`, typecheck, lint, test
 - Lint / typecheck baseline; expand query tests; E2E for core journey when P0 stabilizes

@@ -1,7 +1,6 @@
 import { openDatabase } from '../client';
 import { newUuid } from '@/lib/uuid';
-import { enqueueSync } from '@/sync/outbox';
-import { clearOutbox } from '@/sync/outbox';
+import { clearOutbox, enqueueSync } from '@/sync/outbox';
 import { resetSyncState } from '@/sync/state';
 import type { ExperienceLevel, Goal, Unit, UserProfile } from '../types';
 import {

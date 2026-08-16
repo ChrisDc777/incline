@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,22 +19,16 @@ import { CardSkeleton } from '@/components/common/skeleton';
 import { HomeContextCard } from '@/components/home/home-context-card';
 import { useProfile, useSuggestedTemplate, useProgressStats, useWorkoutFeedLogs, useTodayProgramSlot } from '@/hooks/use-data';
 import { useActiveSession } from '@/hooks/use-active-session';
+import { useHomeCoachingContext } from '@/hooks/use-home-coaching-context';
 import { useSettings } from '@/store/settings-store';
 import { useActiveWorkout } from '@/store/active-workout-store';
 import { useToast } from '@/components/ui/toast';
 import { useHaptics } from '@/hooks/use-haptics';
-import { startWorkout, discardWorkout, deleteWorkout, createTemplateFromWorkoutLog, getWeeklyConsistency, getMuscleExposureDays, getActiveProgramPlanDiff, type WeeklyConsistency } from '@/db/queries';
+import { startWorkout, discardWorkout, deleteWorkout, createTemplateFromWorkoutLog } from '@/db/queries';
 import { formatVolume, formatFullDate } from '@/db/calc';
 import { METRIC_ICONS } from '@/lib/metric-icons';
-import { buildHomeContextCards, homeWeekCaption, sameHomeContextCards, type HomeContextCard as HomeContextCardModel } from '@/lib/home-context';
-import { ANNOUNCEMENT_PACK } from '@/lib/announcements';
-import { pickHomeCoachingInsight } from '@/coaching/insights';
-import { DELOAD_APPLIED_KEY, DELOAD_SNOOZE_KEY } from '@/coaching/deload';
-import { programPlanInsight } from '@/coaching/program-plan';
-import { getTodayReadiness, setTodayReadiness } from '@/coaching/readiness-store';
-import type { ReadinessLevel } from '@/coaching/types';
+import { homeWeekCaption } from '@/lib/home-context';
 import { ReadinessCheckIn } from '@/components/home/readiness-checkin';
-import { kvStorage } from '@/db/kv';
 import type { FeedWorkoutLog, MuscleGroup } from '@/db/types';
 
 function greeting() {
@@ -61,6 +55,13 @@ export default function HomeScreen() {
   const clear = useActiveWorkout((s) => s.clear);
   const feed = useWorkoutFeedLogs();
   const refreshFeed = feed.refresh;
+  const { consistency, contextCards, readiness, onReadiness } = useHomeCoachingContext({
+    stats,
+    unit,
+    weeklyWorkoutGoal,
+    dismissedAnnouncementIds,
+    onReadinessImpact: impact,
+  });
   const [starting, setStarting] = useState(false);
   const [conflictOpen, setConflictOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -69,56 +70,7 @@ export default function HomeScreen() {
   const [menuLog, setMenuLog] = useState<FeedWorkoutLog | null>(null);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [today] = useState(() => formatFullDate(Date.now()));
-  const [consistency, setConsistency] = useState<WeeklyConsistency | null>(null);
-  const [contextCards, setContextCards] = useState<HomeContextCardModel[]>([]);
-  const [readiness, setReadiness] = useState<ReadinessLevel | null>(null);
   const didFocus = useRef(false);
-  const contextGen = useRef(0);
-
-  const refreshContext = useCallback(async () => {
-    const gen = ++contextGen.current;
-    const [cons, muscleDays, appliedRaw, snoozeRaw, planDiff, todayReady] = await Promise.all([
-      getWeeklyConsistency(weeklyWorkoutGoal),
-      getMuscleExposureDays(),
-      kvStorage.getItem(DELOAD_APPLIED_KEY),
-      kvStorage.getItem(DELOAD_SNOOZE_KEY),
-      getActiveProgramPlanDiff(),
-      getTodayReadiness(),
-    ]);
-    if (gen !== contextGen.current) return;
-    setConsistency(cons);
-    setReadiness(todayReady);
-    const coaching = pickHomeCoachingInsight(stats, unit, muscleDays, {
-      weeklyStreak: cons.currentWeeklyStreak,
-      lastDeloadAppliedAt: appliedRaw ? Number(appliedRaw) : null,
-      deloadSnoozeUntil: snoozeRaw ? Number(snoozeRaw) : null,
-      programPlanInsight: planDiff ? programPlanInsight(planDiff) : null,
-    });
-    const recentPr = stats?.prs?.find((p) => p.achievedAt >= Date.now() - 14 * 86_400_000);
-    const cards = buildHomeContextCards({
-      stats,
-      unit,
-      weeklyGoal: weeklyWorkoutGoal,
-      sessionsThisWeek: cons.sessionsThisWeek,
-      goalMet: cons.goalMet,
-      sessionsToGoal: cons.sessionsToGoal,
-      dismissedAnnouncementIds,
-      announcements: ANNOUNCEMENT_PACK,
-      coachingTitle: coaching?.title ?? null,
-      coachingSubtitle: coaching?.body ?? null,
-      coachingHref: coaching?.href ?? null,
-      prNudge: recentPr
-        ? { exerciseName: recentPr.exerciseName, weight: recentPr.maxWeight, reps: recentPr.maxReps }
-        : null,
-    });
-    setContextCards((prev) => (sameHomeContextCards(prev, cards) ? prev : cards));
-  }, [stats, unit, weeklyWorkoutGoal, dismissedAnnouncementIds]);
-
-  const onReadiness = async (level: ReadinessLevel) => {
-    setReadiness(level);
-    await setTodayReadiness(level);
-    impact();
-  };
 
   useFocusEffect(
     useCallback(() => {
@@ -126,16 +78,11 @@ export default function HomeScreen() {
         refetchProfile();
         refreshFeed();
         refetchToday();
-        void refreshContext();
       } else {
         didFocus.current = true;
       }
-    }, [refetchProfile, refreshFeed, refetchToday, refreshContext]),
+    }, [refetchProfile, refreshFeed, refetchToday]),
   );
-
-  useEffect(() => {
-    if (stats) void refreshContext();
-  }, [stats, refreshContext]);
 
   const doStart = async (templateId: number | null, name: string) => {
     setStarting(true);

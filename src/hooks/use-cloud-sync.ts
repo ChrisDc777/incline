@@ -20,7 +20,10 @@ export function useCloudSync(options?: { auto?: boolean }) {
   const mounted = useRef(true);
   const syncingRef = useRef(false);
   const getTokenRef = useRef(getToken);
-  getTokenRef.current = getToken;
+
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  }, [getToken]);
 
   const refresh = useCallback(async () => {
     const [s, count] = await Promise.all([getSyncStatus(), outboxCount()]);

@@ -1,6 +1,5 @@
-import { startOfWeek } from '@/db/calc';
+import { formatVolume, startOfWeek } from '@/db/calc';
 import type { ProgressStats, Unit } from '@/db/types';
-import { formatVolume } from '@/db/calc';
 
 /** Compact Home recap derived from existing progress aggregates. */
 export function weekInsightFromStats(stats: ProgressStats | null | undefined, unit: Unit): {

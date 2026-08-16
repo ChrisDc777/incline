@@ -14,6 +14,7 @@ import {
   PLAN_SNOOZE_KEY,
   planSnoozeUntil,
   type ProgramPlanDiff,
+  type ProgramPlanKind,
 } from '@/coaching/program-plan';
 import { kvStorage } from '@/db/kv';
 import {
@@ -26,18 +27,40 @@ import { SCREEN_CONTENT } from '@/lib/layout';
 
 const DAY_LABEL = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+const KIND_COPY: Record<
+  ProgramPlanKind,
+  { screenTitle: string; emptyBody: string }
+> = {
+  catch_up: {
+    screenTitle: 'Catch up',
+    emptyBody: 'No catch-up needed right now.',
+  },
+  deload_insert: {
+    screenTitle: 'Add lighter day',
+    emptyBody: 'No lighter-day slot right now.',
+  },
+};
+
+function parsePlanKind(raw: string | string[] | undefined): ProgramPlanKind | null {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value === 'catch_up' || value === 'deload_insert') return value;
+  return null;
+}
+
 /** User-confirmed program week change. Never writes until Confirm. */
 export default function ProgramAdjustScreen() {
-  const { kind } = useLocalSearchParams<{ kind?: string }>();
+  const { kind: kindParam } = useLocalSearchParams<{ kind?: string }>();
   const router = useRouter();
   const { toast } = useToast();
   const [diff, setDiff] = useState<ProgramPlanDiff | null>(null);
   const [busy, setBusy] = useState(false);
+  const linkKind = parsePlanKind(kindParam);
+  const activeKind = diff?.kind ?? linkKind;
 
   const load = useCallback(async () => {
     const next = await getActiveProgramPlanDiff();
     setDiff(next);
-  }, [kind]);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -85,7 +108,9 @@ export default function ProgramAdjustScreen() {
         <Pressable onPress={() => router.back()} className="p-1" accessibilityRole="button" accessibilityLabel="Go back">
           <Icon icon={ArrowLeft} size={24} color="foreground" />
         </Pressable>
-        <Body className="text-base font-semibold text-foreground">Adjust this week</Body>
+        <Body className="text-base font-semibold text-foreground">
+          {activeKind ? KIND_COPY[activeKind].screenTitle : 'Adjust this week'}
+        </Body>
         <View className="w-8" />
       </View>
 
@@ -106,7 +131,9 @@ export default function ProgramAdjustScreen() {
             </Caption>
           </Card>
         ) : (
-          <Caption className="mb-4">No plan change needed right now.</Caption>
+          <Caption className="mb-4">
+            {linkKind ? KIND_COPY[linkKind].emptyBody : 'No plan change needed right now.'}
+          </Caption>
         )}
 
         <Button onPress={onConfirm} disabled={!diff || busy} className="mb-3">

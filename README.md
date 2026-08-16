@@ -21,8 +21,10 @@ Offline-first strength training app for React Native + Expo. Log sets in the gym
 - Calendar heatmap, weekly streak, weekly workout goal
 - Bodyweight + circumference measures; JSON/CSV export (incl. measurements)
 
-### Coaching (Stage A — offline rules)
+### Coaching (offline rules — Stage A–C)
 - Plate-aware double progression with reason codes
+- Fatigue cues, deload suggestions, optional RPE chips, daily readiness check-in
+- User-confirmed program-week diffs (catch-up / lighter day) at `/(app)/program-adjust`
 - Surfaces: workout preview, session assist, post-workout “Next time”, Home insight card
 - Rules live in `src/coaching/`; suggestions are recomputed from SQLite (not synced)
 
@@ -41,7 +43,7 @@ Offline-first strength training app for React Native + Expo. Log sets in the gym
 | Area | Notes |
 |------|--------|
 | Sync ops | Deploy schema + multi-device verification — [#57](https://github.com/ChrisDc777/incline/issues/57) |
-| Coaching Stage B/C | Fatigue, deload, RPE, adaptive plans — [#97](https://github.com/ChrisDc777/incline/issues/97), [#98](https://github.com/ChrisDc777/incline/issues/98) |
+| Coaching Stage B/C | Fatigue, deload, RPE, readiness, user-confirmed program diffs — shipped ([#97](https://github.com/ChrisDc777/incline/issues/97), [#98](https://github.com/ChrisDc777/incline/issues/98)) |
 | Cloud AI narrations | Edge Function after sync is proven — [#99](https://github.com/ChrisDc777/incline/issues/99) |
 | Social / Health / marketplace | P3+ |
 
@@ -50,7 +52,7 @@ Offline-first strength training app for React Native + Expo. Log sets in the gym
 | Doc | Purpose |
 |-----|---------|
 | [docs/HANDOFF.md](docs/HANDOFF.md) | **Start here after `git pull`** — current state, next issues |
-| [docs/P1-P2-COACHING.md](docs/P1-P2-COACHING.md) | P1 habit closeout + P2 Stage A architecture |
+| [docs/P1-P2-COACHING.md](docs/P1-P2-COACHING.md) | P1 habit closeout + P2 coaching (Stages A–C) |
 | [ROADMAP.md](ROADMAP.md) | Milestones P0–P4 |
 | [AGENTS.md](AGENTS.md) | Agent entry (Expo SDK 57 + doc pointers) |
 

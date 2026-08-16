@@ -100,4 +100,4 @@ npm run typecheck
 npm run test
 ```
 
-Key tests: [`src/lib/__tests__/home-context.test.ts`](../src/lib/__tests__/home-context.test.ts), [`src/coaching/__tests__/pr.test.ts`](../src/coaching/__tests__/pr.test.ts), [`src/coaching/__tests__/warmup-backfill.test.ts`](../src/coaching/__tests__/warmup-backfill.test.ts)
+Key tests: [`src/lib/__tests__/home-context.test.ts`](../src/lib/__tests__/home-context.test.ts), [`src/coaching/__tests__/stage-c.test.ts`](../src/coaching/__tests__/stage-c.test.ts), [`src/coaching/__tests__/pr.test.ts`](../src/coaching/__tests__/pr.test.ts), [`src/coaching/__tests__/warmup-backfill.test.ts`](../src/coaching/__tests__/warmup-backfill.test.ts)

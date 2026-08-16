@@ -16,7 +16,6 @@ import { getLastSetsForExercise, getLastSetsForExercises } from './exercises';
 import {
   getSessionSets,
   mapLog,
-  mapSet,
   recomputeVolume,
   type LogRow,
   type SessionWorkout,
