@@ -13,14 +13,13 @@ async function ensureProfileRow(): Promise<{ uuid: string }> {
   const db = await openDatabase();
   const row = await db.getFirstAsync<ProfileRow>('SELECT * FROM user_profile WHERE id = 1 AND deleted_at IS NULL');
   if (row?.uuid) return { uuid: row.uuid };
-  const now = Date.now();
   const uuid = row?.uuid ?? newUuid();
   if (!row) {
+    // updated_at = 0 so any cloud profile wins LWW until the user actually edits/onboards.
     await db.runAsync(
       `INSERT INTO user_profile (id, name, goal, bodyweight, unit, experience_level, onboarding_completed, uuid, updated_at)
-       VALUES (1, '', 'build_muscle', NULL, 'metric', 'intermediate', 0, ?, ?)`,
+       VALUES (1, '', 'build_muscle', NULL, 'metric', 'intermediate', 0, ?, 0)`,
       uuid,
-      now,
     );
   } else if (!row.uuid) {
     await db.runAsync('UPDATE user_profile SET uuid = ? WHERE id = 1', uuid);
@@ -110,10 +109,20 @@ export async function completeOnboarding(patch: { name: string; goal: Goal; unit
 export async function resetUserData(): Promise<void> {
   const db = await openDatabase();
   await db.execAsync('DELETE FROM set_entries');
+  await db.execAsync('DELETE FROM workout_photos');
   await db.execAsync('DELETE FROM workout_logs');
   await db.execAsync('DELETE FROM bodyweight_entries');
   await db.execAsync('DELETE FROM body_measurements');
   await db.execAsync('DELETE FROM user_profile');
+
+  try {
+    const { deleteAsync, documentDirectory } = await import('expo-file-system/legacy');
+    if (documentDirectory) {
+      await deleteAsync(`${documentDirectory}workout-photos`, { idempotent: true });
+    }
+  } catch {
+    // files optional
+  }
 
   // Soft-deleted or live custom template exercises → remove custom templates
   await db.execAsync(`
