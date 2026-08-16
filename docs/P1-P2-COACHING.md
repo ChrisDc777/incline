@@ -14,7 +14,7 @@ This document summarizes the P1 habit-loop closeout and P2 explainable coaching 
 | Measurement export | Dedicated [export screen](../src/app/(app)/export.tsx): pick workouts / custom exercises / bodyweight / circumference + CSV or JSON |
 | Motion | Subtle `FadeInDown` on Home context cards |
 
-**Deferred (backlog issues):** week-vs-week photo comparison, measurement goals, full motion system.
+**Deferred (backlog issues):** measurement goals, full motion system. Photo comparison (#23) shipped locally.
 
 ## P2 — Explainable progressive overload (Stage A)
 
@@ -74,11 +74,12 @@ Celebration surfaces (toast, summary, recap, feed badge, achievements) use heavi
 ## P2 deferred (backlog)
 
 - Body-measure ↔ training observational stories (sparse data; from #98)
-- AI-1: Edge Function narration ([#99](https://github.com/ChrisDc777/incline/issues/99)) — **scaffolded**; deploy SQL + function + secrets in the dashboard. Stub mode: `COACH_NARRATE_STUB=1` or missing `OPENAI_API_KEY` returns pack-derived copy.
+- AI-1 narration ([#99](https://github.com/ChrisDc777/incline/issues/99)) — **code shipped**; still needs dashboard deploy (SQL + function + secrets). Stub: `COACH_NARRATE_STUB=1` or missing `OPENAI_API_KEY`.
 - Program + settings sync extension (milestone follow-up on #57)
 - Measurement goals ([#94](https://github.com/ChrisDc777/incline/issues/94)) — keep open; do not build until Measures has regular use
-- Photo comparison gallery ([#23](https://github.com/ChrisDc777/incline/issues/23)); photo cloud sync ([#109](https://github.com/ChrisDc777/incline/issues/109))
+- Photo cloud sync ([#109](https://github.com/ChrisDc777/incline/issues/109)) — local week-vs-week compare shipped ([#23](https://github.com/ChrisDc777/incline/issues/23))
 - Native Google account picker ([#112](https://github.com/ChrisDc777/incline/issues/112)) — much later
+- Chat coach, program generation, model keys in the app — out of scope
 
 ## P2 — Stage C (complete)
 
@@ -93,6 +94,27 @@ Celebration surfaces (toast, summary, recap, feed badge, achievements) use heavi
 
 **Constraint:** completing a set never waits on RPE/readiness. Intensity uses last-set RPE; tired check-in only softens. Program changes never write until Confirm.
 
+## AI narration (#99) — code shipped, deploy pending
+
+| Layer | Path |
+|-------|------|
+| Pack contract | [`src/coaching/feature-pack.ts`](../src/coaching/feature-pack.ts) |
+| Client | [`src/coaching/narrate-client.ts`](../src/coaching/narrate-client.ts) — opt-in, silent failures, KV cache |
+| Edge Function | [`supabase/functions/coach-narrate/`](../supabase/functions/coach-narrate/) + [`supabase/coach-narrate.sql`](../supabase/coach-narrate.sql) |
+| Settings | `aiExplanationsEnabled` (default **off**) |
+
+**Constraint:** LLM only rephrases `FeaturePackV1`. Never invents loads. Never called from session finish/complete.
+
+## Progress photo compare (#23)
+
+| Layer | Path |
+|-------|------|
+| Screen | [`src/app/(app)/progress-photos.tsx`](../src/app/(app)/progress-photos.tsx) |
+| UI | [`photo-compare.tsx`](../src/components/progress/photo-compare.tsx), [`photo-picker-sheet.tsx`](../src/components/progress/photo-picker-sheet.tsx) |
+| Queries | [`src/db/queries/photos.ts`](../src/db/queries/photos.ts) — join finished sessions |
+
+**Constraint:** local files only until [#109](https://github.com/ChrisDc777/incline/issues/109). No second capture pipeline.
+
 ## Verification
 
 ```bash
@@ -100,4 +122,4 @@ npm run typecheck
 npm run test
 ```
 
-Key tests: [`src/lib/__tests__/home-context.test.ts`](../src/lib/__tests__/home-context.test.ts), [`src/coaching/__tests__/stage-c.test.ts`](../src/coaching/__tests__/stage-c.test.ts), [`src/coaching/__tests__/pr.test.ts`](../src/coaching/__tests__/pr.test.ts), [`src/coaching/__tests__/warmup-backfill.test.ts`](../src/coaching/__tests__/warmup-backfill.test.ts)
+Key tests: [`src/lib/__tests__/home-context.test.ts`](../src/lib/__tests__/home-context.test.ts), [`src/coaching/__tests__/stage-c.test.ts`](../src/coaching/__tests__/stage-c.test.ts), [`src/coaching/__tests__/feature-pack.test.ts`](../src/coaching/__tests__/feature-pack.test.ts), [`src/coaching/__tests__/narrate.test.ts`](../src/coaching/__tests__/narrate.test.ts), [`src/db/__tests__/photos.test.ts`](../src/db/__tests__/photos.test.ts), [`src/coaching/__tests__/pr.test.ts`](../src/coaching/__tests__/pr.test.ts), [`src/coaching/__tests__/warmup-backfill.test.ts`](../src/coaching/__tests__/warmup-backfill.test.ts)
