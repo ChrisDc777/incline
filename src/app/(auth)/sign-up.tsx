@@ -36,11 +36,12 @@ export default function SignUpScreen() {
     try {
       const result = await startSSOFlow({
         strategy: 'oauth_google',
-        redirectUrl: Linking.createURL('/(onboarding)'),
+        redirectUrl: Linking.createURL('/'),
       });
       if (result.createdSessionId) {
         await result.setActive?.({ session: result.createdSessionId });
-        router.replace('/(onboarding)');
+        // Root gate binds Clerk user → local SQLite, then sends to onboarding/app.
+        router.replace('/');
       }
     } catch (err: any) {
       setError(err?.message ?? 'Google sign-up failed. Please try again.');
@@ -72,7 +73,7 @@ export default function SignUpScreen() {
       const result = await signUp.attemptEmailAddressVerification({ code });
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        router.replace('/(onboarding)');
+        router.replace('/');
       }
     } catch (err: any) {
       setError(err?.errors?.[0]?.message ?? 'Verification failed. Check the code and try again.');

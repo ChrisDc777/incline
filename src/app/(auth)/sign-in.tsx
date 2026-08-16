@@ -44,11 +44,12 @@ export default function SignInScreen() {
     try {
       const result = await startSSOFlow({
         strategy: 'oauth_google',
-        redirectUrl: Linking.createURL('/(app)/(tabs)'),
+        redirectUrl: Linking.createURL('/'),
       });
       if (result.createdSessionId) {
         await result.setActive?.({ session: result.createdSessionId });
-        router.replace('/(app)/(tabs)');
+        // Root gate binds Clerk user → local SQLite (wipes on account switch).
+        router.replace('/');
       }
     } catch (err: any) {
       setError(err?.message ?? 'Google sign-in failed. Please try again.');
@@ -65,7 +66,7 @@ export default function SignInScreen() {
       const result = await signIn.create({ identifier: emailAddress, password });
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        router.replace('/(app)/(tabs)');
+        router.replace('/');
       }
     } catch (err: any) {
       setError(err?.errors?.[0]?.message ?? 'Sign in failed. Please try again.');
@@ -115,7 +116,7 @@ export default function SignInScreen() {
         setResetStep('done');
         setResetVisible(false);
         setPassword('');
-        router.replace('/(app)/(tabs)');
+        router.replace('/');
       }
     } catch (err: any) {
       setResetError(err?.errors?.[0]?.message ?? 'Reset failed. Check the code and try again.');

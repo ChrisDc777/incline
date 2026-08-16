@@ -82,6 +82,16 @@ function createSyncReadyDb() {
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL DEFAULT 0
     );
+    CREATE TABLE workout_photos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      workout_log_id INTEGER NOT NULL,
+      uri TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      uuid TEXT,
+      deleted_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL DEFAULT 0
+    );
     CREATE TABLE bodyweight_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       weight REAL NOT NULL,
@@ -194,6 +204,7 @@ describe('sync readiness', () => {
 
     // Mirror resetUserData SQL
     db.exec('DELETE FROM set_entries');
+    db.exec('DELETE FROM workout_photos');
     db.exec('DELETE FROM workout_logs');
     db.exec('DELETE FROM bodyweight_entries');
     db.exec('DELETE FROM user_profile');

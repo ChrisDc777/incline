@@ -24,13 +24,14 @@ const PUSH_ORDER: SyncTable[] = [
 ];
 
 const PULL_TABLES: { table: SyncTable; cloud: string; idCol: string }[] = [
+  // Profile first so account hydrate restores name before workouts finish pulling.
+  { table: 'profiles', cloud: 'profiles', idCol: 'user_id' },
   { table: 'user_exercises', cloud: 'user_exercises', idCol: 'id' },
   { table: 'user_templates', cloud: 'user_templates', idCol: 'id' },
   { table: 'user_template_exercises', cloud: 'user_template_exercises', idCol: 'id' },
   { table: 'workout_logs', cloud: 'workout_logs', idCol: 'id' },
   { table: 'set_entries', cloud: 'set_entries', idCol: 'id' },
   { table: 'bodyweight_entries', cloud: 'bodyweight_entries', idCol: 'id' },
-  { table: 'profiles', cloud: 'profiles', idCol: 'user_id' },
 ];
 
 function msToIso(ms: number | null | undefined): string | null {
@@ -102,11 +103,19 @@ async function pushOne(
       }
       const { data: existing } = await client
         .from('profiles')
-        .select('updated_at')
+        .select('updated_at, name, onboarding_completed')
         .eq('user_id', userId)
         .maybeSingle();
       const remoteMs = isoToMs(existing?.updated_at as string | undefined) ?? 0;
       if (existing && remoteMs > updatedAt) return 'ok'; // LWW: remote newer
+
+      // Never clobber a named cloud profile with an empty local placeholder.
+      const localEmpty =
+        !String(payload.name ?? '').trim() && !payload.onboarding_completed;
+      const remoteHasProfile =
+        !!existing &&
+        (!!String(existing.name ?? '').trim() || !!existing.onboarding_completed);
+      if (localEmpty && remoteHasProfile) return 'ok';
 
       const { error } = await client.from('profiles').upsert({
         user_id: userId,
@@ -284,10 +293,18 @@ async function applyRemoteRow(
   const deletedAt = isoToMs(remote.deleted_at as string | null);
 
   if (table === 'profiles') {
-    const local = await db.getFirstAsync<{ updated_at: number; uuid: string | null }>(
-      'SELECT updated_at, uuid FROM user_profile WHERE id = 1',
+    const local = await db.getFirstAsync<{
+      updated_at: number;
+      uuid: string | null;
+      name: string;
+      onboarding_completed: number;
+    }>(
+      'SELECT updated_at, uuid, name, onboarding_completed FROM user_profile WHERE id = 1',
     );
-    if (local && local.updated_at > updatedAt) return;
+    const localIsPlaceholder =
+      !local || (!(local.name ?? '').trim() && !local.onboarding_completed);
+    // Placeholder rows must never beat a real cloud profile (common after account wipe).
+    if (local && !localIsPlaceholder && local.updated_at > updatedAt) return;
     const uuid = local?.uuid ?? newUuid();
     await db.runAsync(
       `INSERT INTO user_profile (id, name, goal, bodyweight, unit, experience_level, onboarding_completed, avatar_url, uuid, deleted_at, updated_at)
@@ -578,7 +595,28 @@ async function pullAll(client: SupabaseClient, userId: string, cursor: number): 
   let maxCursor = cursor;
   const cursorIso = new Date(cursor).toISOString();
 
+  // If local profile is still an empty placeholder, always fetch the cloud row
+  // (ignores cursor). Fixes account-switch races where workouts pulled but name did not.
+  const db = await openDatabase();
+  const localProfile = await db.getFirstAsync<{ name: string; onboarding_completed: number }>(
+    'SELECT name, onboarding_completed FROM user_profile WHERE id = 1 AND deleted_at IS NULL',
+  );
+  const needsProfileHydrate =
+    !localProfile || (!(localProfile.name ?? '').trim() && !localProfile.onboarding_completed);
+  if (needsProfileHydrate) {
+    const res = await client.from('profiles').select('*').eq('user_id', userId).maybeSingle();
+    if (res.error) throw res.error;
+    if (res.data) {
+      await applyRemoteRow('profiles', res.data as Record<string, unknown>, userId);
+      const ms = isoToMs(res.data.updated_at as string) ?? 0;
+      maxCursor = Math.max(maxCursor, ms);
+    }
+  }
+
   for (const { table, cloud } of PULL_TABLES) {
+    // Already hydrated above when local was empty.
+    if (cloud === 'profiles' && needsProfileHydrate) continue;
+
     const { data, error } = await client
       .from(cloud)
       .select('*')

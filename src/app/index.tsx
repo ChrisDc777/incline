@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
@@ -7,6 +7,7 @@ import { PrimaryActivityIndicator } from '@/components/common/primary-activity-i
 import { bindLocalAccount } from '@/db/account';
 import { useDatabaseReady } from '@/hooks/use-database';
 import { useProfile } from '@/hooks/use-data';
+import { runSync, syncBackendReady } from '@/sync';
 
 /**
  * Root gate: routes based on auth state → onboarding → app.
@@ -14,28 +15,44 @@ import { useProfile } from '@/hooks/use-data';
  */
 export default function Gate() {
   const ready = useDatabaseReady();
-  const { isSignedIn, isLoaded: authLoaded, userId } = useAuth();
+  const { isSignedIn, isLoaded: authLoaded, userId, getToken } = useAuth();
   const { data: profile, loading: profileLoading, refetch: refetchProfile } = useProfile();
   const router = useRouter();
   const segments = useSegments();
   const [bound, setBound] = useState(false);
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
 
   // Bind Clerk identity to local SQLite owner before routing into the app.
+  // Different Clerk user → wipe local workouts/profile so accounts never share history.
   useEffect(() => {
     if (!ready || !authLoaded || !isSignedIn || !userId) {
       setBound(!isSignedIn);
       return;
     }
     let active = true;
-    bindLocalAccount(userId)
-      .then(async (result) => {
-        if (result.switched) await refetchProfile();
+    setBound(false);
+    (async () => {
+      try {
+        const result = await bindLocalAccount(userId);
+        // Pull cloud profile/workouts before routing so a returning account
+        // does not land in empty onboarding after a local wipe.
+        if (syncBackendReady()) {
+          await runSync({
+            userId,
+            getToken: (opts) => getTokenRef.current(opts),
+          });
+        } else if (result.switched) {
+          console.info('[gate] account switched; sync backend not configured — local wipe only');
+        }
+        if (!active) return;
+        await refetchProfile();
         if (active) setBound(true);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.warn('[gate] bindLocalAccount failed', err);
         if (active) setBound(true);
-      });
+      }
+    })();
     return () => {
       active = false;
     };
