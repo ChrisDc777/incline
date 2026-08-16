@@ -3,7 +3,7 @@ import { useRouter, type Href } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Moon, Sun, Smartphone, Vibrate, Ruler, Bell, BellOff, Timer, Zap, Palette,
-  Cloud, RefreshCw, CalendarDays, MonitorSmartphone, Download, ChevronRight,
+  Cloud, RefreshCw, CalendarDays, MonitorSmartphone, Download, ChevronRight, Sparkles,
 } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
@@ -106,10 +106,12 @@ export default function SettingsScreen() {
   const {
     unit, themeMode, accentTheme, hapticsEnabled,
     restSoundEnabled, autoStartRest, defaultRestSeconds, showWarmUpSets, showRpe,
+    aiExplanationsEnabled,
     calendarHeatMetric, weekStartsOn, keepScreenAwake, weeklyWorkoutGoal,
     workoutRemindersEnabled, workoutReminderDays, workoutReminderHour, workoutReminderMinute,
     weeklyDigestEnabled, weeklyDigestHour, weeklyDigestMinute,
     setUnit, setThemeMode, setAccentTheme, setHaptics, setRestSound, setAutoStartRest, setDefaultRestSeconds, setShowWarmUpSets, setShowRpe,
+    setAiExplanationsEnabled,
     setCalendarHeatMetric, setWeekStartsOn, setKeepScreenAwake, setWeeklyWorkoutGoal,
     setWorkoutRemindersEnabled, setWorkoutReminderDays, setWorkoutReminderTime,
     setWeeklyDigestEnabled, setWeeklyDigestTime,
@@ -275,6 +277,20 @@ export default function SettingsScreen() {
             title="Keep screen on"
             subtitle="While a workout session is open">
             <Switch value={keepScreenAwake} onValueChange={setKeepScreenAwake} accessibilityLabel="Keep screen on during workout" />
+          </Row>
+        </Card>
+
+        <Caption className="mb-1 mt-5 font-semibold uppercase tracking-wide">Coaching</Caption>
+        <Card>
+          <Row
+            icon={<Icon icon={Sparkles} size={18} color="muted-foreground" />}
+            title="AI explanations"
+            subtitle="Numbers still come from local rules; optional AI wording">
+            <Switch
+              value={aiExplanationsEnabled}
+              onValueChange={setAiExplanationsEnabled}
+              accessibilityLabel="AI explanations"
+            />
           </Row>
         </Card>
 

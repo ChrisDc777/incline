@@ -28,4 +28,9 @@ export const kvStorage = {
     const db = await openDatabase();
     await db.runAsync('DELETE FROM kv WHERE key = ?', key);
   },
+
+  async removeKeysWithPrefix(prefix: string): Promise<void> {
+    const db = await openDatabase();
+    await db.runAsync('DELETE FROM kv WHERE key LIKE ?', `${prefix}%`);
+  },
 };

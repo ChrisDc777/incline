@@ -154,6 +154,8 @@ export async function resetUserData(): Promise<void> {
   `);
   await db.execAsync('DELETE FROM programs WHERE is_custom = 1');
 
+  await db.runAsync("DELETE FROM kv WHERE key LIKE 'coach.narrate.%'");
+
   await clearOutbox();
   await resetSyncState();
   try {
