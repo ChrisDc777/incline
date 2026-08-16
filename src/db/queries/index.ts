@@ -170,5 +170,8 @@ export {
   listWorkoutPhotos,
   addWorkoutPhotos,
   deleteWorkoutPhoto,
+  listProgressPhotos,
+  countProgressPhotos,
+  getProgressPhotoById,
   MAX_SESSION_PHOTOS,
 } from './photos';

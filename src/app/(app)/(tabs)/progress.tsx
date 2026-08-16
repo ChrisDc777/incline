@@ -4,7 +4,7 @@ import { PrimaryActivityIndicator } from '@/components/common/primary-activity-i
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, type Href } from 'expo-router';
-import { ChevronRight, Dumbbell, TrendingUp } from 'lucide-react-native';
+import { Camera, ChevronRight, Dumbbell, TrendingUp } from 'lucide-react-native';
 import { Icon } from '@/components/common/icon';
 
 import { Heading, Caption, Body } from '@/components/common/text';
@@ -171,6 +171,24 @@ export default function ProgressScreen() {
                             ? `Top: ${MUSCLE_LABELS[topMuscle.muscle]} · ${topMuscle.sets} sets`
                             : 'Body map and balance radar'}
                         </Caption>
+                      </View>
+                      <Icon icon={ChevronRight} size={18} color="muted-foreground" />
+                    </View>
+                  </Card>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => router.push('/(app)/progress-photos' as Href)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open progress photos">
+                  <Card>
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-1 pr-3">
+                        <View className="flex-row items-center gap-2">
+                          <Icon icon={Camera} size={16} color="muted-foreground" />
+                          <Body className="font-semibold text-foreground">Photos</Body>
+                        </View>
+                        <Caption className="mt-1">Week vs week, on this device</Caption>
                       </View>
                       <Icon icon={ChevronRight} size={18} color="muted-foreground" />
                     </View>
