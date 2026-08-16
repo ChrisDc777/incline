@@ -143,24 +143,60 @@ export function pickHomeCoachingInsight(
   })[0] ?? null;
 }
 
-/** Brief post-workout coaching lines for the summary screen. */
-export function postSessionInsights(input: {
+export interface PostSessionInsightLine {
+  id: string;
+  kind: 'fatigue' | 'pr' | 'volume_delta' | 'suggestion';
+  text: string;
+  evidence?: Record<string, string | number | null>;
+}
+
+export interface PostSessionInsightInput {
   prCount: number;
   volumeDeltaPct: number | null;
   suggestions: { exerciseName: string; reasonText: string }[];
   fatigueLine?: string | null;
-}): string[] {
-  const lines: string[] = [];
-  if (input.fatigueLine) lines.push(input.fatigueLine);
+}
+
+/** Structured post-workout coaching lines with stable ids. */
+export function buildPostSessionInsights(input: PostSessionInsightInput): PostSessionInsightLine[] {
+  const lines: PostSessionInsightLine[] = [];
+  if (input.fatigueLine) {
+    lines.push({
+      id: 'fatigue',
+      kind: 'fatigue',
+      text: input.fatigueLine,
+      evidence: { fatigueLine: input.fatigueLine },
+    });
+  }
   if (input.prCount > 0) {
-    lines.push(`${input.prCount} PR${input.prCount === 1 ? '' : 's'} today — strong work.`);
+    lines.push({
+      id: 'pr',
+      kind: 'pr',
+      text: `${input.prCount} PR${input.prCount === 1 ? '' : 's'} today — strong work.`,
+      evidence: { prCount: input.prCount },
+    });
   }
   if (input.volumeDeltaPct != null) {
     const sign = input.volumeDeltaPct >= 0 ? '+' : '';
-    lines.push(`Volume ${sign}${input.volumeDeltaPct}% vs last time on this routine.`);
+    lines.push({
+      id: 'volume-delta',
+      kind: 'volume_delta',
+      text: `Volume ${sign}${input.volumeDeltaPct}% vs last time on this routine.`,
+      evidence: { volumeDeltaPct: input.volumeDeltaPct },
+    });
   }
-  for (const s of input.suggestions.slice(0, 2)) {
-    lines.push(`Next ${s.exerciseName}: ${s.reasonText}`);
+  for (const [index, suggestion] of input.suggestions.slice(0, 2).entries()) {
+    lines.push({
+      id: `suggestion-${index}`,
+      kind: 'suggestion',
+      text: `Next ${suggestion.exerciseName}: ${suggestion.reasonText}`,
+      evidence: { exerciseName: suggestion.exerciseName },
+    });
   }
   return lines.slice(0, 3);
+}
+
+/** Brief post-workout coaching lines for the summary screen. */
+export function postSessionInsights(input: PostSessionInsightInput): string[] {
+  return buildPostSessionInsights(input).map((line) => line.text);
 }
