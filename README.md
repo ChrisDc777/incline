@@ -30,8 +30,9 @@ Offline-first strength training app for React Native + Expo. Log sets in the gym
 
 ### Progress & tools
 - Volume, estimated 1RM / PRs, muscle distribution, achievements
+- Progress photo compare (local session pics, week vs week) — Progress → Photos
 - Plate calculator, 1RM / bodyweight tools
-- Settings: units, theme, accent, rest defaults, calendar prefs, reminders
+- Settings: units, theme, accent, rest defaults, calendar prefs, reminders, optional AI explanations
 
 ### Trust & identity
 - Clerk email auth (mandatory)
@@ -43,8 +44,8 @@ Offline-first strength training app for React Native + Expo. Log sets in the gym
 | Area | Notes |
 |------|--------|
 | Sync ops | Deploy schema + multi-device verification — [#57](https://github.com/ChrisDc777/incline/issues/57) |
-| Coaching Stage B/C | Fatigue, deload, RPE, readiness, user-confirmed program diffs — shipped ([#97](https://github.com/ChrisDc777/incline/issues/97), [#98](https://github.com/ChrisDc777/incline/issues/98)) |
-| Cloud AI narrations | Edge Function after sync is proven — [#99](https://github.com/ChrisDc777/incline/issues/99) |
+| Cloud AI narrations | Code shipped ([#99](https://github.com/ChrisDc777/incline/issues/99)); deploy Edge Function + secrets still required |
+| Photo cloud sync | Local compare shipped ([#23](https://github.com/ChrisDc777/incline/issues/23)); Storage later — [#109](https://github.com/ChrisDc777/incline/issues/109) |
 | Social / Health / marketplace | P3+ |
 
 ## Docs for humans & agents

@@ -27,8 +27,8 @@ Tracking lives in **GitHub milestones** (architecture notes are on each mileston
 
 ## Next (P2 → P3)
 
-- **AI narrations** — Edge Function `coach-narrate` ([#99](https://github.com/ChrisDc777/incline/issues/99))
-- **Progress photos** — side-by-side comparison gallery ([#23](https://github.com/ChrisDc777/incline/issues/23)); cloud sync ([#109](https://github.com/ChrisDc777/incline/issues/109))
+- **Deploy AI narrations** — run `supabase/coach-narrate.sql`, deploy function, set secrets ([#99](https://github.com/ChrisDc777/incline/issues/99) code on main)
+- **Photo cloud sync** — Storage backup for session pics ([#109](https://github.com/ChrisDc777/incline/issues/109)); local week-vs-week compare already shipped ([#23](https://github.com/ChrisDc777/incline/issues/23))
 
 ## Sync model (keep)
 
