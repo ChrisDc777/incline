@@ -4,3 +4,4 @@ export { getSyncStatus, setSyncStatus, resetSyncState } from './state';
 export { getAuthedSupabase, syncBackendReady, clearAuthedSupabase } from './supabase-auth';
 export { runSync, isLocalUserDataEmpty, type SyncResult } from './engine';
 export { exerciseRefForId, resolveExerciseRef } from './exercise-ref';
+export { PUSH_ORDER, cloudTableFor } from './tables';

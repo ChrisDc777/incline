@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { openDatabase } from '@/db/client';
 import { newUuid } from '@/lib/uuid';
-import type { ExerciseRef, SyncTable } from './types';
+import type { SyncTable } from './types';
 import {
   bumpOutboxAttempt,
   listOutbox,
@@ -12,38 +12,17 @@ import {
 import { getSyncStatus, setSyncStatus } from './state';
 import { getAuthedSupabase, syncBackendReady, type GetToken } from './supabase-auth';
 import { resolveExerciseRef } from './exercise-ref';
-
-const PUSH_ORDER: SyncTable[] = [
-  'user_exercises',
-  'user_templates',
-  'user_template_exercises',
-  'workout_logs',
-  'set_entries',
-  'bodyweight_entries',
-  'profiles',
-];
-
-const PULL_TABLES: { table: SyncTable; cloud: string; idCol: string }[] = [
-  // Profile first so account hydrate restores name before workouts finish pulling.
-  { table: 'profiles', cloud: 'profiles', idCol: 'user_id' },
-  { table: 'user_exercises', cloud: 'user_exercises', idCol: 'id' },
-  { table: 'user_templates', cloud: 'user_templates', idCol: 'id' },
-  { table: 'user_template_exercises', cloud: 'user_template_exercises', idCol: 'id' },
-  { table: 'workout_logs', cloud: 'workout_logs', idCol: 'id' },
-  { table: 'set_entries', cloud: 'set_entries', idCol: 'id' },
-  { table: 'bodyweight_entries', cloud: 'bodyweight_entries', idCol: 'id' },
-];
-
-function msToIso(ms: number | null | undefined): string | null {
-  if (ms == null) return null;
-  return new Date(ms).toISOString();
-}
-
-function isoToMs(iso: string | null | undefined): number | null {
-  if (!iso) return null;
-  const n = Date.parse(iso);
-  return Number.isFinite(n) ? n : null;
-}
+import {
+  asNum,
+  asNumOrNull,
+  asSetType,
+  asStr,
+  buildCloudUpsertRow,
+  cloudToExerciseRef,
+  isoToMs,
+  msToIso,
+} from './mappers';
+import { PUSH_ORDER, PULL_TABLES, cloudTableFor } from './tables';
 
 function sortOutbox(rows: OutboxRow[]): OutboxRow[] {
   return [...rows].sort((a, b) => {
@@ -52,34 +31,6 @@ function sortOutbox(rows: OutboxRow[]): OutboxRow[] {
     if (ai !== bi) return ai - bi;
     return a.id - b.id;
   });
-}
-
-function exerciseRefToCloud(ref: ExerciseRef | undefined): {
-  ref_type: string;
-  catalog_external_id: string | null;
-  user_exercise_id: string | null;
-} {
-  if (!ref || ref.ref === 'unknown') {
-    return { ref_type: 'catalog', catalog_external_id: 'unknown', user_exercise_id: null };
-  }
-  if (ref.ref === 'catalog') {
-    return { ref_type: 'catalog', catalog_external_id: ref.externalId, user_exercise_id: null };
-  }
-  return { ref_type: 'custom', catalog_external_id: null, user_exercise_id: ref.exerciseUuid };
-}
-
-function cloudToExerciseRef(row: {
-  ref_type?: string;
-  catalog_external_id?: string | null;
-  user_exercise_id?: string | null;
-}): ExerciseRef {
-  if (row.ref_type === 'custom' && row.user_exercise_id) {
-    return { ref: 'custom', exerciseUuid: row.user_exercise_id };
-  }
-  if (row.catalog_external_id) {
-    return { ref: 'catalog', externalId: row.catalog_external_id };
-  }
-  return { ref: 'unknown' };
 }
 
 async function pushOne(
@@ -133,21 +84,12 @@ async function pushOne(
       return 'ok';
     }
 
-    const cloudTable =
-      item.tableName === 'user_exercises'
-        ? 'user_exercises'
-        : item.tableName === 'user_templates'
-          ? 'user_templates'
-          : item.tableName === 'user_template_exercises'
-            ? 'user_template_exercises'
-            : item.tableName === 'workout_logs'
-              ? 'workout_logs'
-              : item.tableName === 'set_entries'
-                ? 'set_entries'
-                : item.tableName === 'bodyweight_entries'
-                  ? 'bodyweight_entries'
-                  : null;
-    if (!cloudTable) return 'ok';
+    const cloudTable = cloudTableFor(item.tableName);
+    if (!cloudTable || cloudTable === 'profiles') {
+      // Unknown table_name used to return ok and drop the outbox row.
+      console.warn('[sync] refusing to ack unknown table', item.tableName);
+      return 'retry';
+    }
 
     if (item.op === 'delete') {
       const { data: existing } = await client
@@ -174,86 +116,14 @@ async function pushOne(
     const remoteMs = isoToMs(existing?.updated_at as string | undefined) ?? 0;
     if (existing && remoteMs > updatedAt) return 'ok';
 
-    let row: Record<string, unknown> = {
-      id: item.rowUuid,
-      user_id: userId,
-      updated_at: msToIso(updatedAt),
-      deleted_at: msToIso(deletedAt),
-    };
-
-    if (cloudTable === 'user_exercises') {
-      row = {
-        ...row,
-        name: payload.name,
-        primary_muscle: payload.primary_muscle,
-        movement_pattern: payload.movement_pattern,
-        equipment: payload.equipment,
-        category: payload.category,
-        is_compound: !!(payload.is_compound),
-        tips: payload.tips ?? '',
-        aliases: payload.aliases ?? [],
-        secondary_muscles: payload.secondary_muscles ?? [],
-        instructions: payload.instructions ?? [],
-        created_at: msToIso(payload.created_at as number) ?? msToIso(updatedAt),
-      };
-    } else if (cloudTable === 'user_templates') {
-      row = {
-        ...row,
-        name: payload.name,
-        description: payload.description ?? '',
-        category: payload.category ?? 'strength',
-        difficulty: payload.difficulty ?? 'intermediate',
-        estimated_minutes: payload.estimated_minutes ?? 45,
-        created_at: msToIso(payload.created_at as number) ?? msToIso(updatedAt),
-      };
-    } else if (cloudTable === 'user_template_exercises') {
-      const ex = exerciseRefToCloud(payload.exercise_ref as ExerciseRef | undefined);
-      row = {
-        ...row,
-        template_id: payload.template_uuid,
-        ...ex,
-        sort_order: payload.sort_order ?? 0,
-        target_sets: payload.target_sets ?? 3,
-        target_reps_min: payload.target_reps_min ?? 8,
-        target_reps_max: payload.target_reps_max ?? 12,
-        rest_seconds: payload.rest_seconds ?? 90,
-        notes: payload.notes ?? '',
-      };
-    } else if (cloudTable === 'workout_logs') {
-      row = {
-        ...row,
-        template_id: payload.template_uuid ?? null,
-        name: payload.name,
-        started_at: msToIso(payload.started_at as number),
-        ended_at: msToIso(payload.ended_at as number | null),
-        duration_seconds: payload.duration_seconds ?? 0,
-        total_volume: payload.total_volume ?? 0,
-        unit: payload.unit ?? 'metric',
-        notes: payload.notes ?? '',
-        created_at: msToIso(payload.created_at as number) ?? msToIso(updatedAt),
-      };
-    } else if (cloudTable === 'set_entries') {
-      const ex = exerciseRefToCloud(payload.exercise_ref as ExerciseRef | undefined);
-      row = {
-        ...row,
-        workout_log_id: payload.workout_log_uuid,
-        ...ex,
-        set_index: payload.set_index ?? 0,
-        weight: payload.weight ?? 0,
-        reps: payload.reps ?? 0,
-        completed: !!(payload.completed),
-        rest_seconds: payload.rest_seconds ?? null,
-        created_at: msToIso(payload.created_at as number) ?? msToIso(updatedAt),
-      };
-    } else if (cloudTable === 'bodyweight_entries') {
-      row = {
-        ...row,
-        weight: payload.weight,
-        unit: payload.unit ?? 'kg',
-        recorded_at: msToIso(payload.recorded_at as number),
-        created_at: msToIso(payload.created_at as number) ?? msToIso(updatedAt),
-      };
-    }
+    const row = buildCloudUpsertRow(
+      cloudTable,
+      item.rowUuid,
+      userId,
+      payload,
+      updatedAt,
+      deletedAt,
+    );
 
     const { error } = await client.from(cloudTable).upsert(row);
     if (error) throw error;
@@ -262,25 +132,6 @@ async function pushOne(
     console.warn('[sync] push failed', item.tableName, item.rowUuid, err);
     return 'retry';
   }
-}
-
-function asStr(v: unknown, fallback = ''): string {
-  if (typeof v === 'string') return v;
-  if (v == null) return fallback;
-  return String(v);
-}
-
-function asNum(v: unknown, fallback = 0): number {
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function asNumOrNull(v: unknown): number | null {
-  if (v == null) return null;
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
 }
 
 async function applyRemoteRow(
@@ -423,7 +274,7 @@ async function applyRemoteRow(
     if (exId == null && !deletedAt) return;
     if (local) {
       await db.runAsync(
-        `UPDATE template_exercises SET exercise_id = COALESCE(?, exercise_id), sort_order = ?, target_sets = ?, target_reps_min = ?, target_reps_max = ?, rest_seconds = ?, notes = ?, updated_at = ?, deleted_at = ? WHERE id = ?`,
+        `UPDATE template_exercises SET exercise_id = COALESCE(?, exercise_id), sort_order = ?, target_sets = ?, target_reps_min = ?, target_reps_max = ?, rest_seconds = ?, notes = ?, superset_group = ?, updated_at = ?, deleted_at = ? WHERE id = ?`,
         exId,
         asNum(remote.sort_order),
         asNum(remote.target_sets, 3),
@@ -431,14 +282,15 @@ async function applyRemoteRow(
         asNum(remote.target_reps_max, 12),
         asNum(remote.rest_seconds, 90),
         asStr(remote.notes),
+        asNumOrNull(remote.superset_group),
         updatedAt,
         deletedAt,
         local.id,
       );
     } else if (!deletedAt && exId != null) {
       await db.runAsync(
-        `INSERT INTO template_exercises (template_id, exercise_id, sort_order, target_sets, target_reps_min, target_reps_max, rest_seconds, notes, uuid, updated_at, deleted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO template_exercises (template_id, exercise_id, sort_order, target_sets, target_reps_min, target_reps_max, rest_seconds, notes, superset_group, uuid, updated_at, deleted_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         template.id,
         exId,
         asNum(remote.sort_order),
@@ -447,6 +299,7 @@ async function applyRemoteRow(
         asNum(remote.target_reps_max, 12),
         asNum(remote.rest_seconds, 90),
         asStr(remote.notes),
+        asNumOrNull(remote.superset_group),
         id,
         updatedAt,
         deletedAt,
@@ -523,13 +376,16 @@ async function applyRemoteRow(
     if (exId == null && !deletedAt) return;
     if (local) {
       await db.runAsync(
-        `UPDATE set_entries SET exercise_id = COALESCE(?, exercise_id), set_index = ?, weight = ?, reps = ?, completed = ?, rest_seconds = ?, updated_at = ?, deleted_at = ? WHERE id = ?`,
+        `UPDATE set_entries SET exercise_id = COALESCE(?, exercise_id), set_index = ?, weight = ?, reps = ?, completed = ?, rest_seconds = ?, superset_group = ?, set_type = ?, rpe = ?, updated_at = ?, deleted_at = ? WHERE id = ?`,
         exId,
         asNum(remote.set_index),
         asNum(remote.weight),
         asNum(remote.reps),
         remote.completed ? 1 : 0,
         asNumOrNull(remote.rest_seconds),
+        asNumOrNull(remote.superset_group),
+        asSetType(remote.set_type),
+        asNumOrNull(remote.rpe),
         updatedAt,
         deletedAt,
         local.id,
@@ -537,8 +393,8 @@ async function applyRemoteRow(
     } else if (!deletedAt && exId != null) {
       const created = isoToMs(asStr(remote.created_at)) ?? updatedAt;
       await db.runAsync(
-        `INSERT INTO set_entries (workout_log_id, exercise_id, set_index, weight, reps, completed, rest_seconds, uuid, created_at, updated_at, deleted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO set_entries (workout_log_id, exercise_id, set_index, weight, reps, completed, rest_seconds, superset_group, set_type, rpe, uuid, created_at, updated_at, deleted_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         log.id,
         exId,
         asNum(remote.set_index),
@@ -546,6 +402,9 @@ async function applyRemoteRow(
         asNum(remote.reps),
         remote.completed ? 1 : 0,
         asNumOrNull(remote.rest_seconds),
+        asNumOrNull(remote.superset_group),
+        asSetType(remote.set_type),
+        asNumOrNull(remote.rpe),
         id,
         created,
         updatedAt,
@@ -579,6 +438,42 @@ async function applyRemoteRow(
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         asNum(remote.weight),
         asStr(remote.unit, 'kg'),
+        recordedAt,
+        id,
+        created,
+        updatedAt,
+        deletedAt,
+      );
+    }
+    return;
+  }
+
+  if (table === 'body_measurements') {
+    const local = await db.getFirstAsync<{ id: number; updated_at: number }>(
+      'SELECT id, updated_at FROM body_measurements WHERE uuid = ?',
+      id,
+    );
+    if (local && local.updated_at > updatedAt) return;
+    const recordedAt = isoToMs(asStr(remote.recorded_at)) ?? updatedAt;
+    if (local) {
+      await db.runAsync(
+        `UPDATE body_measurements SET metric = ?, value = ?, unit = ?, recorded_at = ?, updated_at = ?, deleted_at = ? WHERE id = ?`,
+        asStr(remote.metric),
+        asNum(remote.value),
+        asStr(remote.unit, 'cm'),
+        recordedAt,
+        updatedAt,
+        deletedAt,
+        local.id,
+      );
+    } else if (!deletedAt) {
+      const created = isoToMs(asStr(remote.created_at)) ?? updatedAt;
+      await db.runAsync(
+        `INSERT INTO body_measurements (metric, value, unit, recorded_at, uuid, created_at, updated_at, deleted_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        asStr(remote.metric),
+        asNum(remote.value),
+        asStr(remote.unit, 'cm'),
         recordedAt,
         id,
         created,
@@ -737,5 +632,13 @@ export async function isLocalUserDataEmpty(): Promise<boolean> {
   const templates = await db.getFirstAsync<{ c: number }>(
     'SELECT COUNT(*) as c FROM workout_templates WHERE is_custom = 1 AND deleted_at IS NULL',
   );
-  return (logs?.c ?? 0) === 0 && (customs?.c ?? 0) === 0 && (templates?.c ?? 0) === 0;
+  const measurements = await db.getFirstAsync<{ c: number }>(
+    'SELECT COUNT(*) as c FROM body_measurements WHERE deleted_at IS NULL',
+  );
+  return (
+    (logs?.c ?? 0) === 0 &&
+    (customs?.c ?? 0) === 0 &&
+    (templates?.c ?? 0) === 0 &&
+    (measurements?.c ?? 0) === 0
+  );
 }

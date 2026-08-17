@@ -6,7 +6,8 @@ export type SyncTable =
   | 'user_template_exercises'
   | 'workout_logs'
   | 'set_entries'
-  | 'bodyweight_entries';
+  | 'bodyweight_entries'
+  | 'body_measurements';
 
 export type SyncOp = 'upsert' | 'delete';
 

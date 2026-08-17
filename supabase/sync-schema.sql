@@ -72,6 +72,7 @@ CREATE INDEX IF NOT EXISTS idx_user_template_exercises_user_updated
   ON user_template_exercises (user_id, updated_at);
 CREATE INDEX IF NOT EXISTS idx_user_template_exercises_template
   ON user_template_exercises (template_id);
+ALTER TABLE user_template_exercises ADD COLUMN IF NOT EXISTS superset_group INTEGER;
 
 CREATE TABLE IF NOT EXISTS workout_logs (
   id UUID PRIMARY KEY,
@@ -128,6 +129,20 @@ CREATE TABLE IF NOT EXISTS bodyweight_entries (
 CREATE INDEX IF NOT EXISTS idx_bodyweight_user_updated
   ON bodyweight_entries (user_id, updated_at);
 
+CREATE TABLE IF NOT EXISTS body_measurements (
+  id UUID PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  metric TEXT NOT NULL,
+  value DOUBLE PRECISION NOT NULL,
+  unit TEXT NOT NULL DEFAULT 'cm',
+  recorded_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_body_measurements_user_updated
+  ON body_measurements (user_id, updated_at);
+
 -- Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_exercises ENABLE ROW LEVEL SECURITY;
@@ -136,6 +151,7 @@ ALTER TABLE user_template_exercises ENABLE ROW LEVEL SECURITY;
 ALTER TABLE workout_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE set_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bodyweight_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE body_measurements ENABLE ROW LEVEL SECURITY;
 
 -- Clerk JWT sub == user_id
 CREATE POLICY "profiles_own" ON profiles
@@ -169,6 +185,11 @@ CREATE POLICY "set_entries_own" ON set_entries
   WITH CHECK (user_id = auth.jwt() ->> 'sub');
 
 CREATE POLICY "bodyweight_entries_own" ON bodyweight_entries
+  FOR ALL TO authenticated
+  USING (user_id = auth.jwt() ->> 'sub')
+  WITH CHECK (user_id = auth.jwt() ->> 'sub');
+
+CREATE POLICY "body_measurements_own" ON body_measurements
   FOR ALL TO authenticated
   USING (user_id = auth.jwt() ->> 'sub')
   WITH CHECK (user_id = auth.jwt() ->> 'sub');
