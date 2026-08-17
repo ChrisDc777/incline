@@ -6,3 +6,4 @@ export { runSync, isLocalUserDataEmpty, type SyncResult } from './engine';
 export { exerciseRefForId, resolveExerciseRef } from './exercise-ref';
 export { templateRefForId, resolveTemplateRef } from './template-ref';
 export { PUSH_ORDER, cloudTableFor } from './tables';
+export { pickAccountPrefs, ACCOUNT_PREF_KEYS } from './account-prefs';

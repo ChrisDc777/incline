@@ -28,6 +28,8 @@ import { foldPullCursor, type ApplyStatus } from './cursor';
 import { resolveTemplateRef } from './template-ref';
 import { kvStorage } from '@/db/kv';
 import { ACTIVE_PROGRAM_KEY } from '@/db/queries/programs';
+import { applyRemoteAccountPrefs } from '@/store/settings-store';
+import { ACCOUNT_PREFS_UPDATED_AT_KEY } from './account-prefs';
 
 function sortOutbox(rows: OutboxRow[]): OutboxRow[] {
   return [...rows].sort((a, b) => {
@@ -128,8 +130,43 @@ async function pushOne(
       return 'ok';
     }
 
+    if (item.tableName === 'user_preferences') {
+      const { data: existing } = await client
+        .from('user_preferences')
+        .select('updated_at')
+        .eq('user_id', userId)
+        .maybeSingle();
+      const remoteMs = isoToMs(existing?.updated_at as string | undefined) ?? 0;
+      if (existing && remoteMs > updatedAt) return 'ok';
+      const { error } = await client.from('user_preferences').upsert({
+        user_id: userId,
+        payload: {
+          themeMode: payload.themeMode,
+          accentTheme: payload.accentTheme,
+          calendarHeatMetric: payload.calendarHeatMetric,
+          weekStartsOn: payload.weekStartsOn,
+          weeklyWorkoutGoal: payload.weeklyWorkoutGoal,
+          enabledBodyMetrics: payload.enabledBodyMetrics,
+          showWarmUpSets: payload.showWarmUpSets,
+          showRpe: payload.showRpe,
+          autoStartRest: payload.autoStartRest,
+          defaultRestSeconds: payload.defaultRestSeconds,
+          showSessionGhost: payload.showSessionGhost,
+        },
+        updated_at: msToIso(updatedAt),
+        deleted_at: msToIso(deletedAt),
+      });
+      if (error) throw error;
+      return 'ok';
+    }
+
     const cloudTable = cloudTableFor(item.tableName);
-    if (!cloudTable || cloudTable === 'profiles' || cloudTable === 'user_active_program') {
+    if (
+      !cloudTable ||
+      cloudTable === 'profiles' ||
+      cloudTable === 'user_active_program' ||
+      cloudTable === 'user_preferences'
+    ) {
       console.warn('[sync] refusing to ack unknown table', item.tableName);
       return 'retry';
     }
@@ -264,6 +301,19 @@ async function applyRemoteRow(
       ACTIVE_PROGRAM_KEY,
       JSON.stringify({ programId, startedAt, updatedAt }),
     );
+    return 'ok';
+  }
+
+  if (table === 'user_preferences') {
+    const raw = await kvStorage.getItem(ACCOUNT_PREFS_UPDATED_AT_KEY);
+    const localUpdated = raw ? Number(raw) : 0;
+    if (Number.isFinite(localUpdated) && localUpdated > updatedAt) return 'ok';
+    const payload =
+      remote.payload && typeof remote.payload === 'object'
+        ? (remote.payload as Record<string, unknown>)
+        : remote;
+    applyRemoteAccountPrefs(payload);
+    await kvStorage.setItem(ACCOUNT_PREFS_UPDATED_AT_KEY, String(updatedAt));
     return 'ok';
   }
 
@@ -685,7 +735,7 @@ async function pullAll(client: SupabaseClient, userId: string, cursor: number): 
       .limit(500);
 
     if (error) {
-      if (cloud === 'profiles' || cloud === 'user_active_program') {
+      if (cloud === 'profiles' || cloud === 'user_active_program' || cloud === 'user_preferences') {
         const res = await client.from(cloud).select('*').eq('user_id', userId).maybeSingle();
         if (res.error) throw res.error;
         if (res.data) {

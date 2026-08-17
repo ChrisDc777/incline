@@ -10,7 +10,8 @@ export type SyncTable =
   | 'body_measurements'
   | 'user_programs'
   | 'user_program_workouts'
-  | 'user_active_program';
+  | 'user_active_program'
+  | 'user_preferences';
 
 export type SyncOp = 'upsert' | 'delete';
 

@@ -253,6 +253,20 @@ CREATE POLICY "user_active_program_own" ON user_active_program
   USING (user_id = auth.jwt() ->> 'sub')
   WITH CHECK (user_id = auth.jwt() ->> 'sub');
 
+CREATE TABLE IF NOT EXISTS user_preferences (
+  user_id TEXT PRIMARY KEY,
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at TIMESTAMPTZ
+);
+
+ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "user_preferences_own" ON user_preferences
+  FOR ALL TO authenticated
+  USING (user_id = auth.jwt() ->> 'sub')
+  WITH CHECK (user_id = auth.jwt() ->> 'sub');
+
 -- Last-write-wins helper: clients send updated_at; reject older writes via RPC optional later.
 -- Tombstone GC (run periodically via Edge Function / cron after 90 days):
 -- DELETE FROM set_entries WHERE deleted_at IS NOT NULL AND deleted_at < now() - interval '90 days';
