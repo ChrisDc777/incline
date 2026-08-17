@@ -267,6 +267,46 @@ CREATE POLICY "user_preferences_own" ON user_preferences
   USING (user_id = auth.jwt() ->> 'sub')
   WITH CHECK (user_id = auth.jwt() ->> 'sub');
 
+CREATE TABLE IF NOT EXISTS workout_photos (
+  id UUID PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  workout_log_id UUID NOT NULL REFERENCES workout_logs(id),
+  storage_path TEXT,
+  content_type TEXT NOT NULL DEFAULT 'image/jpeg',
+  byte_size INTEGER,
+  checksum TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_workout_photos_user_updated
+  ON workout_photos (user_id, updated_at);
+CREATE INDEX IF NOT EXISTS idx_workout_photos_log
+  ON workout_photos (workout_log_id);
+
+ALTER TABLE workout_photos ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "workout_photos_own" ON workout_photos
+  FOR ALL TO authenticated
+  USING (user_id = auth.jwt() ->> 'sub')
+  WITH CHECK (user_id = auth.jwt() ->> 'sub');
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('workout-photos', 'workout-photos', false)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "workout_photos_storage_own" ON storage.objects
+  FOR ALL TO authenticated
+  USING (
+    bucket_id = 'workout-photos'
+    AND (storage.foldername(name))[1] = auth.jwt() ->> 'sub'
+  )
+  WITH CHECK (
+    bucket_id = 'workout-photos'
+    AND (storage.foldername(name))[1] = auth.jwt() ->> 'sub'
+  );
+
 -- Last-write-wins helper: clients send updated_at; reject older writes via RPC optional later.
 -- Tombstone GC (run periodically via Edge Function / cron after 90 days):
 -- DELETE FROM set_entries WHERE deleted_at IS NOT NULL AND deleted_at < now() - interval '90 days';

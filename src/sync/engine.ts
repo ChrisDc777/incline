@@ -26,6 +26,8 @@ import {
 import { PUSH_ORDER, PULL_TABLES, cloudTableFor } from './tables';
 import { foldPullCursor, type ApplyStatus } from './cursor';
 import { resolveTemplateRef } from './template-ref';
+import { drainPhotoBlobs, enqueuePhotoBlob, localPhotoPath } from './photo-blobs';
+import { File } from 'expo-file-system';
 import { kvStorage } from '@/db/kv';
 import { ACTIVE_PROGRAM_KEY } from '@/db/queries/programs';
 import { applyRemoteAccountPrefs } from '@/store/settings-store';
@@ -697,6 +699,63 @@ async function applyRemoteRow(
     return 'ok';
   }
 
+  if (table === 'workout_photos') {
+    const local = await db.getFirstAsync<{
+      id: number;
+      updated_at: number;
+      uri: string;
+    }>('SELECT id, updated_at, uri FROM workout_photos WHERE uuid = ?', id);
+    if (local && local.updated_at > updatedAt) return 'ok';
+    const log = await db.getFirstAsync<{ id: number }>(
+      'SELECT id FROM workout_logs WHERE uuid = ?',
+      asStr(remote.workout_log_id),
+    );
+    if (!log) return 'blocked';
+    const storagePath = remote.storage_path ? asStr(remote.storage_path) : null;
+    if (storagePath?.startsWith('http')) return 'ok';
+    const dest = localPhotoPath(log.id, id);
+    const keepLocal =
+      local?.uri && !local.uri.startsWith('http') && new File(local.uri).exists
+        ? local.uri
+        : dest;
+    if (local) {
+      await db.runAsync(
+        `UPDATE workout_photos SET workout_log_id = ?, storage_path = ?, content_type = ?, byte_size = ?, checksum = ?, sort_order = ?, updated_at = ?, deleted_at = ?, uri = ? WHERE id = ?`,
+        log.id,
+        storagePath,
+        asStr(remote.content_type, 'image/jpeg'),
+        asNumOrNull(remote.byte_size),
+        remote.checksum == null ? null : asStr(remote.checksum),
+        asNum(remote.sort_order),
+        updatedAt,
+        deletedAt,
+        keepLocal,
+        local.id,
+      );
+    } else if (!deletedAt) {
+      const created = isoToMs(asStr(remote.created_at)) ?? updatedAt;
+      await db.runAsync(
+        `INSERT INTO workout_photos (workout_log_id, uri, sort_order, uuid, created_at, updated_at, deleted_at, storage_path, content_type, byte_size, checksum)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        log.id,
+        dest,
+        asNum(remote.sort_order),
+        id,
+        created,
+        updatedAt,
+        deletedAt,
+        storagePath,
+        asStr(remote.content_type, 'image/jpeg'),
+        asNumOrNull(remote.byte_size),
+        remote.checksum == null ? null : asStr(remote.checksum),
+      );
+    }
+    if (!deletedAt && storagePath && !new File(keepLocal).exists) {
+      void enqueuePhotoBlob(id, 'download', storagePath).catch(() => {});
+    }
+    return 'ok';
+  }
+
   void userId;
   return 'ok';
 }
@@ -821,6 +880,8 @@ export async function runSync(opts: {
       lastPullAt: now,
       cursor: newCursor,
     });
+
+    void drainPhotoBlobs(opts).catch((err) => console.warn('[photos] drain failed', err));
 
     return { ok: true, pushed };
   } catch (err) {

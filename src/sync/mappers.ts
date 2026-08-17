@@ -236,5 +236,18 @@ export function buildCloudUpsertRow(
     };
   }
 
+  if (cloudTable === 'workout_photos') {
+    return {
+      ...row,
+      workout_log_id: payload.workout_log_uuid,
+      storage_path: payload.storage_path ?? null,
+      content_type: payload.content_type ?? 'image/jpeg',
+      byte_size: payload.byte_size ?? null,
+      checksum: payload.checksum ?? null,
+      sort_order: payload.sort_order ?? 0,
+      created_at: msToIso(payload.created_at as number) ?? msToIso(updatedAt),
+    };
+  }
+
   return row;
 }

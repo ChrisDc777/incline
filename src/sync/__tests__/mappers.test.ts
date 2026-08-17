@@ -134,6 +134,28 @@ describe('sync mappers', () => {
     expect(seed.seed_template_id).toBe(3);
     expect(seed.user_template_id).toBeNull();
   });
+
+  it('maps photo metadata without a uri', () => {
+    const row = buildCloudUpsertRow(
+      'workout_photos',
+      'photo-uuid',
+      'user-1',
+      {
+        workout_log_uuid: 'log-uuid',
+        storage_path: 'user-1/log-uuid/photo-uuid.jpg',
+        content_type: 'image/jpeg',
+        byte_size: 12000,
+        checksum: 'abc',
+        sort_order: 0,
+        created_at: 1,
+      },
+      1,
+      null,
+    );
+    expect(row.workout_log_id).toBe('log-uuid');
+    expect(row.storage_path).toBe('user-1/log-uuid/photo-uuid.jpg');
+    expect(row).not.toHaveProperty('uri');
+  });
 });
 
 describe('sync tables', () => {

@@ -11,6 +11,7 @@ const UUID_TABLES = [
   'user_profile',
   'bodyweight_entries',
   'body_measurements',
+  'workout_photos',
 ] as const;
 
 /**
@@ -100,6 +101,11 @@ export async function ensureSyncSchema(db: SQLiteDatabase): Promise<void> {
   if (await hasTable(db, 'body_measurements')) {
     await db.execAsync(
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_body_measurements_uuid ON body_measurements(uuid)',
+    );
+  }
+  if (await hasTable(db, 'workout_photos')) {
+    await db.execAsync(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_workout_photos_uuid ON workout_photos(uuid)',
     );
   }
 }

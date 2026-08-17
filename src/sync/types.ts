@@ -11,7 +11,8 @@ export type SyncTable =
   | 'user_programs'
   | 'user_program_workouts'
   | 'user_active_program'
-  | 'user_preferences';
+  | 'user_preferences'
+  | 'workout_photos';
 
 export type SyncOp = 'upsert' | 'delete';
 
