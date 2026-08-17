@@ -194,6 +194,65 @@ CREATE POLICY "body_measurements_own" ON body_measurements
   USING (user_id = auth.jwt() ->> 'sub')
   WITH CHECK (user_id = auth.jwt() ->> 'sub');
 
+CREATE TABLE IF NOT EXISTS user_programs (
+  id UUID PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  weeks INTEGER NOT NULL DEFAULT 4,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_user_programs_user_updated
+  ON user_programs (user_id, updated_at);
+
+CREATE TABLE IF NOT EXISTS user_program_workouts (
+  id UUID PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  program_id UUID NOT NULL REFERENCES user_programs(id),
+  ref_type TEXT NOT NULL CHECK (ref_type IN ('custom', 'seed')),
+  user_template_id UUID REFERENCES user_templates(id),
+  seed_template_id INTEGER,
+  week INTEGER NOT NULL DEFAULT 1,
+  day INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_user_program_workouts_user_updated
+  ON user_program_workouts (user_id, updated_at);
+CREATE INDEX IF NOT EXISTS idx_user_program_workouts_program
+  ON user_program_workouts (program_id);
+
+CREATE TABLE IF NOT EXISTS user_active_program (
+  user_id TEXT PRIMARY KEY,
+  custom_program_id UUID REFERENCES user_programs(id),
+  seed_program_id INTEGER,
+  started_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at TIMESTAMPTZ
+);
+
+ALTER TABLE user_programs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_program_workouts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_active_program ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "user_programs_own" ON user_programs
+  FOR ALL TO authenticated
+  USING (user_id = auth.jwt() ->> 'sub')
+  WITH CHECK (user_id = auth.jwt() ->> 'sub');
+
+CREATE POLICY "user_program_workouts_own" ON user_program_workouts
+  FOR ALL TO authenticated
+  USING (user_id = auth.jwt() ->> 'sub')
+  WITH CHECK (user_id = auth.jwt() ->> 'sub');
+
+CREATE POLICY "user_active_program_own" ON user_active_program
+  FOR ALL TO authenticated
+  USING (user_id = auth.jwt() ->> 'sub')
+  WITH CHECK (user_id = auth.jwt() ->> 'sub');
+
 -- Last-write-wins helper: clients send updated_at; reject older writes via RPC optional later.
 -- Tombstone GC (run periodically via Edge Function / cron after 90 days):
 -- DELETE FROM set_entries WHERE deleted_at IS NOT NULL AND deleted_at < now() - interval '90 days';

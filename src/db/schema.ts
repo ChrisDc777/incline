@@ -8,7 +8,7 @@
  * `runMigrations` in `client.ts`. Keep SCHEMA_VERSION in sync with the latest
  * migration version.
  */
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 
 export const SCHEMA_STATEMENTS: string[] = [
   // ---- exercises (catalog + custom) ----
@@ -119,6 +119,7 @@ export const SCHEMA_STATEMENTS: string[] = [
     sort_order INTEGER NOT NULL,
     uuid TEXT,
     deleted_at INTEGER,
+    updated_at INTEGER,
     FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE,
     FOREIGN KEY (template_id) REFERENCES workout_templates(id) ON DELETE CASCADE
   )`,

@@ -95,6 +95,45 @@ describe('sync mappers', () => {
     expect(row.unit).toBe('cm');
     expect(row.recorded_at).toBe(new Date(1_000).toISOString());
   });
+
+  it('maps custom program slots with seed or custom template refs', () => {
+    const custom = buildCloudUpsertRow(
+      'user_program_workouts',
+      'slot-uuid',
+      'user-1',
+      {
+        program_uuid: 'prog-uuid',
+        template_ref: { ref: 'custom', templateUuid: 'tpl-uuid' },
+        week: 2,
+        day: 3,
+        sort_order: 0,
+      },
+      1,
+      null,
+    );
+    expect(custom.program_id).toBe('prog-uuid');
+    expect(custom.ref_type).toBe('custom');
+    expect(custom.user_template_id).toBe('tpl-uuid');
+    expect(custom.seed_template_id).toBeNull();
+
+    const seed = buildCloudUpsertRow(
+      'user_program_workouts',
+      'slot-uuid',
+      'user-1',
+      {
+        program_uuid: 'prog-uuid',
+        template_ref: { ref: 'seed', seedTemplateId: 3 },
+        week: 1,
+        day: 1,
+        sort_order: 0,
+      },
+      1,
+      null,
+    );
+    expect(seed.ref_type).toBe('seed');
+    expect(seed.seed_template_id).toBe(3);
+    expect(seed.user_template_id).toBeNull();
+  });
 });
 
 describe('sync tables', () => {
@@ -102,6 +141,10 @@ describe('sync tables', () => {
     expect(cloudTableFor('not_a_real_table')).toBeNull();
     expect(isKnownSyncTable('set_entries')).toBe(true);
     expect(isKnownSyncTable('body_measurements')).toBe(true);
+    expect(isKnownSyncTable('user_programs')).toBe(true);
+    expect(PUSH_ORDER.indexOf('user_programs')).toBeGreaterThan(
+      PUSH_ORDER.indexOf('user_templates'),
+    );
     expect(PUSH_ORDER.indexOf('body_measurements')).toBeGreaterThan(
       PUSH_ORDER.indexOf('set_entries'),
     );

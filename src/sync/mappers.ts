@@ -1,4 +1,4 @@
-import type { ExerciseRef } from './types';
+import type { ExerciseRef, TemplateRef } from './types';
 
 export function msToIso(ms: number | null | undefined): string | null {
   if (ms == null) return null;
@@ -58,6 +58,34 @@ export function cloudToExerciseRef(row: {
   }
   if (row.catalog_external_id) {
     return { ref: 'catalog', externalId: row.catalog_external_id };
+  }
+  return { ref: 'unknown' };
+}
+
+export function templateRefToCloud(ref: TemplateRef | undefined): {
+  ref_type: string;
+  user_template_id: string | null;
+  seed_template_id: number | null;
+} {
+  if (!ref || ref.ref === 'unknown') {
+    return { ref_type: 'seed', user_template_id: null, seed_template_id: null };
+  }
+  if (ref.ref === 'custom') {
+    return { ref_type: 'custom', user_template_id: ref.templateUuid, seed_template_id: null };
+  }
+  return { ref_type: 'seed', user_template_id: null, seed_template_id: ref.seedTemplateId };
+}
+
+export function cloudToTemplateRef(row: {
+  ref_type?: string;
+  user_template_id?: string | null;
+  seed_template_id?: number | null;
+}): TemplateRef {
+  if (row.ref_type === 'custom' && row.user_template_id) {
+    return { ref: 'custom', templateUuid: row.user_template_id };
+  }
+  if (row.seed_template_id != null && Number.isFinite(Number(row.seed_template_id))) {
+    return { ref: 'seed', seedTemplateId: Number(row.seed_template_id) };
   }
   return { ref: 'unknown' };
 }
@@ -183,6 +211,28 @@ export function buildCloudUpsertRow(
       unit: payload.unit ?? 'cm',
       recorded_at: msToIso(payload.recorded_at as number),
       created_at: msToIso(payload.created_at as number) ?? msToIso(updatedAt),
+    };
+  }
+
+  if (cloudTable === 'user_programs') {
+    return {
+      ...row,
+      name: payload.name,
+      description: payload.description ?? '',
+      weeks: payload.weeks ?? 4,
+      created_at: msToIso(payload.created_at as number) ?? msToIso(updatedAt),
+    };
+  }
+
+  if (cloudTable === 'user_program_workouts') {
+    const tpl = templateRefToCloud(payload.template_ref as TemplateRef | undefined);
+    return {
+      ...row,
+      program_id: payload.program_uuid,
+      ...tpl,
+      week: payload.week ?? 1,
+      day: payload.day ?? 1,
+      sort_order: payload.sort_order ?? 0,
     };
   }
 

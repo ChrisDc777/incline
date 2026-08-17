@@ -19,10 +19,15 @@ import {
   asStr,
   buildCloudUpsertRow,
   cloudToExerciseRef,
+  cloudToTemplateRef,
   isoToMs,
   msToIso,
 } from './mappers';
 import { PUSH_ORDER, PULL_TABLES, cloudTableFor } from './tables';
+import { foldPullCursor, type ApplyStatus } from './cursor';
+import { resolveTemplateRef } from './template-ref';
+import { kvStorage } from '@/db/kv';
+import { ACTIVE_PROGRAM_KEY } from '@/db/queries/programs';
 
 function sortOutbox(rows: OutboxRow[]): OutboxRow[] {
   return [...rows].sort((a, b) => {
@@ -84,9 +89,47 @@ async function pushOne(
       return 'ok';
     }
 
+    if (item.tableName === 'user_active_program') {
+      if (item.op === 'delete' || payload.deleted_at) {
+        const { data: existing } = await client
+          .from('user_active_program')
+          .select('updated_at')
+          .eq('user_id', userId)
+          .maybeSingle();
+        const remoteMs = isoToMs(existing?.updated_at as string | undefined) ?? 0;
+        if (existing && remoteMs > updatedAt) return 'ok';
+        const { error } = await client.from('user_active_program').upsert({
+          user_id: userId,
+          custom_program_id: null,
+          seed_program_id: null,
+          started_at: null,
+          updated_at: msToIso(updatedAt),
+          deleted_at: msToIso(deletedAt ?? Date.now()),
+        });
+        if (error) throw error;
+        return 'ok';
+      }
+      const { data: existing } = await client
+        .from('user_active_program')
+        .select('updated_at')
+        .eq('user_id', userId)
+        .maybeSingle();
+      const remoteMs = isoToMs(existing?.updated_at as string | undefined) ?? 0;
+      if (existing && remoteMs > updatedAt) return 'ok';
+      const { error } = await client.from('user_active_program').upsert({
+        user_id: userId,
+        custom_program_id: payload.custom_program_uuid ?? null,
+        seed_program_id: payload.seed_program_id ?? null,
+        started_at: msToIso(payload.started_at as number),
+        updated_at: msToIso(updatedAt),
+        deleted_at: null,
+      });
+      if (error) throw error;
+      return 'ok';
+    }
+
     const cloudTable = cloudTableFor(item.tableName);
-    if (!cloudTable || cloudTable === 'profiles') {
-      // Unknown table_name used to return ok and drop the outbox row.
+    if (!cloudTable || cloudTable === 'profiles' || cloudTable === 'user_active_program') {
       console.warn('[sync] refusing to ack unknown table', item.tableName);
       return 'retry';
     }
@@ -138,7 +181,7 @@ async function applyRemoteRow(
   table: SyncTable,
   remote: Record<string, unknown>,
   userId: string,
-): Promise<void> {
+): Promise<ApplyStatus> {
   const db = await openDatabase();
   const updatedAt = isoToMs(asStr(remote.updated_at)) ?? Date.now();
   const deletedAt = isoToMs(remote.deleted_at as string | null);
@@ -155,7 +198,7 @@ async function applyRemoteRow(
     const localIsPlaceholder =
       !local || (!(local.name ?? '').trim() && !local.onboarding_completed);
     // Placeholder rows must never beat a real cloud profile (common after account wipe).
-    if (local && !localIsPlaceholder && local.updated_at > updatedAt) return;
+    if (local && !localIsPlaceholder && local.updated_at > updatedAt) return 'ok';
     const uuid = local?.uuid ?? newUuid();
     await db.runAsync(
       `INSERT INTO user_profile (id, name, goal, bodyweight, unit, experience_level, onboarding_completed, avatar_url, uuid, deleted_at, updated_at)
@@ -176,7 +219,52 @@ async function applyRemoteRow(
       deletedAt,
       updatedAt,
     );
-    return;
+    return 'ok';
+  }
+
+  if (table === 'user_active_program') {
+    const localRaw = await kvStorage.getItem(ACTIVE_PROGRAM_KEY);
+    let localUpdated = 0;
+    if (localRaw) {
+      try {
+        const parsed = JSON.parse(localRaw) as { updatedAt?: number };
+        localUpdated = parsed.updatedAt ?? 0;
+      } catch {
+        localUpdated = 0;
+      }
+    }
+    if (localUpdated > updatedAt) return 'ok';
+    if (deletedAt) {
+      await kvStorage.removeItem(ACTIVE_PROGRAM_KEY);
+      return 'ok';
+    }
+    const startedAt = isoToMs(asStr(remote.started_at)) ?? updatedAt;
+    const customUuid = remote.custom_program_id ? asStr(remote.custom_program_id) : '';
+    const seedId = asNumOrNull(remote.seed_program_id);
+    let programId: number | null = null;
+    if (customUuid) {
+      const p = await db.getFirstAsync<{ id: number }>(
+        'SELECT id FROM programs WHERE uuid = ? AND is_custom = 1 AND deleted_at IS NULL',
+        customUuid,
+      );
+      if (!p) return 'blocked';
+      programId = p.id;
+    } else if (seedId != null) {
+      const p = await db.getFirstAsync<{ id: number }>(
+        'SELECT id FROM programs WHERE id = ? AND is_custom = 0 AND deleted_at IS NULL',
+        seedId,
+      );
+      if (!p) return 'blocked';
+      programId = p.id;
+    } else {
+      await kvStorage.removeItem(ACTIVE_PROGRAM_KEY);
+      return 'ok';
+    }
+    await kvStorage.setItem(
+      ACTIVE_PROGRAM_KEY,
+      JSON.stringify({ programId, startedAt, updatedAt }),
+    );
+    return 'ok';
   }
 
   const id = asStr(remote.id);
@@ -185,7 +273,7 @@ async function applyRemoteRow(
       'SELECT id, updated_at FROM exercises WHERE uuid = ?',
       id,
     );
-    if (local && local.updated_at > updatedAt) return;
+    if (local && local.updated_at > updatedAt) return 'ok';
     if (local) {
       await db.runAsync(
         `UPDATE exercises SET name = ?, primary_muscle = ?, movement_pattern = ?, equipment = ?, category = ?,
@@ -219,7 +307,7 @@ async function applyRemoteRow(
         deletedAt,
       );
     }
-    return;
+    return 'ok';
   }
 
   if (table === 'user_templates') {
@@ -227,7 +315,7 @@ async function applyRemoteRow(
       'SELECT id, updated_at FROM workout_templates WHERE uuid = ?',
       id,
     );
-    if (local && local.updated_at > updatedAt) return;
+    if (local && local.updated_at > updatedAt) return 'ok';
     if (local) {
       await db.runAsync(
         `UPDATE workout_templates SET name = ?, description = ?, category = ?, difficulty = ?, estimated_minutes = ?, updated_at = ?, deleted_at = ? WHERE id = ?`,
@@ -256,7 +344,7 @@ async function applyRemoteRow(
         deletedAt,
       );
     }
-    return;
+    return 'ok';
   }
 
   if (table === 'user_template_exercises') {
@@ -264,14 +352,14 @@ async function applyRemoteRow(
       'SELECT id, updated_at FROM template_exercises WHERE uuid = ?',
       id,
     );
-    if (local && (local.updated_at ?? 0) > updatedAt) return;
+    if (local && (local.updated_at ?? 0) > updatedAt) return 'ok';
     const template = await db.getFirstAsync<{ id: number }>(
       'SELECT id FROM workout_templates WHERE uuid = ?',
       asStr(remote.template_id),
     );
-    if (!template) return;
+    if (!template) return 'blocked';
     const exId = await resolveExerciseRef(cloudToExerciseRef(remote as never));
-    if (exId == null && !deletedAt) return;
+    if (exId == null && !deletedAt) return 'blocked';
     if (local) {
       await db.runAsync(
         `UPDATE template_exercises SET exercise_id = COALESCE(?, exercise_id), sort_order = ?, target_sets = ?, target_reps_min = ?, target_reps_max = ?, rest_seconds = ?, notes = ?, superset_group = ?, updated_at = ?, deleted_at = ? WHERE id = ?`,
@@ -305,7 +393,7 @@ async function applyRemoteRow(
         deletedAt,
       );
     }
-    return;
+    return 'ok';
   }
 
   if (table === 'workout_logs') {
@@ -313,7 +401,7 @@ async function applyRemoteRow(
       'SELECT id, updated_at FROM workout_logs WHERE uuid = ?',
       id,
     );
-    if (local && local.updated_at > updatedAt) return;
+    if (local && local.updated_at > updatedAt) return 'ok';
     let templateId: number | null = null;
     if (remote.template_id) {
       const t = await db.getFirstAsync<{ id: number }>(
@@ -358,7 +446,7 @@ async function applyRemoteRow(
         deletedAt,
       );
     }
-    return;
+    return 'ok';
   }
 
   if (table === 'set_entries') {
@@ -366,14 +454,14 @@ async function applyRemoteRow(
       'SELECT id, updated_at FROM set_entries WHERE uuid = ?',
       id,
     );
-    if (local && local.updated_at > updatedAt) return;
+    if (local && local.updated_at > updatedAt) return 'ok';
     const log = await db.getFirstAsync<{ id: number }>(
       'SELECT id FROM workout_logs WHERE uuid = ?',
       asStr(remote.workout_log_id),
     );
-    if (!log) return;
+    if (!log) return 'blocked';
     const exId = await resolveExerciseRef(cloudToExerciseRef(remote as never));
-    if (exId == null && !deletedAt) return;
+    if (exId == null && !deletedAt) return 'blocked';
     if (local) {
       await db.runAsync(
         `UPDATE set_entries SET exercise_id = COALESCE(?, exercise_id), set_index = ?, weight = ?, reps = ?, completed = ?, rest_seconds = ?, superset_group = ?, set_type = ?, rpe = ?, updated_at = ?, deleted_at = ? WHERE id = ?`,
@@ -411,7 +499,7 @@ async function applyRemoteRow(
         deletedAt,
       );
     }
-    return;
+    return 'ok';
   }
 
   if (table === 'bodyweight_entries') {
@@ -419,7 +507,7 @@ async function applyRemoteRow(
       'SELECT id, updated_at FROM bodyweight_entries WHERE uuid = ?',
       id,
     );
-    if (local && local.updated_at > updatedAt) return;
+    if (local && local.updated_at > updatedAt) return 'ok';
     const recordedAt = isoToMs(asStr(remote.recorded_at)) ?? updatedAt;
     if (local) {
       await db.runAsync(
@@ -445,7 +533,7 @@ async function applyRemoteRow(
         deletedAt,
       );
     }
-    return;
+    return 'ok';
   }
 
   if (table === 'body_measurements') {
@@ -453,7 +541,7 @@ async function applyRemoteRow(
       'SELECT id, updated_at FROM body_measurements WHERE uuid = ?',
       id,
     );
-    if (local && local.updated_at > updatedAt) return;
+    if (local && local.updated_at > updatedAt) return 'ok';
     const recordedAt = isoToMs(asStr(remote.recorded_at)) ?? updatedAt;
     if (local) {
       await db.runAsync(
@@ -481,14 +569,91 @@ async function applyRemoteRow(
         deletedAt,
       );
     }
+    return 'ok';
+  }
+
+  if (table === 'user_programs') {
+    const local = await db.getFirstAsync<{ id: number; updated_at: number }>(
+      'SELECT id, updated_at FROM programs WHERE uuid = ?',
+      id,
+    );
+    if (local && local.updated_at > updatedAt) return 'ok';
+    if (local) {
+      await db.runAsync(
+        `UPDATE programs SET name = ?, description = ?, weeks = ?, updated_at = ?, deleted_at = ? WHERE id = ? AND is_custom = 1`,
+        asStr(remote.name),
+        asStr(remote.description),
+        asNum(remote.weeks, 4),
+        updatedAt,
+        deletedAt,
+        local.id,
+      );
+    } else if (!deletedAt) {
+      const created = isoToMs(asStr(remote.created_at)) ?? updatedAt;
+      await db.runAsync(
+        `INSERT INTO programs (name, description, weeks, is_custom, uuid, created_at, updated_at, deleted_at)
+         VALUES (?, ?, ?, 1, ?, ?, ?, ?)`,
+        asStr(remote.name),
+        asStr(remote.description),
+        asNum(remote.weeks, 4),
+        id,
+        created,
+        updatedAt,
+        deletedAt,
+      );
+    }
+    return 'ok';
+  }
+
+  if (table === 'user_program_workouts') {
+    const local = await db.getFirstAsync<{ id: number; updated_at: number | null }>(
+      'SELECT id, updated_at FROM program_workouts WHERE uuid = ?',
+      id,
+    );
+    if (local && (local.updated_at ?? 0) > updatedAt) return 'ok';
+    const program = await db.getFirstAsync<{ id: number }>(
+      'SELECT id FROM programs WHERE uuid = ? AND is_custom = 1',
+      asStr(remote.program_id),
+    );
+    if (!program) return 'blocked';
+    const templateId = await resolveTemplateRef(cloudToTemplateRef(remote as never));
+    if (templateId == null && !deletedAt) return 'blocked';
+    if (local) {
+      await db.runAsync(
+        `UPDATE program_workouts SET program_id = ?, template_id = COALESCE(?, template_id), week = ?, day = ?, sort_order = ?, updated_at = ?, deleted_at = ? WHERE id = ?`,
+        program.id,
+        templateId,
+        asNum(remote.week, 1),
+        asNum(remote.day, 1),
+        asNum(remote.sort_order),
+        updatedAt,
+        deletedAt,
+        local.id,
+      );
+    } else if (!deletedAt && templateId != null) {
+      await db.runAsync(
+        `INSERT INTO program_workouts (program_id, template_id, week, day, sort_order, uuid, updated_at, deleted_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        program.id,
+        templateId,
+        asNum(remote.week, 1),
+        asNum(remote.day, 1),
+        asNum(remote.sort_order),
+        id,
+        updatedAt,
+        deletedAt,
+      );
+    }
+    return 'ok';
   }
 
   void userId;
+  return 'ok';
 }
 
 async function pullAll(client: SupabaseClient, userId: string, cursor: number): Promise<number> {
-  let maxCursor = cursor;
   const cursorIso = new Date(cursor).toISOString();
+  const results: { ms: number; status: ApplyStatus }[] = [];
 
   // If local profile is still an empty placeholder, always fetch the cloud row
   // (ignores cursor). Fixes account-switch races where workouts pulled but name did not.
@@ -502,14 +667,13 @@ async function pullAll(client: SupabaseClient, userId: string, cursor: number): 
     const res = await client.from('profiles').select('*').eq('user_id', userId).maybeSingle();
     if (res.error) throw res.error;
     if (res.data) {
-      await applyRemoteRow('profiles', res.data as Record<string, unknown>, userId);
+      const status = await applyRemoteRow('profiles', res.data as Record<string, unknown>, userId);
       const ms = isoToMs(res.data.updated_at as string) ?? 0;
-      maxCursor = Math.max(maxCursor, ms);
+      results.push({ ms, status });
     }
   }
 
   for (const { table, cloud } of PULL_TABLES) {
-    // Already hydrated above when local was empty.
     if (cloud === 'profiles' && needsProfileHydrate) continue;
 
     const { data, error } = await client
@@ -521,15 +685,14 @@ async function pullAll(client: SupabaseClient, userId: string, cursor: number): 
       .limit(500);
 
     if (error) {
-      // profiles uses user_id as PK; filter still applies
-      if (cloud === 'profiles') {
-        const res = await client.from('profiles').select('*').eq('user_id', userId).maybeSingle();
+      if (cloud === 'profiles' || cloud === 'user_active_program') {
+        const res = await client.from(cloud).select('*').eq('user_id', userId).maybeSingle();
         if (res.error) throw res.error;
         if (res.data) {
           const ms = isoToMs(res.data.updated_at as string) ?? 0;
           if (ms > cursor) {
-            await applyRemoteRow('profiles', res.data as Record<string, unknown>, userId);
-            maxCursor = Math.max(maxCursor, ms);
+            const status = await applyRemoteRow(table, res.data as Record<string, unknown>, userId);
+            results.push({ ms, status });
           }
         }
         continue;
@@ -538,13 +701,13 @@ async function pullAll(client: SupabaseClient, userId: string, cursor: number): 
     }
 
     for (const row of data ?? []) {
-      await applyRemoteRow(table, row as Record<string, unknown>, userId);
+      const status = await applyRemoteRow(table, row as Record<string, unknown>, userId);
       const ms = isoToMs((row as { updated_at?: string }).updated_at) ?? 0;
-      if (ms > maxCursor) maxCursor = ms;
+      results.push({ ms, status });
     }
   }
 
-  return maxCursor;
+  return foldPullCursor(cursor, results);
 }
 
 let _running = false;
@@ -635,10 +798,14 @@ export async function isLocalUserDataEmpty(): Promise<boolean> {
   const measurements = await db.getFirstAsync<{ c: number }>(
     'SELECT COUNT(*) as c FROM body_measurements WHERE deleted_at IS NULL',
   );
+  const programs = await db.getFirstAsync<{ c: number }>(
+    'SELECT COUNT(*) as c FROM programs WHERE is_custom = 1 AND deleted_at IS NULL',
+  );
   return (
     (logs?.c ?? 0) === 0 &&
     (customs?.c ?? 0) === 0 &&
     (templates?.c ?? 0) === 0 &&
-    (measurements?.c ?? 0) === 0
+    (measurements?.c ?? 0) === 0 &&
+    (programs?.c ?? 0) === 0
   );
 }

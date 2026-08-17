@@ -160,7 +160,7 @@ export async function resetUserData(): Promise<void> {
   await resetSyncState();
   try {
     const { clearActiveProgram } = await import('./programs');
-    await clearActiveProgram();
+    await clearActiveProgram({ sync: false });
   } catch {
     // ignore
   }
